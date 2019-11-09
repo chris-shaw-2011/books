@@ -1,0 +1,89 @@
+html, body, #root, .App {
+   height: 100%;
+}
+
+.App, .mainContent {
+   display: flex;
+   flex-direction: column
+}
+
+.navBar, .nav-tabs {
+   flex-grow: 0;
+   flex-shrink: 0;
+}
+
+.mainContent {
+   overflow: hidden;
+}
+
+.tab-content {
+   overflow: auto;
+}
+
+.mainContent, .tab-content {
+   flex-grow: 1;
+   flex-shrink: 1;
+}
+
+.loading {
+   display: flex;
+   height: 100%;
+}
+
+.loading > .inner {
+   display: flex;
+   align-items: center;
+   margin-left: auto;
+   margin-right: auto;
+}
+
+.loading > .inner > .text {
+   padding-left: 5px;
+}
+
+.rootItemList {
+   margin-left: 0px !important;
+   border-top: 0 !important;
+   border-bottom: 1px solid black;
+}
+
+.item {
+   margin-left: 30px;
+   display: flex;
+   flex-direction: column;
+   border-top: 1px solid black;
+   padding: 10px 0px 10px 10px;
+   cursor: pointer;
+   color: black !important;
+   text-decoration: none !important;
+}
+
+.item > .inner {
+   display: flex;
+   align-items: center;
+}
+
+.item > .inner > svg, .book > .inner > img {
+   height: 130px;
+   padding-right: 10px;
+}
+
+.book .title {
+   font-weight: bold;
+}
+
+.book .author, .book .size {
+   color: gray;
+}
+
+.book .size {
+   font-size: 85%;
+}
+
+.logIn {
+   align-items: center;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   height: 100%;
+}

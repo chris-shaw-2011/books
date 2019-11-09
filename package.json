@@ -1,0 +1,56 @@
+{
+   "name": "books",
+   "version": "0.1.0",
+   "private": true,
+   "dependencies": {
+      "bootstrap": "^4.3.1",
+      "classnames": "^2.2.6",
+      "fastify": "^2.10.0",
+      "fastify-static": "^2.5.0",
+      "http-proxy-middleware": "^0.20.0",
+      "jsmediatags": "^3.9.2",
+      "react": "^16.11.0",
+      "react-bootstrap": "^1.0.0-beta.14",
+      "react-dom": "^16.11.0",
+      "react-highlight-words": "^0.16.0",
+      "react-scripts": "3.2.0"
+   },
+   "scripts": {
+      "start": "concurrently \"npm run start-react\" \"npm run start-server\"",
+      "start-react": "react-scripts start",
+      "start-server": "ts-node-dev --project ./src/server/tsconfig.json --respawn --transpileOnly ./src/server/index.ts",
+      "build": "react-scripts build",
+      "build-server": "tsc ./src/server/index.ts",
+      "test": "react-scripts test",
+      "eject": "react-scripts eject"
+   },
+   "eslintConfig": {
+      "extends": "react-app"
+   },
+   "browserslist": {
+      "production": [
+         ">0.2%",
+         "not dead",
+         "not op_mini all"
+      ],
+      "development": [
+         "last 1 chrome version",
+         "last 1 firefox version",
+         "last 1 safari version"
+      ]
+   },
+   "proxy": "http://localhost:3001",
+   "devDependencies": {
+      "@types/classnames": "^2.2.9",
+      "@types/jest": "24.0.21",
+      "@types/jsmediatags": "^3.9.0",
+      "@types/node": "12.12.5",
+      "@types/react": "16.9.11",
+      "@types/react-dom": "16.9.3",
+      "@types/react-highlight-words": "^0.16.0",
+      "concurrently": "^5.0.0",
+      "ts-node-dev": "^1.0.0-pre.44",
+      "tslint": "^5.20.1",
+      "typescript": "3.7.2"
+   }
+}
