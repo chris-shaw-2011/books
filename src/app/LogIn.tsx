@@ -1,6 +1,5 @@
 import React, { useState, FormEvent } from "react"
-import { Form, Button, Modal, FormControlProps, Alert } from "react-bootstrap"
-import { ReplaceProps, BsPrefixProps } from "react-bootstrap/helpers"
+import { Form, Button, Modal, Alert } from "react-bootstrap"
 import Api from "./Api"
 import Loading from "./Loading"
 import Token from "../shared/Token"
@@ -51,12 +50,12 @@ const LogIn: React.FC<Props> = (props: Props) => {
                <Form.Group controlId="formGroupEmail">
                   <Form.Label>Email address</Form.Label>
                   <Form.Control type="email" placeholder="Enter email" required
-                     onChange={(e: FormEvent<ReplaceProps<"input", BsPrefixProps<"input"> & FormControlProps>>) => setEmail(e.currentTarget.value || "")} />
+                     onChange={(e: FormEvent<HTMLInputElement>) => setEmail(e.currentTarget.value || "")} />
                </Form.Group>
                <Form.Group controlId="formGroupPassword">
                   <Form.Label>Password</Form.Label>
                   <Form.Control type="password" placeholder="Password" required
-                     onChange={(e: FormEvent<ReplaceProps<"input", BsPrefixProps<"input"> & FormControlProps>>) => setPassword(e.currentTarget.value || "")} />
+                     onChange={(e: FormEvent<HTMLInputElement>) => setPassword(e.currentTarget.value || "")} />
                </Form.Group>
             </Modal.Body>
             <Modal.Footer>

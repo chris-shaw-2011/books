@@ -1,9 +1,8 @@
 import React, { useState, Fragment } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { Navbar, Form, FormControl, Nav, FormControlProps } from "react-bootstrap"
+import { Navbar, Form, FormControl, Nav } from "react-bootstrap"
 import Authenticated from './Authenticated';
 import "./styles.css"
-import { ReplaceProps, BsPrefixProps } from 'react-bootstrap/helpers';
 import LogIn from './LogIn';
 import Token from '../shared/Token';
 import { CookiesProvider, useCookies } from 'react-cookie';
@@ -24,7 +23,7 @@ const App: React.FC = () => {
                   <Nav className="mr-auto">
                   </Nav>
                   <Form inline>
-                     <FormControl type="text" placeholder="Search" className="mr-sm-2" onChange={(e: React.FormEvent<ReplaceProps<"input", BsPrefixProps<"input"> & FormControlProps>>) => {
+                     <FormControl type="text" placeholder="Search" className="mr-sm-2" onChange={(e: React.FormEvent<HTMLInputElement>) => {
                         var search = (e.currentTarget.value || "").trim();
 
                         if (search) {
