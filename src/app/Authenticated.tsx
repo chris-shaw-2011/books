@@ -5,9 +5,15 @@ import { Status } from "../shared/Book";
 import Loading from "./Loading"
 import { ItemType } from "../shared/ItemType";
 import ItemList from "./ItemList";
+import Api from "./Api";
+import Token from "../shared/Token";
+import Unauthorized from "../shared/Unauthorized";
+import AccessDenied from "../shared/AccessDenied";
 
 interface Props {
    searchWords: Array<string>,
+   token: Token,
+   onUnauthorized: (message?: string) => void
 }
 
 interface State {
@@ -22,12 +28,21 @@ export default class LoggedIn extends React.Component<Props, State> {
    }
 
    async componentDidMount() {
-      var books = new Directory(await (await fetch("/books")).json())
+      var books = await Api.books(this.props.token)
 
-      this.setState({
-         books: books,
-         loading: false,
-      })
+      if (!books) {
+         this.props.onUnauthorized("Something unexpected happened")
+      }
+      else if (books instanceof Unauthorized || books instanceof AccessDenied) {
+         this.props.onUnauthorized(books.message);
+      }
+      else {
+         this.setState({
+            books: books,
+            loading: false,
+         })
+      }
+
    }
 
    filter(dir: Directory, status: Status) {

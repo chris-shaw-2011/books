@@ -7,6 +7,10 @@ html, body, #root, .App {
    flex-direction: column
 }
 
+.mainContent, .mainContent > .nav-tabs > .active {
+   background-color: #fafafa;
+}
+
 .navBar, .nav-tabs {
    flex-grow: 0;
    flex-shrink: 0;

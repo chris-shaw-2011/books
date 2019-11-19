@@ -14,5 +14,12 @@ module.exports = function (app) {
          target: 'http://localhost:3001',
          changeOrigin: true,
       })
+   );
+   app.use(
+      "/auth",
+      proxy({
+         target: "http://localhost:3001",
+         changeOrigin: true,
+      })
    )
 };
