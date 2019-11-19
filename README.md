@@ -44,11 +44,11 @@ You can learn more in the [Create React App documentation](https://facebook.gith
 To learn React, check out the [React documentation](https://reactjs.org/).
 
 ## Todo
-Add manage users page
-Reset password
-Persist read books
-Allow upload of zip of mp3s
-Modification of metadata
-Modify settings via web interface
-Automatic download of all books in an audible account and convert to m4b
+Add manage users page<br />
+Reset password<br />
+Persist read books<br />
+Allow upload of zip of mp3s<br />
+Modification of metadata<br />
+Modify settings via web interface<br />
+Automatic download of all books in an audible account and convert to m4b<br />
 
