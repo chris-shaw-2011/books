@@ -42,3 +42,13 @@ You don’t have to ever use `eject`. The curated feature set is suitable for sm
 You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
 To learn React, check out the [React documentation](https://reactjs.org/).
+
+## Todo
+Add manage users page
+Reset password
+Persist read books
+Allow upload of zip of mp3s
+Modification of metadata
+Modify settings via web interface
+Automatic download of all books in an audible account and convert to m4b
+
