@@ -16,9 +16,8 @@ import uuid from "uuid"
 import bcrypt from "bcrypt"
 import ServerToken from "./ServerToken"
 import moment from "moment"
-import ffmpeg from "ffmpeg-static"
-import { spawn, ChildProcess } from "child_process"
 import stripHtml from "string-strip-html"
+import mp3ToAac from "mp3-to-aac"
 
 const server = fastify({ logger: true });
 const settings = new Settings()
@@ -155,7 +154,6 @@ sqlite.open("db.sqlite").then(async db => {
    }
 
    start();
-   convertMp3s(settings.baseBooksPath)
 })
 
 async function Recursive(pathTree: string[], name: string, authorization: string): Promise<Directory | null> {
@@ -333,48 +331,13 @@ async function convertMp3s(currPath: string) {
    }
 
    if (!hasM4b && mp3s.length) {
-      var outputFile = `${outputName}.m4b`;
-      var args = ["-i", `"concat:${mp3s.join("|")}"`]
-
-      if (bestCover) {
-         args.push("-i", `"${bestCover}"`)
-      }
-
-      args.push("-map", "a:0")
-
-      if (bestCover) {
-         args.push("-map", "1")
-      }
-
-      args.push("-c:a", "aac")
-
-      if (bestCover) {
-         args.push("-vcodec", "copy", "-disposition:1", "attached_pic")
-      }
-
-      args.push("-metadata", `title="${outputName}"`, `"${outputFile}"`);
-
-      console.log(`Running command ${ffmpeg.path} ${args.join(" ")}`)
-
-      const ffmpegProc = spawn(ffmpeg.path, args, { cwd: currPath, windowsVerbatimArguments: true, detached: true, stdio: ['pipe', process.stdout, process.stderr] })
-
-      await onExit(ffmpegProc)
-
-      console.log(`Created file ${outputFile}`)
-   }
-
-   function onExit(childProcess: ChildProcess): Promise<void> {
-      return new Promise((resolve, reject) => {
-         childProcess.once('exit', (code: number, signal: string) => {
-            if (code === 0) {
-               resolve(undefined);
-            } else {
-               reject(new Error('Exit with error code: ' + code));
-            }
-         });
-         childProcess.once('error', (err: Error) => {
-            reject(err);
-         });
-      });
+      await mp3ToAac(mp3s, `${outputName}.m4b`, {
+         cwd: currPath,
+         debug: true,
+         metaDataOverrides: {
+            title: outputName,
+            coverPicturePath: bestCover,
+         },
+      })
    }
 }
