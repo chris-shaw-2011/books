@@ -18,12 +18,14 @@ import ServerToken from "./ServerToken"
 import moment from "moment"
 import stripHtml from "string-strip-html"
 import mp3ToAac from "mp3-to-aac"
+import { ItemType } from "../shared/ItemType";
 
 const server = fastify({ logger: true });
 const settings = new Settings()
 var noUsers = false;
 var checksumSecret = "";
 var authorizationExpiration = new Map<string, moment.Moment>()
+var books = new Directory();
 const getNewExpiration = () => moment().add(24, "hours")
 const validateAuthorization = (authorization: string, reply: fastify.FastifyReply<ServerResponse>) => {
    var expires = authorizationExpiration.has(authorization) ? authorizationExpiration.get(authorization) : undefined;
@@ -84,6 +86,10 @@ sqlite.open("db.sqlite").then(async db => {
       console.warn("Currently there are no users in the database so the first login attempt will create a user")
    }
 
+   console.log("Loading all books into memory")
+   books = await Recursive([], "")
+   console.log("Books loaded, starting website")
+
    server.post("/auth", async (request, reply) => {
       var user = new User(request.body)
 
@@ -122,7 +128,11 @@ sqlite.open("db.sqlite").then(async db => {
          return reqValidation;
       }
 
-      return ((await Recursive([], "", token.authorization)) as Directory);
+      var dir = new Directory(books);
+
+      UpdateUrls(dir, token.authorization);
+
+      return dir;
    })
 
    server.get("/files/:authorization/*", (request, reply) => {
@@ -156,7 +166,19 @@ sqlite.open("db.sqlite").then(async db => {
    start();
 })
 
-async function Recursive(pathTree: string[], name: string, authorization: string): Promise<Directory | null> {
+function UpdateUrls(dir: Directory, authorization: string) {
+   for (const i of dir.items) {
+      if (i.type == ItemType.book) {
+         i.download = i.download.replace("{authorization}", authorization)
+         i.cover = i.cover.replace("{authorization}", authorization)
+      }
+      else {
+         UpdateUrls(i, authorization)
+      }
+   }
+}
+
+async function Recursive(pathTree: string[], name: string): Promise<Directory | null> {
    var currPath = path.join(settings.baseBooksPath, ...pathTree, name)
    var paths = await fs.promises.readdir(currPath, { withFileTypes: true });
    var newPathTree = name ? pathTree.concat(name) : pathTree;
@@ -166,7 +188,7 @@ async function Recursive(pathTree: string[], name: string, authorization: string
 
    for (const p of paths) {
       if (p.isDirectory()) {
-         var result = await Recursive(newPathTree, p.name, authorization);
+         var result = await Recursive(newPathTree, p.name);
 
          if (result) {
             dir.items.push(result)
@@ -196,10 +218,10 @@ async function Recursive(pathTree: string[], name: string, authorization: string
          }
 
          if (newPathTree.length) {
-            book.download = `/files/${authorization}/${newPathTree.join("/")}/${p.name}`
+            book.download = `/files/{authorization}/${newPathTree.join("/")}/${p.name}`
          }
          else {
-            book.download = `/files/${authorization}/${p.name}`
+            book.download = `/files/{authorization}/${p.name}`
          }
 
          book.cover = book.download + ".jpg";
