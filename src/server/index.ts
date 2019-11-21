@@ -26,6 +26,7 @@ var noUsers = false;
 var checksumSecret = "";
 var authorizationExpiration = new Map<string, moment.Moment>()
 var books = new Directory();
+var rootDir = __dirname;
 const getNewExpiration = () => moment().add(24, "hours")
 const validateAuthorization = (authorization: string, reply: fastify.FastifyReply<ServerResponse>) => {
    var expires = authorizationExpiration.has(authorization) ? authorizationExpiration.get(authorization) : undefined;
@@ -90,6 +91,12 @@ sqlite.open("db.sqlite").then(async db => {
    books = await Recursive([], "")
    console.log("Books loaded, starting website")
 
+   while (!fs.existsSync(path.join(rootDir, "package.json"))) {
+      rootDir = path.join(rootDir, "../")
+   }
+
+   console.log(`Root directory is ${rootDir}`)
+
    server.post("/auth", async (request, reply) => {
       var user = new User(request.body)
 
@@ -151,6 +158,13 @@ sqlite.open("db.sqlite").then(async db => {
       else {
          reply.code(404).send("Not Found");
       }
+   })
+
+   //This handles requests to the root of the site in production
+   server.get("/*", (request, reply) => {
+      var filePath = request.params["*"] as string || "index.html"
+
+      sendFile(request, reply, path.join(rootDir, "build"), filePath)
    })
 
    const start = async () => {

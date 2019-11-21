@@ -24,10 +24,12 @@
       "uuid": "^3.3.3"
    },
    "scripts": {
-      "start": "concurrently \"npm run start-react\" \"npm run start-server\"",
+      "start": "run-p start-react start-server",
+      "start-production": "run-s build-react build-server start-server-production",
       "start-react": "react-scripts start",
       "start-server": "ts-node-dev --project ./src/server/tsconfig.json --respawn --transpileOnly ./src/server/index.ts",
-      "build": "react-scripts build",
+      "start-server-production": "node dist/server/index.js",
+      "build-react": "react-scripts build",
       "build-server": "tsc --project ./src/server/tsconfig.json",
       "test": "react-scripts test",
       "eject": "react-scripts eject"
@@ -61,7 +63,7 @@
       "@types/send": "^0.14.5",
       "@types/string-strip-html": "^4.3.0",
       "@types/uuid": "^3.4.6",
-      "concurrently": "^5.0.0",
+      "npm-run-all": "^4.1.5",
       "ts-node-dev": "^1.0.0-pre.44",
       "tslint": "^5.20.1",
       "typescript": "3.7.2"
