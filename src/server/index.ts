@@ -169,7 +169,7 @@ sqlite.open("db.sqlite").then(async db => {
 
    const start = async () => {
       try {
-         await server.listen(3001)
+         await server.listen(3001, "::")
       }
       catch (err) {
          server.log.error(err)
