@@ -14,6 +14,7 @@ export default class Book {
    status: Status = Status.Unread
    year?: number
    comment: string = ""
+   duration?: number
    readonly type = ItemType.book
 
    constructor(json?: Book) {
@@ -26,6 +27,7 @@ export default class Book {
          this.status = json.status
          this.year = json.year
          this.comment = json.comment
+         this.duration = json.duration
       }
    }
 }

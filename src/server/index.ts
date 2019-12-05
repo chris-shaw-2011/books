@@ -214,13 +214,15 @@ async function Recursive(pathTree: string[], name: string): Promise<Directory | 
 
          console.log(`${bookPath} - reading tags`)
 
-         const tags = (await mm.parseFile(bookPath)).common
+         const metadata = (await mm.parseFile(bookPath));
+         const tags = metadata.common
 
          if (tags) {
             book.name = tags.title || p.name;
             book.author = tags.artist || "";
             book.year = tags.year;
             book.comment = tags.comment && tags.comment.length ? stripHtml(tags.comment[0]) : "";
+            book.duration = metadata.format.duration
 
             if (tags.picture && tags.picture.length && !fs.existsSync(photoPath)) {
                fs.writeFileSync(photoPath, new Uint8Array(tags.picture[0].data));
