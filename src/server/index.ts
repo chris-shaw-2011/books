@@ -3,8 +3,7 @@ import fs from "fs";
 import path from "path";
 import Directory from "../shared/Directory"
 import Book from "../shared/Book"
-import jsmediatags from "jsmediatags"
-import { TagType } from "jsmediatags/types";
+import * as mm from "music-metadata"
 import sqlite from "sqlite"
 import Settings from "./Settings"
 import { IncomingMessage, ServerResponse } from "http";
@@ -212,19 +211,19 @@ async function Recursive(pathTree: string[], name: string): Promise<Directory | 
          var book = new Book();
          var bookPath = path.join(currPath, p.name);
          var photoPath = bookPath + ".jpg"
-         var tags = (await new Promise((resolve, error) => jsmediatags.read(bookPath, {
-            onSuccess: (tags) => resolve(tags),
-            onError: (e) => error(e),
-         })) as TagType).tags
+
+         console.log(`${bookPath} - reading tags`)
+
+         const tags = (await mm.parseFile(bookPath)).common
 
          if (tags) {
             book.name = tags.title || p.name;
             book.author = tags.artist || "";
-            book.year = tags.year || "";
-            book.comment = stripHtml(tags.comment || "");
+            book.year = tags.year;
+            book.comment = tags.comment && tags.comment.length ? stripHtml(tags.comment[0]) : "";
 
-            if (tags.picture && tags.picture.data && !fs.existsSync(photoPath)) {
-               fs.writeFileSync(photoPath, new Uint8Array(tags.picture.data));
+            if (tags.picture && tags.picture.length && !fs.existsSync(photoPath)) {
+               fs.writeFileSync(photoPath, new Uint8Array(tags.picture[0].data));
             }
          }
          else {

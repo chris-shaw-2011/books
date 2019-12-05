@@ -12,7 +12,7 @@ export default class Book {
    cover: string = ""
    download: string = ""
    status: Status = Status.Unread
-   year: string = ""
+   year?: number
    comment: string = ""
    readonly type = ItemType.book
 
