@@ -5,12 +5,12 @@ import Directory from "../shared/Directory"
 import Book from "../shared/Book"
 import * as mm from "music-metadata"
 import sqlite from "sqlite"
-import Settings from "./Settings"
+import Settings from "../shared/Settings"
 import { IncomingMessage, ServerResponse } from "http";
 import send from "send"
 import { PassThrough } from "readable-stream"
 import User from "../shared/User"
-import Unauthorized from "../shared/Unauthorized"
+import Unauthorized from "../shared/api/Unauthorized"
 import uuid from "uuid"
 import bcrypt from "bcrypt"
 import ServerToken from "./ServerToken"
@@ -18,6 +18,12 @@ import moment from "moment"
 import stripHtml from "string-strip-html"
 import mp3ToAac from "mp3-to-aac"
 import { ItemType } from "../shared/ItemType";
+import SettingsRequired from "../shared/api/SettingsRequired"
+import { ApiMessageType } from "../shared/api/ApiMessage";
+import SettingsUpdate from "../shared/api/SettingsUpdate"
+import SettingsUpdateResponse from "../shared/api/SettingsUpdateResponse"
+import Books from "../shared/api/Books"
+import { setServers } from "dns";
 
 const server = fastify({ logger: true });
 const settings = new Settings()
@@ -33,7 +39,7 @@ const validateAuthorization = (authorization: string, reply: fastify.FastifyRepl
    if (!expires || expires < moment()) {
       reply.code(401)
 
-      return new Unauthorized({ message: "Please Log In again" })
+      return new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In again" })
    }
 
    authorizationExpiration.set(authorization, getNewExpiration())
@@ -43,7 +49,7 @@ const validateRequest = async (token: ServerToken, reply: fastify.FastifyReply<S
    if (!await token.isChecksumValid(checksumSecret)) {
       reply.code(401);
 
-      return new Unauthorized({ message: "Please Log In" })
+      return new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In" })
    }
    else {
       return validateAuthorization(token.authorization, reply)
@@ -70,8 +76,6 @@ sqlite.open("db.sqlite").then(async db => {
       }
    })
 
-   settings.baseBooksPath = "T:\\Audio Books\\"
-
    if (!checksumSecret) {
       checksumSecret = uuid.v4()
 
@@ -86,15 +90,15 @@ sqlite.open("db.sqlite").then(async db => {
       console.warn("Currently there are no users in the database so the first login attempt will create a user")
    }
 
-   console.log("Loading all books into memory")
-   books = await Recursive([], "")
-   console.log("Books loaded, starting website")
+   if (settings.baseBooksPath) {
+      console.log("Loading all books into memory")
+      books = await Recursive([], "")
+      console.log(`${books.bookCount()} Books loaded, starting website`)
+   }
 
    while (!fs.existsSync(path.join(rootDir, "package.json"))) {
       rootDir = path.join(rootDir, "../")
    }
-
-   console.log(`Root directory is ${rootDir}`)
 
    server.post("/auth", async (request, reply) => {
       var user = new User(request.body)
@@ -123,7 +127,7 @@ sqlite.open("db.sqlite").then(async db => {
 
       reply.code(401)
 
-      return new Unauthorized({ message: "Invalid Email or Password" })
+      return new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Invalid Email or Password" })
    })
 
    server.post("/books", async (request, reply) => {
@@ -134,11 +138,55 @@ sqlite.open("db.sqlite").then(async db => {
          return reqValidation;
       }
 
+      if (!settings.baseBooksPath) {
+         return new SettingsRequired({ type: ApiMessageType.SettingsRequired, message: "You must specify a baseBooksPath", settings: settings })
+      }
+
       var dir = new Directory(books);
 
       UpdateUrls(dir, token.authorization);
 
-      return dir;
+      return new Books({ type: ApiMessageType.Books, directory: dir })
+   })
+
+   server.post("/settings", async (request, reply) => {
+      var token = new ServerToken(request.body)
+      var reqValidation = await validateRequest(token, reply);
+
+      if (reqValidation !== true) {
+         return reqValidation;
+      }
+
+      return new SettingsRequired({ type: ApiMessageType.SettingsRequired, settings: settings, message: "" });
+   })
+
+   server.post("/updateSettings", async (request, reply) => {
+      var settingsUpdate = new SettingsUpdate(request.body)
+      var token = new ServerToken(settingsUpdate.token)
+      var reqValidation = await validateRequest(token, reply);
+
+      if (reqValidation !== true) {
+         return reqValidation;
+      }
+
+      if (settingsUpdate.settings.baseBooksPath != settings.baseBooksPath) {
+         if (!fs.existsSync(settingsUpdate.settings.baseBooksPath)) {
+            return new SettingsUpdateResponse({ type: ApiMessageType.SettingsUpdateResponse, message: `Path "${settingsUpdate.settings.baseBooksPath}" does not exist`, successful: false })
+         }
+
+         settings.baseBooksPath = settingsUpdate.settings.baseBooksPath
+
+         await db.run("REPLACE INTO setting (key, value) VALUES('baseBooksPath', ?)", settings.baseBooksPath)
+
+         console.log("Loading all books into memory because of a settings change")
+         books = await Recursive([], "")
+         console.log(`${books.bookCount()} Books loaded`)
+
+         return new SettingsUpdateResponse({ type: ApiMessageType.SettingsUpdateResponse, message: `Loaded ${books.bookCount()} books`, successful: true })
+      }
+      else {
+         return new SettingsUpdateResponse({ type: ApiMessageType.SettingsUpdateResponse, message: "No changes", successful: true })
+      }
    })
 
    server.get("/files/:authorization/*", (request, reply) => {

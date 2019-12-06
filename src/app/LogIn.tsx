@@ -2,7 +2,9 @@ import React, { useState, FormEvent } from "react"
 import { Form, Button, Modal, Alert } from "react-bootstrap"
 import Api from "./Api"
 import Loading from "./Loading"
-import Token from "../shared/Token"
+import Token from "../shared/api/Token"
+import Unauthorized from "../shared/api/Unauthorized"
+import AccessDenied from "../shared/api/AccessDenied"
 
 interface Props {
    onAuthenticated: (token: Token) => void,
@@ -27,12 +29,13 @@ const LogIn: React.FC<Props> = (props: Props) => {
 
          if (ret instanceof Token) {
             props.onAuthenticated(ret)
+            return;
          }
-         else if (!ret) {
-            setLogInState({ loggingIn: false, failedMessage: "Something unexpected happened" })
+         else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
+            setLogInState({ loggingIn: false, failedMessage: ret.message })
          }
          else {
-            setLogInState({ loggingIn: false, failedMessage: ret.message })
+            setLogInState({ loggingIn: false, failedMessage: "Something unexpected happened" })
          }
       }
 
