@@ -20,7 +20,7 @@ const App: React.FC = () => {
       <div className="App">
          <CookiesProvider>
             <Navbar bg="dark" className="navbar" variant="dark">
-               <Navbar.Brand><img src="favicon.svg" alt="Book Image" /> Audio Books</Navbar.Brand>
+               <Navbar.Brand><img src="favicon.svg" alt="Book" /> Audio Books</Navbar.Brand>
                {token && <Fragment>
                   <Nav className="mr-auto">
                   </Nav>
