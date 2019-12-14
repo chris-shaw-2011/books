@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useState, useContext } from "react"
 import { Tabs, Tab } from "react-bootstrap"
 import Directory from "../shared/Directory"
 import { Status } from "../shared/Book";
@@ -6,25 +6,17 @@ import Loading from "./Loading"
 import { ItemType } from "../shared/ItemType";
 import ItemList from "./ItemList";
 import Api from "./Api";
-import Token from "../shared/api/Token";
 import Unauthorized from "../shared/api/Unauthorized";
 import AccessDenied from "../shared/api/AccessDenied";
 import Books from "../shared/api/Books";
-import Settings from "../shared/Settings";
 import SettingsRequired from "../shared/api/SettingsRequired";
 import EditSettings from "./EditSettings"
+import AppContext from "./LoggedInAppContext";
 
 interface Props {
    searchWords: Array<string>,
-   token: Token,
-   onUnauthorized: (message?: string) => void,
    goToSettings: boolean,
    clearGoToSettings: () => void,
-}
-
-interface State {
-   books?: Directory,
-   settings?: Settings
 }
 
 function filter(dir: Directory, status: Status, searchWords: string[]) {
@@ -58,9 +50,10 @@ const Authenticated: React.FC<Props> = (props: Props) => {
    const [state, setState] = useState<Directory | SettingsRequired | undefined>()
    const [getBooksFromApi, setGetBooksFromApi] = useState()
    const [, forceUpdate] = useState()
-   const token = props.token
-   const unAuthorized = props.onUnauthorized
+   const context = useContext(AppContext)
+   const unAuthorized = context.logOut
    const goToSettings = props.goToSettings
+   const token = context.token
 
    useEffect(() => {
       async function getBooks() {

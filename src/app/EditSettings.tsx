@@ -1,20 +1,18 @@
-import React, { useState, FormEvent, useEffect } from "react"
+import React, { useState, FormEvent, useEffect, useContext } from "react"
 import Settings from "../shared/Settings"
 import { Form, Modal, Button, Alert } from "react-bootstrap"
 import Loading from "./Loading"
 import Api from "./Api"
-import Token from "../shared/api/Token"
 import SettingsUpdateResponse from "../shared/api/SettingsUpdateResponse"
 import Unauthorized from "../shared/api/Unauthorized"
 import AccessDenied from "../shared/api/AccessDenied"
 import SettingsRequired from "../shared/api/SettingsRequired"
+import AppContext from "./LoggedInAppContext"
 
 interface Props {
    settings?: Settings,
    onSettingsSaved: () => void,
    message?: string,
-   token: Token,
-   onUnauthorized: (message?: string) => void,
 }
 
 const EditSettings: React.FC<Props> = (props: Props) => {
@@ -22,8 +20,9 @@ const EditSettings: React.FC<Props> = (props: Props) => {
    const [validated, setValidated] = useState(false);
    const [saving, setSaving] = useState(false)
    const [message, setMessage] = useState(props.message)
-   const onUnauthorized = props.onUnauthorized
-   const token = props.token
+   const context = useContext(AppContext)
+   const onUnauthorized = context.logOut
+   const token = context.token
    const propsSettings = props.settings
 
    useEffect(() => {
@@ -54,7 +53,7 @@ const EditSettings: React.FC<Props> = (props: Props) => {
       event.stopPropagation();
 
       if (form.checkValidity()) {
-         var ret = await Api.updateSettings(props.token, settings!)
+         var ret = await Api.updateSettings(token, settings!)
 
          if (ret instanceof SettingsUpdateResponse) {
             if (ret.successful) {
@@ -67,11 +66,11 @@ const EditSettings: React.FC<Props> = (props: Props) => {
             }
          }
          else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
-            props.onUnauthorized(ret.message)
+            context.logOut(ret.message)
             return;
          }
          else {
-            props.onUnauthorized("Received an unexpected response")
+            context.logOut("Received an unexpected response")
             return;
          }
       }

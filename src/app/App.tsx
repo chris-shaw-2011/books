@@ -1,4 +1,4 @@
-import React, { useState, Fragment } from 'react';
+import React, { useState, Fragment, useCallback } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Navbar, Form, FormControl, Nav } from "react-bootstrap"
 import Authenticated from './Authenticated';
@@ -7,6 +7,7 @@ import LogIn from './LogIn';
 import Token from '../shared/api/Token';
 import { CookiesProvider, useCookies } from 'react-cookie';
 import Gear from "./svg/Gear"
+import AppContext from './LoggedInAppContext';
 
 const App: React.FC = () => {
    const [searchWords, setSearchWords] = useState(new Array<string>())
@@ -14,7 +15,7 @@ const App: React.FC = () => {
    const [loginMessage, setLoginMessage] = useState("")
    const [goToSettings, setGoToSettings] = useState(false)
    const token = cookies.loginCookie ? new Token(cookies.loginCookie as Token) : undefined
-   const logOut = (message?: string) => { setCookies("loginCookie", ""); setLoginMessage(message || "") }
+   const logOut = useCallback((message?: string) => { setCookies("loginCookie", ""); setLoginMessage(message || "") }, [setCookies, setLoginMessage])
 
    return (
       <div className="App">
@@ -44,7 +45,9 @@ const App: React.FC = () => {
             </Navbar>
             <div className="mainContent">
                {token ?
-                  <Authenticated searchWords={searchWords.map(w => w.toLowerCase())} token={token} onUnauthorized={logOut} goToSettings={goToSettings} clearGoToSettings={() => setGoToSettings(false)} /> :
+                  <AppContext.Provider value={{ logOut: logOut, token: token }}>
+                     <Authenticated searchWords={searchWords.map(w => w.toLowerCase())} goToSettings={goToSettings} clearGoToSettings={() => setGoToSettings(false)} />
+                  </AppContext.Provider> :
                   <LogIn onAuthenticated={(newToken: Token) => { setCookies("loginCookie", JSON.stringify(newToken)); setLoginMessage("") }} message={loginMessage} />
                }
             </div>
