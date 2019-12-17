@@ -14,6 +14,8 @@ import DeleteUserRequest from "../shared/api/DeleteUserRequest";
 import ChangePasswordRequest from "../shared/api/ChangePasswordRequest";
 import UserRequest from "../shared/api/UserRequest";
 import UserResponse from "../shared/api/UserResponse";
+import { Status } from "../shared/Book";
+import ChangeBookStatusRequest from "../shared/api/ChangeBookStatusRequest";
 
 class ApiClass {
    auth = async (email: string, password: string) => {
@@ -55,6 +57,10 @@ class ApiClass {
 
    user = async (userId: string) => {
       return await this.fetch("/user", new UserRequest({ type: ApiMessageType.UserRequest, userId: userId }))
+   }
+
+   changeBookStatus = async (bookId: string, status: Status, token: Token) => {
+      return await this.fetch("/changeBookStatus", new ChangeBookStatusRequest({ bookId: bookId, status: status, token: token, type: ApiMessageType.ChangeBookStatusRequest }))
    }
 
    fetch = async (url: string, jsonSend?: any) => {

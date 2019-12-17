@@ -6,15 +6,16 @@ export enum Status {
 }
 
 export default class Book {
-   name: string = ""
-   author: string = ""
-   numBytes: number = 0
-   cover: string = ""
-   download: string = ""
-   status: Status = Status.Unread
+   name = ""
+   author = ""
+   numBytes = 0
+   cover = ""
+   download = ""
+   status = Status.Unread
    year?: number
-   comment: string = ""
+   comment = ""
    duration?: number
+   id = ""
    readonly type = ItemType.book
 
    constructor(json?: Book) {
@@ -28,6 +29,7 @@ export default class Book {
          this.year = json.year
          this.comment = json.comment
          this.duration = json.duration
+         this.id = json.id
       }
    }
 }

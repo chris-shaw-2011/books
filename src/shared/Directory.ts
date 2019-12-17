@@ -4,11 +4,13 @@ import { ItemType } from "./ItemType"
 export default class Directory {
    items: Array<Directory | Book> = []
    name = ""
+   id = ""
    readonly type = ItemType.directory
 
    constructor(json?: Directory) {
       if (json) {
          this.name = json.name
+         this.id = json.id
 
          json.items.forEach(i => {
             if (i.type === ItemType.book) {

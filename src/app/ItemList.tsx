@@ -1,4 +1,4 @@
-import React, { Fragment, useState } from "react"
+import React, { Fragment, useState, useContext } from "react"
 import Directory from "../shared/Directory"
 import Book, { Status } from "../shared/Book"
 import { ItemType } from "../shared/ItemType"
@@ -7,12 +7,17 @@ import FolderClosed from "./svg/FolderClosed"
 import classnames from "classnames"
 import Highlighter from "react-highlight-words"
 import { Button } from "react-bootstrap"
+import LoggedInAppContext from "./LoggedInAppContext"
+import Unauthorized from "../shared/api/Unauthorized"
+import AccessDenied from "../shared/api/AccessDenied"
+import Api from "./Api"
+import Books from "../shared/api/Books"
 
 interface Props {
    items: Array<Directory | Book>,
    className?: string,
    searchWords: Array<string>,
-   statusChanged: () => void,
+   statusChanged: (books: Books) => void,
 }
 
 const ItemList: React.FC<Props> = (props: Props) => {
@@ -20,10 +25,10 @@ const ItemList: React.FC<Props> = (props: Props) => {
       <Fragment>
          {props.items.map(i => {
             if (i.type === ItemType.book) {
-               return <BookLink book={i} className={props.className} key={i.name} searchWords={props.searchWords} statusChanged={props.statusChanged} />
+               return <BookLink book={i} className={props.className} key={i.id} searchWords={props.searchWords} statusChanged={props.statusChanged} />
             }
             else {
-               return <DirectoryLink directory={i} className={props.className} key={i.name} searchWords={props.searchWords} statusChanged={props.statusChanged} />
+               return <DirectoryLink directory={i} className={props.className} key={i.id} searchWords={props.searchWords} statusChanged={props.statusChanged} />
             }
          })}
       </Fragment>
@@ -34,12 +39,27 @@ interface BookProps {
    book: Book,
    className?: string,
    searchWords: Array<string>,
-   statusChanged: () => void,
+   statusChanged: (books: Books) => void,
 }
 
 const BookLink: React.FC<BookProps> = (props: BookProps) => {
+   const context = useContext(LoggedInAppContext)
+   const changeBookStatus = async (status: Status) => {
+      var ret = await Api.changeBookStatus(props.book.id, status, context.token)
+
+      if (ret instanceof Books) {
+         props.statusChanged(ret)
+      }
+      else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
+         context.logOut(ret.message);
+      }
+      else {
+         context.logOut("Something unexpected happened")
+      }
+   }
+
    return (
-      <a className={classnames("book", "item", props.className)} href={props.book.download}>
+      <a className={classnames("book", "item", props.className)} href={props.book.download} key={props.book.id}>
          <div className="inner">
             <img src={props.book.cover} alt="cover" />
             <div>
@@ -52,8 +72,8 @@ const BookLink: React.FC<BookProps> = (props: BookProps) => {
                </div>
                <div>
                   {props.book.status === Status.Unread ?
-                     <Button onClick={(e: any) => { (e as Event).preventDefault(); props.book.status = Status.Read; props.statusChanged() }}>Mark Read</Button> :
-                     <Button onClick={(e: any) => { (e as Event).preventDefault(); props.book.status = Status.Unread; props.statusChanged() }}>Mark Unread</Button>
+                     <Button onClick={(e: any) => { (e as Event).preventDefault(); changeBookStatus(Status.Read) }}>Mark Read</Button> :
+                     <Button onClick={(e: any) => { (e as Event).preventDefault(); changeBookStatus(Status.Unread) }}>Mark Unread</Button>
                   }
                </div>
             </div>
@@ -66,14 +86,14 @@ interface DirectoryProps {
    directory: Directory,
    className?: string,
    searchWords: Array<string>,
-   statusChanged: () => void,
+   statusChanged: (books: Books) => void,
 }
 
 const DirectoryLink: React.FC<DirectoryProps> = (props: DirectoryProps) => {
    const [open, setOpen] = useState(false)
 
    return (
-      <div className={classnames("directory", "item", props.className)} onClick={(e) => { e.stopPropagation(); setOpen(!open) }}>
+      <div className={classnames("directory", "item", props.className)} onClick={(e) => { e.stopPropagation(); setOpen(!open) }} key={props.directory.id}>
          <div className="inner">
             {open || props.searchWords.length ? <FolderOpen /> : <FolderClosed />}
             <div>{props.directory.name}</div>

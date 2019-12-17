@@ -13,6 +13,7 @@ export enum ApiMessageType {
    ChangePasswordRequest,
    UserRequest,
    UserResponse,
+   ChangeBookStatusRequest,
 }
 
 export default class ApiMessage {

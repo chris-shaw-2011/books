@@ -2,7 +2,7 @@ import fastify, { FastifyReply } from "fastify";
 import fs from "fs";
 import path from "path";
 import Directory from "../shared/Directory"
-import Book from "../shared/Book"
+import Book, { Status } from "../shared/Book"
 import * as mm from "music-metadata"
 import sqlite from "sqlite"
 import Settings from "../shared/Settings"
@@ -32,6 +32,9 @@ import url from "url"
 import UserRequest from "../shared/api/UserRequest"
 import UserResponse from "../shared/api/UserResponse"
 import ChangePasswordRequest from "../shared/api/ChangePasswordRequest"
+import ChangeBookStatusRequest from "../shared/api/ChangeBookStatusRequest";
+import BookStatuses, { BookWithStatus } from "./BookStatuses"
+import Token from "../shared/api/Token";
 
 const server = fastify({ logger: true });
 const settings = new Settings()
@@ -109,10 +112,22 @@ sqlite.open("db.sqlite").then(async db => {
    const passwordHash = async (password: string) => {
       return await bcrypt.hash(password, 10)
    }
+   const bookStatuses = async (userId: string) => {
+      return new BookStatuses(JSON.parse((await db.get("SELECT bookStatuses FROM User WHERE id = ?", userId)).bookStatuses || "[]"))
+   }
+   const bookList = async (token: Token) => {
+      var dir = new Directory(books);
+
+      dir.id = "root"
+
+      UpdateUrlsAndStatus(dir, token.authorization, await bookStatuses(token.user.id));
+
+      return new Books({ type: ApiMessageType.Books, directory: dir })
+   }
 
    await db.exec(`
       CREATE TABLE IF NOT EXISTS setting (key TEXT PRIMARY KEY, value TEXT);
-      CREATE TABLE IF NOT EXISTS user (id TEXT PRIMARY KEY, email TEXT, hash TEXT, isAdmin BOOLEAN, lastLogin BIGINT);
+      CREATE TABLE IF NOT EXISTS user (id TEXT PRIMARY KEY, email TEXT, hash TEXT, isAdmin BOOLEAN, lastLogin BIGINT, bookStatuses TEXT);
       CREATE UNIQUE INDEX IF NOT EXISTS IX_user_email ON user (email);
    `)
 
@@ -199,11 +214,7 @@ sqlite.open("db.sqlite").then(async db => {
          }
       }
 
-      var dir = new Directory(books);
-
-      UpdateUrls(dir, token.authorization);
-
-      return new Books({ type: ApiMessageType.Books, directory: dir })
+      return await bookList(token)
    })
 
    server.post("/settings", async (request, reply) => {
@@ -374,6 +385,26 @@ sqlite.open("db.sqlite").then(async db => {
       return await validatePassword(changeRequest.token.user.email, changeRequest.newPassword, reply)
    })
 
+   server.post("/changeBookStatus", async (request, reply) => {
+      var statusRequest = new ChangeBookStatusRequest(request.body)
+      var reqValidation = await validateRequest(new ServerToken(statusRequest.token), reply);
+
+      if (reqValidation !== true) {
+         return reqValidation;
+      }
+
+      await db.run("BEGIN TRANSACTION;")
+
+      var statuses = await bookStatuses(statusRequest.token.user.id)
+
+      statuses.set(statusRequest.bookId, new BookWithStatus({ status: statusRequest.status, dateStatusSet: new Date().getTime() }))
+
+      await db.run("UPDATE User SET bookStatuses = ? WHERE id = ?", JSON.stringify(statuses), statusRequest.token.user.id)
+      await db.run("COMMIT;")
+
+      return await bookList(statusRequest.token)
+   })
+
    server.get("/files/:authorization/*", (request, reply) => {
       var filePath = request.params["*"] as string;
       var authValidation = validateAuthorization(request.params.authorization as string, reply)
@@ -412,14 +443,17 @@ sqlite.open("db.sqlite").then(async db => {
    start();
 })
 
-function UpdateUrls(dir: Directory, authorization: string) {
+function UpdateUrlsAndStatus(dir: Directory, authorization: string, bookStatuses: BookStatuses) {
    for (const i of dir.items) {
       if (i.type == ItemType.book) {
+         var bookStatus = bookStatuses.get(i.id)
+
          i.download = i.download.replace("{authorization}", authorization)
          i.cover = i.cover.replace("{authorization}", authorization)
+         i.status = bookStatus ? bookStatus.status : Status.Unread
       }
       else {
-         UpdateUrls(i, authorization)
+         UpdateUrlsAndStatus(i, authorization, bookStatuses)
       }
    }
 }
@@ -431,6 +465,7 @@ async function Recursive(pathTree: string[], name: string): Promise<Directory | 
    var dir = new Directory();
 
    dir.name = name;
+   dir.id = newPathTree.join("/")
 
    for (const p of paths) {
       if (p.isDirectory()) {
@@ -444,6 +479,7 @@ async function Recursive(pathTree: string[], name: string): Promise<Directory | 
          var book = new Book();
          var bookPath = path.join(currPath, p.name);
          var photoPath = bookPath + ".jpg"
+         const bookUri = newPathTree.concat(p.name).join("/")
 
          console.log(`${bookPath} - reading tags`)
 
@@ -465,13 +501,8 @@ async function Recursive(pathTree: string[], name: string): Promise<Directory | 
             book.name = p.name
          }
 
-         if (newPathTree.length) {
-            book.download = `/files/{authorization}/${newPathTree.join("/")}/${p.name}`
-         }
-         else {
-            book.download = `/files/{authorization}/${p.name}`
-         }
-
+         book.id = bookUri
+         book.download = `/files/{authorization}/${bookUri}`
          book.cover = book.download + ".jpg";
          book.numBytes = (await fs.promises.stat(bookPath)).size;
 

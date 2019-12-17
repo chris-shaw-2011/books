@@ -1,9 +1,8 @@
-import React, { useEffect, useState, useContext } from "react"
+import React, { useEffect, useState, useContext, useCallback } from "react"
 import { Tabs, Tab } from "react-bootstrap"
 import Directory from "../shared/Directory"
-import { Status } from "../shared/Book";
+import Book, { Status } from "../shared/Book";
 import Loading from "./Loading"
-import { ItemType } from "../shared/ItemType";
 import ItemList from "./ItemList";
 import Api from "./Api";
 import Unauthorized from "../shared/api/Unauthorized";
@@ -22,12 +21,12 @@ interface Props {
 }
 
 function filter(dir: Directory, status: Status, searchWords: string[]) {
-   var ret = new Directory()
+   var ret = new Directory(dir)
 
-   ret.name = dir.name
+   ret.items = []
 
    dir.items.forEach(i => {
-      if (i.type === ItemType.book && i.status === status) {
+      if (i instanceof Book && i.status === status) {
          var lAuthor = i.author.toLowerCase();
          var lName = i.name.toLowerCase();
          var lComment = i.comment.toLowerCase();
@@ -36,8 +35,8 @@ function filter(dir: Directory, status: Status, searchWords: string[]) {
             ret.items.push(i)
          }
       }
-      else if (i.type === ItemType.directory) {
-         var rec = filter(i as Directory, status, searchWords);
+      else if (i instanceof Directory) {
+         var rec = filter(i, status, searchWords);
 
          if (rec.items.length) {
             ret.items.push(rec)
@@ -50,12 +49,14 @@ function filter(dir: Directory, status: Status, searchWords: string[]) {
 
 const Authenticated: React.FC<Props> = (props: Props) => {
    const [state, setState] = useState<Directory | undefined>()
-   const [, forceUpdate] = useState()
    const context = useContext(AppContext)
    const unAuthorized = context.logOut
    const visibleComponent = context.visibleComponent
    const setVisibleComponent = context.setVisibleComponent
    const token = context.token
+   const statusChanged = useCallback((books: Books) => {
+      setState(books.directory)
+   }, [])
 
    useEffect(() => {
       async function getBooks() {
@@ -95,11 +96,11 @@ const Authenticated: React.FC<Props> = (props: Props) => {
 
       return (
          <Tabs defaultActiveKey="unread" id="main-tab">
-            <Tab eventKey="unread" title={`Unread (${unreadBooks.bookCount()})`} >
-               <ItemList items={unreadBooks.items} className="rootItemList" searchWords={props.searchWords} statusChanged={() => forceUpdate({})} />
+            <Tab eventKey="unread" title={`Unread (${unreadBooks.bookCount()})`} mountOnEnter={true}>
+               <ItemList items={unreadBooks.items} className="rootItemList" searchWords={props.searchWords} statusChanged={statusChanged} />
             </Tab>
-            <Tab eventKey="read" title={`Read (${readBooks.bookCount()})`} >
-               <ItemList items={readBooks.items} className="rootItemList" searchWords={props.searchWords} statusChanged={() => forceUpdate({})} />
+            <Tab eventKey="read" title={`Read (${readBooks.bookCount()})`} mountOnEnter={true}>
+               <ItemList items={readBooks.items} className="rootItemList" searchWords={props.searchWords} statusChanged={statusChanged} />
             </Tab>
          </Tabs>
       )
