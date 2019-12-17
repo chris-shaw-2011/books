@@ -11,6 +11,7 @@ import send from "send"
 import { PassThrough } from "readable-stream"
 import User from "../shared/User"
 import Unauthorized from "../shared/api/Unauthorized"
+import AccessDenied from "../shared/api/AccessDenied"
 import uuid from "uuid"
 import bcrypt from "bcrypt"
 import ServerToken from "./ServerToken"
@@ -23,7 +24,14 @@ import { ApiMessageType } from "../shared/api/ApiMessage";
 import SettingsUpdate from "../shared/api/SettingsUpdate"
 import SettingsUpdateResponse from "../shared/api/SettingsUpdateResponse"
 import Books from "../shared/api/Books"
-import { setServers } from "dns";
+import UserListResponse from "../shared/api/UserListResponse"
+import AddUserRequest from "../shared/api/AddUserRequest"
+import DeleteUserRequest from "../shared/api/DeleteUserRequest"
+import nodemailer from "nodemailer"
+import url from "url"
+import UserRequest from "../shared/api/UserRequest"
+import UserResponse from "../shared/api/UserResponse"
+import ChangePasswordRequest from "../shared/api/ChangePasswordRequest"
 
 const server = fastify({ logger: true });
 const settings = new Settings()
@@ -45,21 +53,66 @@ const validateAuthorization = (authorization: string, reply: fastify.FastifyRepl
    authorizationExpiration.set(authorization, getNewExpiration())
    return true;
 }
-const validateRequest = async (token: ServerToken, reply: fastify.FastifyReply<ServerResponse>) => {
+const validateRequest = async (token: ServerToken, reply: fastify.FastifyReply<ServerResponse>, adminOnly?: boolean) => {
    if (!await token.isChecksumValid(checksumSecret)) {
       reply.code(401);
 
       return new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In" })
    }
+   else if (adminOnly && !token.user.isAdmin) {
+      reply.code(403)
+
+      return new AccessDenied({ type: ApiMessageType.AccessDenied, message: "Access Denied" })
+   }
    else {
       return validateAuthorization(token.authorization, reply)
    }
 }
+const createMailer = () => {
+   return nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+         user: settings.inviteEmail,
+         pass: settings.inviteEmailPassword,
+      }
+   })
+}
+var mailer = createMailer()
 
 sqlite.open("db.sqlite").then(async db => {
+   const getAllUsers = async (message?: string) => {
+      var users = await db.all("SELECT id, email, isAdmin, lastLogIn FROM user")
+
+      return new UserListResponse({ users: users, type: ApiMessageType.UserListResponse, message: message || "" })
+   }
+   const validatePassword = async (email: string, password: string, reply: fastify.FastifyReply<ServerResponse>) => {
+      var dbUser = await db.get("SELECT id, email, hash, isAdmin, lastLogIn FROM user WHERE email = ?", email)
+
+      if (dbUser) {
+         if (await bcrypt.compare(password, dbUser.hash)) {
+            var validatedUser = new User(dbUser as User);
+            var authorization = uuid.v4()
+
+            validatedUser.lastLogin = new Date().getTime()
+            authorizationExpiration.set(authorization, getNewExpiration())
+
+            await db.run("UPDATE user SET lastLogIn = ? WHERE id = ?", validatedUser.lastLogin, validatedUser.id)
+
+            return ServerToken.create(validatedUser, authorization, checksumSecret)
+         }
+      }
+
+      reply.code(401)
+
+      return new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Invalid Email or Password" })
+   }
+   const passwordHash = async (password: string) => {
+      return await bcrypt.hash(password, 10)
+   }
+
    await db.exec(`
       CREATE TABLE IF NOT EXISTS setting (key TEXT PRIMARY KEY, value TEXT);
-      CREATE TABLE IF NOT EXISTS user (id TEXT PRIMARY KEY, email TEXT, hash TEXT, isAdmin BOOLEAN);
+      CREATE TABLE IF NOT EXISTS user (id TEXT PRIMARY KEY, email TEXT, hash TEXT, isAdmin BOOLEAN, lastLogin BIGINT);
       CREATE UNIQUE INDEX IF NOT EXISTS IX_user_email ON user (email);
    `)
 
@@ -69,9 +122,19 @@ sqlite.open("db.sqlite").then(async db => {
       switch (row.key) {
          case "baseBooksPath": {
             settings.baseBooksPath = row.value
+            break;
          }
          case "checksumSecret": {
             checksumSecret = row.value;
+            break;
+         }
+         case "inviteEmail": {
+            settings.inviteEmail = row.value
+            break;
+         }
+         case "inviteEmailPassword": {
+            settings.inviteEmailPassword = row.value
+            break;
          }
       }
    })
@@ -96,6 +159,10 @@ sqlite.open("db.sqlite").then(async db => {
       console.log(`${books.bookCount()} Books loaded, starting website`)
    }
 
+   if (settings.inviteEmail && settings.inviteEmailPassword) {
+      mailer = createMailer()
+   }
+
    while (!fs.existsSync(path.join(rootDir, "package.json"))) {
       rootDir = path.join(rootDir, "../")
    }
@@ -107,27 +174,12 @@ sqlite.open("db.sqlite").then(async db => {
          noUsers = false;
          console.warn(`Adding user ${user.email} to the database since they are the first login attempt`)
 
-         const hash = await bcrypt.hash(user.password, 10)
+         const hash = await passwordHash(user.password)
 
          await db.run("INSERT INTO user (id, email, hash, isAdmin) VALUES(?, ?, ?, ?)", uuid.v4(), user.email, hash, 1)
       }
 
-      var dbUser = await db.get("SELECT id, email, hash, isAdmin FROM user WHERE email = ?", user.email)
-
-      if (dbUser) {
-         if (await bcrypt.compare(user.password, dbUser.hash)) {
-            var validatedUser = new User(dbUser as User);
-            var authorization = uuid.v4()
-
-            authorizationExpiration.set(authorization, getNewExpiration())
-
-            return ServerToken.create(validatedUser, authorization, checksumSecret)
-         }
-      }
-
-      reply.code(401)
-
-      return new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Invalid Email or Password" })
+      return await validatePassword(user.email, user.password, reply)
    })
 
    server.post("/books", async (request, reply) => {
@@ -138,8 +190,13 @@ sqlite.open("db.sqlite").then(async db => {
          return reqValidation;
       }
 
-      if (!settings.baseBooksPath) {
-         return new SettingsRequired({ type: ApiMessageType.SettingsRequired, message: "You must specify a baseBooksPath", settings: settings })
+      if (!settings.baseBooksPath || !settings.inviteEmail || !settings.inviteEmailPassword) {
+         if (token.user.isAdmin) {
+            return new SettingsRequired({ type: ApiMessageType.SettingsRequired, message: "You must specify a settings", settings: settings })
+         }
+         else {
+            return new AccessDenied({ type: ApiMessageType.AccessDenied, message: "Some settings are missing, but they must be specified by an administrator" })
+         }
       }
 
       var dir = new Directory(books);
@@ -151,7 +208,7 @@ sqlite.open("db.sqlite").then(async db => {
 
    server.post("/settings", async (request, reply) => {
       var token = new ServerToken(request.body)
-      var reqValidation = await validateRequest(token, reply);
+      var reqValidation = await validateRequest(token, reply, true);
 
       if (reqValidation !== true) {
          return reqValidation;
@@ -163,13 +220,35 @@ sqlite.open("db.sqlite").then(async db => {
    server.post("/updateSettings", async (request, reply) => {
       var settingsUpdate = new SettingsUpdate(request.body)
       var token = new ServerToken(settingsUpdate.token)
-      var reqValidation = await validateRequest(token, reply);
+      var reqValidation = await validateRequest(token, reply, true);
+      var inviteChanged = false;
+      var messages = new Array<string>();
 
       if (reqValidation !== true) {
          return reqValidation;
       }
 
-      if (settingsUpdate.settings.baseBooksPath != settings.baseBooksPath) {
+      if (settingsUpdate.settings.inviteEmail !== settings.inviteEmail) {
+         settings.inviteEmail = settingsUpdate.settings.inviteEmail
+
+         await db.run("REPLACE INTO setting (key, value) VALUES('inviteEmail', ?)", settings.inviteEmail)
+         inviteChanged = true
+         messages.push("Invite email updated")
+      }
+
+      if (settingsUpdate.settings.inviteEmailPassword !== settings.inviteEmailPassword) {
+         settings.inviteEmailPassword = settingsUpdate.settings.inviteEmailPassword
+
+         await db.run("REPLACE INTO setting (key, value) VALUES('inviteEmailPassword', ?)", settings.inviteEmailPassword)
+         inviteChanged = true
+         messages.push("Invite email password updated")
+      }
+
+      if (inviteChanged) {
+         mailer = createMailer()
+      }
+
+      if (settingsUpdate.settings.baseBooksPath !== settings.baseBooksPath) {
          if (!fs.existsSync(settingsUpdate.settings.baseBooksPath)) {
             return new SettingsUpdateResponse({ type: ApiMessageType.SettingsUpdateResponse, message: `Path "${settingsUpdate.settings.baseBooksPath}" does not exist`, successful: false })
          }
@@ -182,11 +261,117 @@ sqlite.open("db.sqlite").then(async db => {
          books = await Recursive([], "")
          console.log(`${books.bookCount()} Books loaded`)
 
-         return new SettingsUpdateResponse({ type: ApiMessageType.SettingsUpdateResponse, message: `Loaded ${books.bookCount()} books`, successful: true })
+         messages.push(`Loaded ${books.bookCount()} books`)
+      }
+
+      return new SettingsUpdateResponse({ type: ApiMessageType.SettingsUpdateResponse, message: messages.length ? messages.join(".") : "No changes", successful: true })
+   })
+
+   server.post("/users", async (request, reply) => {
+      var token = new ServerToken(request.body)
+      var reqValidation = await validateRequest(token, reply, true);
+
+      if (reqValidation !== true) {
+         return reqValidation;
+      }
+
+      return await getAllUsers()
+   })
+
+   server.post("/addUser", async (request, reply) => {
+      var userRequest = new AddUserRequest(request.body)
+      var reqValidation = await validateRequest(new ServerToken(userRequest.token), reply, true);
+
+      if (reqValidation !== true) {
+         return reqValidation;
+      }
+
+      var message = `${userRequest.user.email} has been invited`
+
+      if (!userRequest.user.email) {
+         message = "Email must be specified"
       }
       else {
-         return new SettingsUpdateResponse({ type: ApiMessageType.SettingsUpdateResponse, message: "No changes", successful: true })
+         if (await db.get("SELECT id FROM User where email = ?", userRequest.user.email)) {
+            message = "User already exists"
+         }
+         else {
+            var userId = uuid.v4()
+
+            await db.run("INSERT INTO User (id, email, isAdmin) VALUES(?, ?, ?)", userId, userRequest.user.email, userRequest.user.isAdmin)
+
+            var link = url.resolve(request.headers.referer, `/invite/${userId}`);
+
+            mailer.sendMail({
+               from: settings.inviteEmail,
+               to: userRequest.user.email,
+               subject: "Invite to Audio Books Website",
+               html: `
+                  You have been invited to the audio books website.<br /><br />
+                  You can sign up at: <a href="${link}">${link}</a>.
+               `
+            })
+         }
       }
+
+      return await getAllUsers(message)
+   })
+
+   server.post("/deleteUser", async (request, reply) => {
+      var userRequest = new DeleteUserRequest(request.body)
+      var reqValidation = await validateRequest(new ServerToken(userRequest.token), reply, true);
+
+      if (reqValidation !== true) {
+         return reqValidation;
+      }
+
+      await db.run("DELETE FROM User WHERE id = ?", userRequest.userId)
+
+      return await getAllUsers("User deleted")
+   })
+
+   server.post("/user", async (request, reply) => {
+      var userRequest = new UserRequest(request.body)
+
+      var dbUser = await db.get("SELECT id, email, hash, isAdmin, lastLogin FROM User WHERE id = ?", [userRequest.userId])
+
+      if (dbUser.lastLogin || dbUser.hash) {
+         reply.code(403)
+
+         return new AccessDenied({ message: "This user has logged in or has a password already set", type: ApiMessageType.AccessDenied })
+      }
+      else {
+         return new UserResponse({ user: new User(dbUser), type: ApiMessageType.UserResponse })
+      }
+   })
+
+   server.post("/changePassword", async (request, reply) => {
+      var changeRequest = new ChangePasswordRequest(request.body)
+
+      if (changeRequest.token.authorization) {
+         //This is a change password request for someone that's already logged in
+         var reqValidation = await validateRequest(new ServerToken(changeRequest.token), reply)
+
+         if (reqValidation !== true) {
+            return reqValidation
+         }
+      }
+      else {
+         //This is a change password request for someone that's never logged in
+         var dbUser = await db.get("SELECT hash, lastLogin FROM User WHERE id = ?", [changeRequest.token.user.id])
+
+         if (dbUser.lastLogin || dbUser.hash) {
+            reply.code(403)
+
+            return new AccessDenied({ message: "This user has logged in or has a password already set", type: ApiMessageType.AccessDenied })
+         }
+      }
+
+      var hash = await passwordHash(changeRequest.newPassword)
+
+      await db.run("UPDATE User SET hash = ? WHERE id = ?", hash, changeRequest.token.user.id)
+
+      return await validatePassword(changeRequest.token.user.email, changeRequest.newPassword, reply)
    })
 
    server.get("/files/:authorization/*", (request, reply) => {

@@ -7,6 +7,12 @@ export enum ApiMessageType {
    SettingsUpdate,
    SettingsUpdateResponse,
    Settings,
+   UserListResponse,
+   AddUserRequest,
+   DeleteUserRequest,
+   ChangePasswordRequest,
+   UserRequest,
+   UserResponse,
 }
 
 export default class ApiMessage {

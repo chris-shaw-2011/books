@@ -16,7 +16,6 @@ const LogIn: React.FC<Props> = (props: Props) => {
    const [password, setPassword] = useState("")
    const [validated, setValidated] = useState(false);
    const [logInState, setLogInState] = useState({ loggingIn: false, failedMessage: "" })
-
    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
       const form = event.currentTarget;
 

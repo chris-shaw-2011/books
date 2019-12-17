@@ -11,12 +11,14 @@ import AccessDenied from "../shared/api/AccessDenied";
 import Books from "../shared/api/Books";
 import SettingsRequired from "../shared/api/SettingsRequired";
 import EditSettings from "./EditSettings"
-import AppContext from "./LoggedInAppContext";
+import AppContext, { VisibleComponent } from "./LoggedInAppContext";
+import UserList from "./UserList";
+import ChangePassword from "./ChangePassword";
+import Token from "../shared/api/Token";
 
 interface Props {
    searchWords: Array<string>,
-   goToSettings: boolean,
-   clearGoToSettings: () => void,
+   onPasswordChanged: (token: Token) => void,
 }
 
 function filter(dir: Directory, status: Status, searchWords: string[]) {
@@ -47,12 +49,12 @@ function filter(dir: Directory, status: Status, searchWords: string[]) {
 }
 
 const Authenticated: React.FC<Props> = (props: Props) => {
-   const [state, setState] = useState<Directory | SettingsRequired | undefined>()
-   const [getBooksFromApi, setGetBooksFromApi] = useState()
+   const [state, setState] = useState<Directory | undefined>()
    const [, forceUpdate] = useState()
    const context = useContext(AppContext)
    const unAuthorized = context.logOut
-   const goToSettings = props.goToSettings
+   const visibleComponent = context.visibleComponent
+   const setVisibleComponent = context.setVisibleComponent
    const token = context.token
 
    useEffect(() => {
@@ -63,7 +65,7 @@ const Authenticated: React.FC<Props> = (props: Props) => {
             setState(ret.directory)
          }
          else if (ret instanceof SettingsRequired) {
-            setState(ret)
+            setVisibleComponent(VisibleComponent.Settings)
          }
          else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
             unAuthorized(ret.message);
@@ -73,13 +75,19 @@ const Authenticated: React.FC<Props> = (props: Props) => {
          }
       }
 
-      if (!goToSettings) {
+      if (visibleComponent === VisibleComponent.Books) {
          getBooks()
       }
-   }, [getBooksFromApi, token, unAuthorized, goToSettings])
+   }, [token, unAuthorized, visibleComponent, setVisibleComponent])
 
-   if (props.goToSettings) {
-      return <EditSettings onSettingsSaved={() => { setGetBooksFromApi({}); props.clearGoToSettings() }} {...props} />
+   if (visibleComponent === VisibleComponent.Settings) {
+      return <EditSettings onSettingsSaved={() => { setVisibleComponent(VisibleComponent.Books) }} {...props} />
+   }
+   else if (visibleComponent === VisibleComponent.Users) {
+      return <UserList onClose={() => { setVisibleComponent(VisibleComponent.Books) }} />
+   }
+   else if (visibleComponent === VisibleComponent.ChangePassword) {
+      return <ChangePassword onPasswordChanged={(token: Token) => { props.onPasswordChanged(token); setVisibleComponent(VisibleComponent.Books) }} logOut={context.logOut} token={context.token} onCancel={() => setVisibleComponent(VisibleComponent.Books)} />
    }
    else if (state instanceof Directory) {
       var unreadBooks = filter(state, Status.Unread, props.searchWords);
@@ -95,9 +103,6 @@ const Authenticated: React.FC<Props> = (props: Props) => {
             </Tab>
          </Tabs>
       )
-   }
-   else if (state instanceof SettingsRequired) {
-      return <EditSettings settings={state.settings} message={state.message} onSettingsSaved={() => setGetBooksFromApi({})} {...props} />
    }
    else {
       return (

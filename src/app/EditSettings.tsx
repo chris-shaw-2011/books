@@ -24,6 +24,15 @@ const EditSettings: React.FC<Props> = (props: Props) => {
    const onUnauthorized = context.logOut
    const token = context.token
    const propsSettings = props.settings
+   const onChange = (obj: any) => {
+      setSettings(s => {
+         if (!s) {
+            s = new Settings()
+         }
+
+         return { ...s, ...obj }
+      })
+   }
 
    useEffect(() => {
       async function getSettings() {
@@ -93,7 +102,17 @@ const EditSettings: React.FC<Props> = (props: Props) => {
                   <Form.Group controlId="formGroupBasePath">
                      <Form.Label>Base Books Path</Form.Label>
                      <Form.Control type="text" placeholder="Enter Base Path" required defaultValue={settings.baseBooksPath}
-                        onChange={(e: FormEvent<HTMLInputElement>) => setSettings({ ...settings, baseBooksPath: e.currentTarget.value || "" })} />
+                        onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ baseBooksPath: e.currentTarget.value || "" })} />
+                  </Form.Group>
+                  <Form.Group controlId="fromGroupInviteEmail">
+                     <Form.Label>Invite Email Address</Form.Label>
+                     <Form.Control type="email" placeholder="Enter Invite Email Address" required defaultValue={settings.inviteEmail}
+                        onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ inviteEmail: e.currentTarget.value || "" })} />
+                  </Form.Group>
+                  <Form.Group controlId="fromGroupInviteEmailPassword">
+                     <Form.Label>Invite Email Address</Form.Label>
+                     <Form.Control type="password" placeholder="Enter Invite Email Password" required defaultValue={settings.inviteEmailPassword}
+                        onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ inviteEmailPassword: e.currentTarget.value || "" })} />
                   </Form.Group>
                </Modal.Body>
                <Modal.Footer>

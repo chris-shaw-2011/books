@@ -3,6 +3,11 @@ export default class User {
    password?: string
    id: string = ""
    isAdmin: boolean = false
+   lastLogin: number = 0
+
+   get lastLoginDate() {
+      return new Date(this.lastLogin)
+   }
 
    constructor(json?: User) {
       if (json) {
@@ -10,6 +15,7 @@ export default class User {
          this.password = json.password
          this.id = json.id
          this.isAdmin = json.isAdmin
+         this.lastLogin = json.lastLogin
       }
    }
 }

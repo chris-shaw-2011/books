@@ -8,6 +8,12 @@ import SettingsRequired from "../shared/api/SettingsRequired";
 import SettingsUpdate from "../shared/api/SettingsUpdate";
 import Settings from "../shared/Settings";
 import SettingsUpdateResponse from "../shared/api/SettingsUpdateResponse";
+import UserListResponse from "../shared/api/UserListResponse";
+import AddUserRequest from "../shared/api/AddUserRequest";
+import DeleteUserRequest from "../shared/api/DeleteUserRequest";
+import ChangePasswordRequest from "../shared/api/ChangePasswordRequest";
+import UserRequest from "../shared/api/UserRequest";
+import UserResponse from "../shared/api/UserResponse";
 
 class ApiClass {
    auth = async (email: string, password: string) => {
@@ -29,6 +35,26 @@ class ApiClass {
 
    settings = async (token: Token) => {
       return await this.fetch("/settings", token)
+   }
+
+   users = async (token: Token) => {
+      return await this.fetch("/users", token)
+   }
+
+   addUser = async (token: Token, user: User) => {
+      return await this.fetch("/addUser", new AddUserRequest({ type: ApiMessageType.AddUserRequest, user: user, token: token }))
+   }
+
+   deleteUser = async (token: Token, userId: string) => {
+      return await this.fetch("/deleteUser", new DeleteUserRequest({ type: ApiMessageType.DeleteUserRequest, userId: userId, token: token }))
+   }
+
+   changePassword = async (token: Token, newPassword: string) => {
+      return await this.fetch("/changePassword", new ChangePasswordRequest({ type: ApiMessageType.ChangePasswordRequest, token: token, newPassword: newPassword }))
+   }
+
+   user = async (userId: string) => {
+      return await this.fetch("/user", new UserRequest({ type: ApiMessageType.UserRequest, userId: userId }))
    }
 
    fetch = async (url: string, jsonSend?: any) => {
@@ -65,6 +91,12 @@ class ApiClass {
       }
       else if (json.type === ApiMessageType.SettingsUpdateResponse) {
          return new SettingsUpdateResponse(json as SettingsUpdateResponse)
+      }
+      else if (json.type === ApiMessageType.UserListResponse) {
+         return new UserListResponse(json as UserListResponse)
+      }
+      else if (json.type === ApiMessageType.UserResponse) {
+         return new UserResponse(json as UserResponse)
       }
       else {
          throw Error(`Unknown ApiMessageType: ${json.type}`)
