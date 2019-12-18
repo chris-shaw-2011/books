@@ -103,15 +103,19 @@ interface DirectoryProps {
 }
 
 const DirectoryLink: React.FC<DirectoryProps> = (props: DirectoryProps) => {
-   const [open, setOpen] = useState(false)
+   const [state, setState] = useState({ open: false, animating: false })
 
    return (
-      <div className={classnames("directory", "item", props.className)} onClick={(e) => { e.stopPropagation(); setOpen(!open) }}>
+      <div className={classnames("directory", "item", props.className)} onClick={(e) => { e.stopPropagation(); setState(s => { return { ...s, open: !s.open, animating: true } }) }}>
          <div className="inner">
-            {open || props.searchWords.length ? <FolderOpen /> : <FolderClosed />}
+            {state.open || props.searchWords.length ? <FolderOpen /> : <FolderClosed />}
             <div>{props.directory.name}</div>
          </div>
-         {open || props.searchWords.length ? <ItemList items={props.directory.items} searchWords={props.searchWords} statusChanged={props.statusChanged} /> : null}
+         <div className={classnames("collapsible-wrapper", { "collapsed": !state.open && !props.searchWords.length })}>
+            <div className="collapsible" onAnimationEnd={() => setState(s => { return { ...s, animating: false } })}>
+               {state.open || props.searchWords.length || state.animating ? <ItemList items={props.directory.items} searchWords={props.searchWords} statusChanged={props.statusChanged} /> : null}
+            </div>
+         </div>
       </div>
    )
 }
