@@ -13,6 +13,7 @@ import AccessDenied from "../shared/api/AccessDenied"
 import Api from "./Api"
 import Books from "../shared/api/Books"
 import Loading from "./Loading"
+import AnimateHeight from "react-animate-height"
 
 interface Props {
    items: Array<Directory | Book>,
@@ -106,16 +107,14 @@ const DirectoryLink: React.FC<DirectoryProps> = (props: DirectoryProps) => {
    const [state, setState] = useState({ open: false, animating: false })
 
    return (
-      <div className={classnames("directory", "item", props.className)} onClick={(e) => { e.stopPropagation(); setState(s => { return { ...s, open: !s.open, animating: true } }) }}>
+      <div className={classnames("directory", "item", props.className)} onClick={(e) => { e.stopPropagation(); !props.searchWords.length && setState(s => { return { ...s, open: !s.open, animating: true } }) }}>
          <div className="inner">
             {state.open || props.searchWords.length ? <FolderOpen /> : <FolderClosed />}
             <div>{props.directory.name}</div>
          </div>
-         <div className={classnames("collapsible-wrapper", { "collapsed": !state.open && !props.searchWords.length })}>
-            <div className="collapsible" onAnimationEnd={() => setState(s => { return { ...s, animating: false } })}>
-               {state.open || props.searchWords.length || state.animating ? <ItemList items={props.directory.items} searchWords={props.searchWords} statusChanged={props.statusChanged} /> : null}
-            </div>
-         </div>
+         <AnimateHeight onAnimationEnd={() => setState(s => { return { ...s, animating: false } })} height={state.open || props.searchWords.length ? "auto" : 0}>
+            {state.open || props.searchWords.length || state.animating ? <ItemList items={props.directory.items} searchWords={props.searchWords} statusChanged={props.statusChanged} /> : null}
+         </AnimateHeight>
       </div>
    )
 }
