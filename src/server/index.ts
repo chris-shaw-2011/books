@@ -35,6 +35,7 @@ import ChangePasswordRequest from "../shared/api/ChangePasswordRequest"
 import ChangeBookStatusRequest from "../shared/api/ChangeBookStatusRequest";
 import BookStatuses, { BookWithStatus } from "./BookStatuses"
 import Token from "../shared/api/Token";
+import { Mutex } from 'async-mutex';
 
 const server = fastify({ logger: true });
 const settings = new Settings()
@@ -81,6 +82,7 @@ const createMailer = () => {
    })
 }
 var mailer = createMailer()
+const changeBookStatusMutex = new Mutex()
 
 sqlite.open("db.sqlite").then(async db => {
    const getAllUsers = async (message?: string) => {
@@ -393,14 +395,18 @@ sqlite.open("db.sqlite").then(async db => {
          return reqValidation;
       }
 
-      await db.run("BEGIN TRANSACTION;")
+      const release = await changeBookStatusMutex.acquire()
 
-      var statuses = await bookStatuses(statusRequest.token.user.id)
+      try {
+         var statuses = await bookStatuses(statusRequest.token.user.id)
 
-      statuses.set(statusRequest.bookId, new BookWithStatus({ status: statusRequest.status, dateStatusSet: new Date().getTime() }))
+         statuses.set(statusRequest.bookId, new BookWithStatus({ status: statusRequest.status, dateStatusSet: new Date().getTime() }))
 
-      await db.run("UPDATE User SET bookStatuses = ? WHERE id = ?", JSON.stringify(statuses), statusRequest.token.user.id)
-      await db.run("COMMIT;")
+         await db.run("UPDATE User SET bookStatuses = ? WHERE id = ?", JSON.stringify(statuses), statusRequest.token.user.id)
+      }
+      finally {
+         release()
+      }
 
       return await bookList(statusRequest.token)
    })

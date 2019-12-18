@@ -57,14 +57,13 @@ html, body, #root, .App {
    flex-direction: column;
    border-top: 1px solid black;
    padding: 10px 0px 10px 10px;
-   cursor: pointer;
-   color: black !important;
-   text-decoration: none !important;
 }
 
 .item > .inner {
    display: flex;
    align-items: center;
+   color: black !important;
+   text-decoration: none !important;
 }
 
 .item > .inner > svg, .book > .inner > img {
@@ -115,4 +114,12 @@ html, body, #root, .App {
 
 .brand {
    display: flex;
+}
+
+.directory > .inner {
+   cursor: pointer;
+}
+
+.book > .inner {
+   padding-bottom: 10px;
 }

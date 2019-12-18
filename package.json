@@ -3,6 +3,7 @@
    "version": "0.1.0",
    "private": true,
    "dependencies": {
+      "async-mutex": "^0.1.4",
       "bcrypt": "^3.0.7",
       "bootstrap": "^4.4.1",
       "classnames": "^2.2.6",

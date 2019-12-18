@@ -6,12 +6,13 @@ import FolderOpen from "./svg/FolderOpen"
 import FolderClosed from "./svg/FolderClosed"
 import classnames from "classnames"
 import Highlighter from "react-highlight-words"
-import { Button } from "react-bootstrap"
+import { Dropdown, DropdownButton } from "react-bootstrap"
 import LoggedInAppContext from "./LoggedInAppContext"
 import Unauthorized from "../shared/api/Unauthorized"
 import AccessDenied from "../shared/api/AccessDenied"
 import Api from "./Api"
 import Books from "../shared/api/Books"
+import Loading from "./Loading"
 
 interface Props {
    items: Array<Directory | Book>,
@@ -44,7 +45,10 @@ interface BookProps {
 
 const BookLink: React.FC<BookProps> = (props: BookProps) => {
    const context = useContext(LoggedInAppContext)
+   const [changingStatus, setChangingStatus] = useState(false)
    const changeBookStatus = async (status: Status) => {
+      setChangingStatus(true)
+
       var ret = await Api.changeBookStatus(props.book.id, status, context.token)
 
       if (ret instanceof Books) {
@@ -59,8 +63,8 @@ const BookLink: React.FC<BookProps> = (props: BookProps) => {
    }
 
    return (
-      <a className={classnames("book", "item", props.className)} href={props.book.download} key={props.book.id}>
-         <div className="inner">
+      <div className={classnames("book", "item", props.className)}>
+         <a className="inner" href={props.book.download} onClick={e => e.stopPropagation()}>
             <img src={props.book.cover} alt="cover" />
             <div>
                <div className="title"><Highlighter searchWords={props.searchWords} textToHighlight={props.book.name} /></div>
@@ -71,14 +75,23 @@ const BookLink: React.FC<BookProps> = (props: BookProps) => {
                   {Math.round(props.book.numBytes / 1024 / 1024).toLocaleString()} MB
                </div>
                <div>
-                  {props.book.status === Status.Unread ?
-                     <Button onClick={(e: any) => { (e as Event).preventDefault(); changeBookStatus(Status.Read) }}>Mark Read</Button> :
-                     <Button onClick={(e: any) => { (e as Event).preventDefault(); changeBookStatus(Status.Unread) }}>Mark Unread</Button>
-                  }
                </div>
             </div>
-         </div>
-      </a>
+         </a>
+         {!changingStatus ?
+            <DropdownButton title={props.book.status} id={props.book.id} onClick={(e: any) => { (e as Event).stopPropagation(); }}>
+               {
+                  Object.values(Status).map(i => {
+                     if (i !== props.book.status) {
+                        return <Dropdown.Item key={i} onClick={(e: any) => { const evt = e as Event; evt.preventDefault(); evt.stopPropagation(); changeBookStatus(i) }}>Mark {i}</Dropdown.Item>
+                     }
+
+                     return undefined
+                  })
+               }
+            </DropdownButton> : <Loading text="Changing Status..." />
+         }
+      </div>
    )
 }
 
@@ -93,7 +106,7 @@ const DirectoryLink: React.FC<DirectoryProps> = (props: DirectoryProps) => {
    const [open, setOpen] = useState(false)
 
    return (
-      <div className={classnames("directory", "item", props.className)} onClick={(e) => { e.stopPropagation(); setOpen(!open) }} key={props.directory.id}>
+      <div className={classnames("directory", "item", props.className)} onClick={(e) => { e.stopPropagation(); setOpen(!open) }}>
          <div className="inner">
             {open || props.searchWords.length ? <FolderOpen /> : <FolderClosed />}
             <div>{props.directory.name}</div>

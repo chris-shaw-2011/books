@@ -91,17 +91,22 @@ const Authenticated: React.FC<Props> = (props: Props) => {
       return <ChangePassword onPasswordChanged={(token: Token) => { props.onPasswordChanged(token); setVisibleComponent(VisibleComponent.Books) }} logOut={context.logOut} token={context.token} onCancel={() => setVisibleComponent(VisibleComponent.Books)} />
    }
    else if (state instanceof Directory) {
-      var unreadBooks = filter(state, Status.Unread, props.searchWords);
-      var readBooks = filter(state, Status.Read, props.searchWords);
+      var map = new Map<Status, Directory>()
+
+      Object.values(Status).forEach(s => map.set(s, filter(state, s, props.searchWords)))
 
       return (
-         <Tabs defaultActiveKey="unread" id="main-tab">
-            <Tab eventKey="unread" title={`Unread (${unreadBooks.bookCount()})`} mountOnEnter={true}>
-               <ItemList items={unreadBooks.items} className="rootItemList" searchWords={props.searchWords} statusChanged={statusChanged} />
-            </Tab>
-            <Tab eventKey="read" title={`Read (${readBooks.bookCount()})`} mountOnEnter={true}>
-               <ItemList items={readBooks.items} className="rootItemList" searchWords={props.searchWords} statusChanged={statusChanged} />
-            </Tab>
+         <Tabs defaultActiveKey={Status.Unread} id="main-tab">
+            {
+               Object.values(Status).map(s => {
+                  const items = map.get(s)!
+
+                  return (
+                     <Tab eventKey={s} title={`${s} (${items.bookCount()})`} mountOnEnter={true} key={s}>
+                        <ItemList items={items.items} className="rootItemList" searchWords={props.searchWords} statusChanged={statusChanged} />
+                     </Tab>)
+               })
+            }
          </Tabs>
       )
    }

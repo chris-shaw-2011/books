@@ -1,8 +1,9 @@
 import { ItemType } from "./ItemType"
 
 export enum Status {
-   Unread,
-   Read
+   Unread = "Unread",
+   Read = "Read",
+   Skipped = "Skipped",
 }
 
 export default class Book {
