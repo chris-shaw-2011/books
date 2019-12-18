@@ -16,7 +16,7 @@ import ChangePassword from "./ChangePassword";
 import Token from "../shared/api/Token";
 
 interface Props {
-   searchWords: Array<string>,
+   searchWords: { typing: boolean, words: Array<string> },
    onPasswordChanged: (token: Token) => void,
 }
 
@@ -91,9 +91,13 @@ const Authenticated: React.FC<Props> = (props: Props) => {
       return <ChangePassword onPasswordChanged={(token: Token) => { props.onPasswordChanged(token); setVisibleComponent(VisibleComponent.Books) }} logOut={context.logOut} token={context.token} onCancel={() => setVisibleComponent(VisibleComponent.Books)} />
    }
    else if (state instanceof Directory) {
+      if (props.searchWords.typing) {
+         return <Loading text="Searching..." />
+      }
+
       var map = new Map<Status, Directory>()
 
-      Object.values(Status).forEach(s => map.set(s, filter(state, s, props.searchWords)))
+      Object.values(Status).forEach(s => map.set(s, filter(state, s, props.searchWords.words)))
 
       return (
          <Tabs defaultActiveKey={Status.Unread} id="main-tab">
@@ -103,7 +107,7 @@ const Authenticated: React.FC<Props> = (props: Props) => {
 
                   return (
                      <Tab eventKey={s} title={`${s} (${items.bookCount()})`} mountOnEnter={true} key={s}>
-                        <ItemList items={items.items} className="rootItemList" searchWords={props.searchWords} statusChanged={statusChanged} />
+                        <ItemList items={items.items} className="rootItemList" searchWords={props.searchWords.words} statusChanged={statusChanged} />
                      </Tab>)
                })
             }

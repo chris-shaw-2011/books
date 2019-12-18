@@ -1,4 +1,4 @@
-import React, { useState, Fragment, useCallback } from 'react';
+import React, { useState, Fragment, useCallback, useMemo } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Navbar, Form, FormControl, Nav } from "react-bootstrap"
 import Authenticated from './Authenticated';
@@ -12,12 +12,15 @@ import Users from "./svg/Users"
 import ChangePassword from './ChangePassword';
 import LogOut from './svg/LogOut';
 
+var typingTimeout: NodeJS.Timeout
+
 const App: React.FC = () => {
-   const [searchWords, setSearchWords] = useState(new Array<string>())
+   const [searchWords, setSearchWords] = useState({ typing: false, words: new Array<string>() })
    const [cookies, setCookies] = useCookies(["loginCookie"])
    const [loginMessage, setLoginMessage] = useState("")
    const [visibleComponent, setVisibleComponent] = useState(VisibleComponent.Books)
-   const token = cookies.loginCookie ? new Token(cookies.loginCookie as Token) : undefined
+   const loginCookie = cookies.loginCookie
+   const token = useMemo(() => loginCookie ? new Token(loginCookie) : undefined, [loginCookie])
    const inviteUserId = window.location.pathname.indexOf("/invite/") !== -1 ? window.location.pathname.replace("/invite/", "") : ""
    const logOut = useCallback((message?: string) => {
       if (inviteUserId) {
@@ -44,13 +47,17 @@ const App: React.FC = () => {
                   </Nav>
                   <Form inline>
                      <FormControl type="text" placeholder="Search" className="mr-sm-2" onChange={(e: React.FormEvent<HTMLInputElement>) => {
+                        clearTimeout(typingTimeout)
+
                         var search = (e.currentTarget.value || "").trim();
 
                         if (search) {
-                           setSearchWords(search.split(" "))
+                           setSearchWords({ typing: true, words: search.split(" ").map(w => w.toLowerCase()) })
+
+                           typingTimeout = setTimeout(() => setSearchWords(s => { return { ...s, typing: false } }), 500)
                         }
                         else {
-                           setSearchWords([])
+                           setSearchWords({ typing: false, words: [] })
                         }
                      }} />
                   </Form>
@@ -69,7 +76,7 @@ const App: React.FC = () => {
             <div className="mainContent">
                {token ?
                   <AppContext.Provider value={{ logOut: logOut, token: token, visibleComponent: visibleComponent, setVisibleComponent: setVisibleComponent }}>
-                     <Authenticated searchWords={searchWords.map(w => w.toLowerCase())} onPasswordChanged={onLogIn} />
+                     <Authenticated searchWords={searchWords} onPasswordChanged={onLogIn} />
                   </AppContext.Provider> :
                   inviteUserId ?
                      <ChangePassword userId={inviteUserId} onPasswordChanged={onLogIn} logOut={logOut} /> :

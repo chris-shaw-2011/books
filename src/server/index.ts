@@ -36,6 +36,7 @@ import ChangeBookStatusRequest from "../shared/api/ChangeBookStatusRequest";
 import BookStatuses, { BookWithStatus } from "./BookStatuses"
 import Token from "../shared/api/Token";
 import { Mutex } from 'async-mutex';
+import cookie from "cookie"
 
 const server = fastify({ logger: true });
 const settings = new Settings()
@@ -122,7 +123,7 @@ sqlite.open("db.sqlite").then(async db => {
 
       dir.id = "root"
 
-      UpdateUrlsAndStatus(dir, token.authorization, await bookStatuses(token.user.id));
+      UpdateUrlsAndStatus(dir, token.authorization, token.user.id, await bookStatuses(token.user.id));
 
       return new Books({ type: ApiMessageType.Books, directory: dir })
    }
@@ -411,22 +412,31 @@ sqlite.open("db.sqlite").then(async db => {
       return await bookList(statusRequest.token)
    })
 
-   server.get("/files/:authorization/*", (request, reply) => {
-      var filePath = request.params["*"] as string;
-      var authValidation = validateAuthorization(request.params.authorization as string, reply)
+   server.get("/files/*", (request, reply) => {
+      var cookies = cookie.parse(request.headers["cookie"]) || {};
+      var token = new ServerToken(cookies.loginCookie ? JSON.parse(cookies.loginCookie) : undefined)
 
-      if (authValidation === true && filePath.endsWith(".jpg") || filePath.endsWith(".m4b")) {
-         if (filePath.endsWith(".m4b")) {
+      validateRequest(token, reply).then(reqValidation => {
+         var filePath = request.params["*"] as string;
+
+         if (reqValidation !== true) {
+            reply.send(reqValidation)
+         }
+         else if (filePath.endsWith(".jpg")) {
+            reply.header("Cache-control", `public, max-age=${30 * 24 * 60 * 60}`)
+            sendFile(request, reply, settings.baseBooksPath, filePath)
+         }
+         else if (filePath.endsWith(".m4b")) {
             var splitPath = filePath.split("/");
 
             reply.header("Content-Disposition", `attachment; filename=\"${splitPath[splitPath.length - 1]}\"`)
-         }
 
-         sendFile(request, reply, settings.baseBooksPath, filePath)
-      }
-      else {
-         reply.code(404).send("Not Found");
-      }
+            sendFile(request, reply, settings.baseBooksPath, filePath)
+         }
+         else {
+            reply.code(404).send("Not Found");
+         }
+      })
    })
 
    //This handles requests to the root of the site in production
@@ -449,17 +459,15 @@ sqlite.open("db.sqlite").then(async db => {
    start();
 })
 
-function UpdateUrlsAndStatus(dir: Directory, authorization: string, bookStatuses: BookStatuses) {
+function UpdateUrlsAndStatus(dir: Directory, authorization: string, userId: string, bookStatuses: BookStatuses) {
    for (const i of dir.items) {
       if (i.type == ItemType.book) {
          var bookStatus = bookStatuses.get(i.id)
 
-         i.download = i.download.replace("{authorization}", authorization)
-         i.cover = i.cover.replace("{authorization}", authorization)
          i.status = bookStatus ? bookStatus.status : Status.Unread
       }
       else {
-         UpdateUrlsAndStatus(i, authorization, bookStatuses)
+         UpdateUrlsAndStatus(i, authorization, userId, bookStatuses)
       }
    }
 }
@@ -508,7 +516,7 @@ async function Recursive(pathTree: string[], name: string): Promise<Directory | 
          }
 
          book.id = bookUri
-         book.download = `/files/{authorization}/${bookUri}`
+         book.download = `/files/${bookUri}`
          book.cover = book.download + ".jpg";
          book.numBytes = (await fs.promises.stat(bookPath)).size;
 
