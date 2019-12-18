@@ -154,3 +154,18 @@ html, body, #root, .App {
    transition: height 0.3s linear;
    max-height: 50px;
  }
+
+ .mainNav {
+    position: static;
+ }
+
+ .mainNav svg {
+   width: 40px;
+   max-height: 40px;
+   padding-right: 10px;
+}
+
+.mainNav > .dropdown-menu {
+   right: 0;
+   left: auto
+}

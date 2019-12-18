@@ -1,6 +1,6 @@
 import React, { useState, Fragment, useCallback, useMemo } from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import { Navbar, Form, FormControl, Nav } from "react-bootstrap"
+import { Navbar, Form, FormControl, Nav, NavDropdown } from "react-bootstrap"
 import Authenticated from './Authenticated';
 import "./styles.css"
 import LogIn from './LogIn';
@@ -11,6 +11,7 @@ import AppContext, { VisibleComponent } from './LoggedInAppContext';
 import Users from "./svg/Users"
 import ChangePassword from './ChangePassword';
 import LogOut from './svg/LogOut';
+import Lock from './svg/Lock';
 
 var typingTimeout: NodeJS.Timeout
 
@@ -62,14 +63,16 @@ const App: React.FC = () => {
                      }} />
                   </Form>
                   <Nav>
-                     <Nav.Link onClick={() => { setVisibleComponent(VisibleComponent.ChangePassword); return false; }}>Change<br />Password</Nav.Link>
-                     <Nav.Link onClick={() => { logOut(); return false; }}><LogOut /></Nav.Link>
-                     {token.user.isAdmin ?
-                        <Fragment>
-                           <Nav.Link onClick={() => { setVisibleComponent(VisibleComponent.Users); return false; }}><Users /></Nav.Link>
-                           <Nav.Link onClick={() => { setVisibleComponent(VisibleComponent.Settings); return false; }}><Gear /> </Nav.Link>
-                        </Fragment> :
-                        null}
+                     <NavDropdown title="" id="nav-dropdown" className="mainNav">
+                        {token.user.isAdmin &&
+                           <Fragment>
+                              <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.Users); return false; }}><Users /> Manage Users</NavDropdown.Item>
+                              <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.Settings); return false; }}><Gear /> Settings</NavDropdown.Item>
+                              <NavDropdown.Divider />
+                           </Fragment>}
+                        <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.ChangePassword); return false; }}><Lock /> Change Password</NavDropdown.Item>
+                        <NavDropdown.Item onClick={() => { logOut(); return false; }}><LogOut /> Log Out</NavDropdown.Item>
+                     </NavDropdown>
                   </Nav>
                </Fragment>}
             </Navbar>
