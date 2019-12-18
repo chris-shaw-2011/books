@@ -26,14 +26,14 @@ const App: React.FC = () => {
       if (inviteUserId) {
          window.history.replaceState({}, document.title, "/")
       }
-      setCookies("loginCookie", "");
+      setCookies("loginCookie", "", { maxAge: 0 });
       setLoginMessage(message || "")
    }, [setCookies, setLoginMessage, inviteUserId])
    const onLogIn = useCallback((token: Token) => {
       if (inviteUserId) {
          window.history.replaceState({}, document.title, "/")
       }
-      setCookies("loginCookie", JSON.stringify(token));
+      setCookies("loginCookie", JSON.stringify(token), { maxAge: 12 * 30 * 24 * 60 * 60, path: "/" });
       setLoginMessage("")
    }, [setCookies, setLoginMessage, inviteUserId])
 
