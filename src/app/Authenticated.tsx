@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext, useCallback } from "react"
+import React, { useEffect, useState, useContext, useCallback, Fragment } from "react"
 import { Tabs, Tab } from "react-bootstrap"
 import Directory from "../shared/Directory"
 import Book, { Status } from "../shared/Book";
@@ -57,6 +57,7 @@ const Authenticated: React.FC<Props> = (props: Props) => {
    const statusChanged = useCallback((books: Books) => {
       setState(books.directory)
    }, [])
+   const viewBooks = () => setVisibleComponent(VisibleComponent.Books)
 
    useEffect(() => {
       async function getBooks() {
@@ -81,28 +82,18 @@ const Authenticated: React.FC<Props> = (props: Props) => {
       }
    }, [token, unAuthorized, visibleComponent, setVisibleComponent])
 
-   if (visibleComponent === VisibleComponent.Settings) {
-      return <EditSettings onSettingsSaved={() => { setVisibleComponent(VisibleComponent.Books) }} {...props} />
+   if (props.searchWords.typing) {
+      return <Loading text="Searching..." />
    }
-   else if (visibleComponent === VisibleComponent.Users) {
-      return <UserList onClose={() => { setVisibleComponent(VisibleComponent.Books) }} />
-   }
-   else if (visibleComponent === VisibleComponent.ChangePassword) {
-      return <ChangePassword onPasswordChanged={(token: Token) => { props.onPasswordChanged(token); setVisibleComponent(VisibleComponent.Books) }} logOut={context.logOut} token={context.token} onCancel={() => setVisibleComponent(VisibleComponent.Books)} />
-   }
-   else if (state instanceof Directory) {
-      if (props.searchWords.typing) {
-         return <Loading text="Searching..." />
-      }
 
-      var map = new Map<Status, Directory>()
+   return (
+      <Fragment>
+         {state ? <Tabs defaultActiveKey={Status.Unread} id="main-tab">
+            {(() => {
+               var map = new Map<Status, Directory>()
+               Object.values(Status).forEach(s => map.set(s, filter(state, s, props.searchWords.words)))
 
-      Object.values(Status).forEach(s => map.set(s, filter(state, s, props.searchWords.words)))
-
-      return (
-         <Tabs defaultActiveKey={Status.Unread} id="main-tab">
-            {
-               Object.values(Status).map(s => {
+               return Object.values(Status).map(s => {
                   const items = map.get(s)!
 
                   return (
@@ -110,15 +101,22 @@ const Authenticated: React.FC<Props> = (props: Props) => {
                         <ItemList items={items.items} className="rootItemList" searchWords={props.searchWords.words} statusChanged={statusChanged} />
                      </Tab>)
                })
+            })()}
+         </Tabs> : <Loading />}
+         {(() => {
+            switch (visibleComponent) {
+               case VisibleComponent.ChangePassword:
+                  return <ChangePassword onPasswordChanged={(token: Token) => { props.onPasswordChanged(token); viewBooks() }} onClose={viewBooks} {...context} />
+               case VisibleComponent.Settings:
+                  return <EditSettings onSettingsSaved={viewBooks} onClose={state ? viewBooks : undefined} />
+               case VisibleComponent.Users:
+                  return <UserList onClose={viewBooks} />
+               default:
+                  return null;
             }
-         </Tabs>
-      )
-   }
-   else {
-      return (
-         <Loading />
-      )
-   }
+         })()}
+      </Fragment>
+   )
 }
 
 export default Authenticated

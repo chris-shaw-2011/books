@@ -8,13 +8,14 @@ import { ApiMessageType } from "../shared/api/ApiMessage"
 import Unauthorized from "../shared/api/Unauthorized"
 import AccessDenied from "../shared/api/AccessDenied"
 import UserResponse from "../shared/api/UserResponse"
+import OverlayComponent from "./OverlayComponent"
 
 interface Props {
    userId?: string,
    token?: Token,
    onPasswordChanged: (token: Token) => void,
    logOut: (message?: string) => void,
-   onCancel?: () => void,
+   onClose?: () => void,
 }
 
 const ChangePassword: React.FC<Props> = (props: Props) => {
@@ -92,35 +93,37 @@ const ChangePassword: React.FC<Props> = (props: Props) => {
    }
    else {
       return (
-         <Form className="changePassword" noValidate validated={validated} onSubmit={handleSubmit}>
-            <Modal.Dialog>
-               <Modal.Header>
-                  <Modal.Title>Change Password</Modal.Title>
-               </Modal.Header>
-               <Modal.Body>
-                  <Form.Group controlId="formGroupEmail">
-                     <Form.Label>{user.email}</Form.Label>
-                  </Form.Group>
-                  <Form.Group controlId="formGroupPassword">
-                     <Form.Label>New Password</Form.Label>
-                     <Form.Control type="password" placeholder="New Password" required onChange={(e: FormEvent<HTMLInputElement>) => mergeState({ password: e.currentTarget.value || "" })} />
-                  </Form.Group>
-                  <Form.Group controlId="formGroupConfirmPassword">
-                     <Form.Label>Confirm New Password</Form.Label>
-                     <Form.Control type="password" placeholder="Confirm New Password" required onChange={(e: FormEvent<HTMLInputElement>) => mergeState({ confirmedPassword: e.currentTarget.value || "" })} />
-                  </Form.Group>
-                  {!passwordsMatch && <Alert variant="danger">Passwords must match</Alert>}
-               </Modal.Body>
-               <Modal.Footer>
-                  {!state.changingPasswords ?
-                     <Fragment>
-                        {props.token && <Button variant="secondary" type="button" onClick={props.onCancel}>Cancel</Button>}
-                        <Button variant="primary" type="submit">Change Password</Button>
-                     </Fragment> :
-                     <Loading text="Changing Password..." />}
-               </Modal.Footer>
-            </Modal.Dialog>
-         </Form>
+         <OverlayComponent onClose={props.onClose}>
+            <Form className="changePassword" noValidate validated={validated} onSubmit={handleSubmit}>
+               <Modal.Dialog>
+                  <Modal.Header>
+                     <Modal.Title>Change Password</Modal.Title>
+                  </Modal.Header>
+                  <Modal.Body>
+                     <Form.Group controlId="formGroupEmail">
+                        <Form.Label>{user.email}</Form.Label>
+                     </Form.Group>
+                     <Form.Group controlId="formGroupPassword">
+                        <Form.Label>New Password</Form.Label>
+                        <Form.Control type="password" placeholder="New Password" required onChange={(e: FormEvent<HTMLInputElement>) => mergeState({ password: e.currentTarget.value || "" })} />
+                     </Form.Group>
+                     <Form.Group controlId="formGroupConfirmPassword">
+                        <Form.Label>Confirm New Password</Form.Label>
+                        <Form.Control type="password" placeholder="Confirm New Password" required onChange={(e: FormEvent<HTMLInputElement>) => mergeState({ confirmedPassword: e.currentTarget.value || "" })} />
+                     </Form.Group>
+                     {!passwordsMatch && <Alert variant="danger">Passwords must match</Alert>}
+                  </Modal.Body>
+                  <Modal.Footer>
+                     {!state.changingPasswords ?
+                        <Fragment>
+                           {props.token && <Button variant="secondary" type="button" onClick={props.onClose}>Cancel</Button>}
+                           <Button variant="primary" type="submit">Change Password</Button>
+                        </Fragment> :
+                        <Loading text="Changing Password..." />}
+                  </Modal.Footer>
+               </Modal.Dialog>
+            </Form>
+         </OverlayComponent>
       )
    }
 }

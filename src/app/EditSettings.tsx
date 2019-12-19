@@ -1,4 +1,4 @@
-import React, { useState, FormEvent, useEffect, useContext } from "react"
+import React, { useState, FormEvent, useEffect, useContext, Fragment } from "react"
 import Settings from "../shared/Settings"
 import { Form, Modal, Button, Alert } from "react-bootstrap"
 import Loading from "./Loading"
@@ -8,22 +8,22 @@ import Unauthorized from "../shared/api/Unauthorized"
 import AccessDenied from "../shared/api/AccessDenied"
 import SettingsRequired from "../shared/api/SettingsRequired"
 import AppContext from "./LoggedInAppContext"
+import OverlayComponent from "./OverlayComponent"
 
 interface Props {
-   settings?: Settings,
    onSettingsSaved: () => void,
    message?: string,
+   onClose?: () => void,
 }
 
 const EditSettings: React.FC<Props> = (props: Props) => {
-   const [settings, setSettings] = useState(props.settings)
+   const [settings, setSettings] = useState<Settings | undefined>()
    const [validated, setValidated] = useState(false);
    const [saving, setSaving] = useState(false)
    const [message, setMessage] = useState(props.message)
    const context = useContext(AppContext)
    const onUnauthorized = context.logOut
    const token = context.token
-   const propsSettings = props.settings
    const onChange = (obj: any) => {
       setSettings(s => {
          if (!s) {
@@ -49,10 +49,8 @@ const EditSettings: React.FC<Props> = (props: Props) => {
          }
       }
 
-      if (!propsSettings) {
-         getSettings()
-      }
-   }, [onUnauthorized, token, propsSettings])
+      getSettings()
+   }, [onUnauthorized, token])
 
    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
       setSaving(true)
@@ -92,34 +90,40 @@ const EditSettings: React.FC<Props> = (props: Props) => {
 
    if (settings) {
       return (
-         <Form className="settings" noValidate validated={validated} onSubmit={handleSubmit}>
-            <Modal.Dialog>
-               <Modal.Header>
-                  <Modal.Title>Settings</Modal.Title>
-               </Modal.Header>
-               <Modal.Body>
-                  {message ? <Alert variant="danger">{message}</Alert> : null}
-                  <Form.Group controlId="formGroupBasePath">
-                     <Form.Label>Base Books Path</Form.Label>
-                     <Form.Control type="text" placeholder="Enter Base Path" required defaultValue={settings.baseBooksPath}
-                        onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ baseBooksPath: e.currentTarget.value || "" })} />
-                  </Form.Group>
-                  <Form.Group controlId="fromGroupInviteEmail">
-                     <Form.Label>Invite Email Address</Form.Label>
-                     <Form.Control type="email" placeholder="Enter Invite Email Address" required defaultValue={settings.inviteEmail}
-                        onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ inviteEmail: e.currentTarget.value || "" })} />
-                  </Form.Group>
-                  <Form.Group controlId="fromGroupInviteEmailPassword">
-                     <Form.Label>Invite Email Address</Form.Label>
-                     <Form.Control type="password" placeholder="Enter Invite Email Password" required defaultValue={settings.inviteEmailPassword}
-                        onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ inviteEmailPassword: e.currentTarget.value || "" })} />
-                  </Form.Group>
-               </Modal.Body>
-               <Modal.Footer>
-                  {!saving ? <Button variant="primary" type="submit">Save</Button> : <Loading text="Saving..." />}
-               </Modal.Footer>
-            </Modal.Dialog>
-         </Form>
+         <OverlayComponent onClose={props.onClose}>
+            <Form className="settings" noValidate validated={validated} onSubmit={handleSubmit}>
+               <Modal.Dialog>
+                  <Modal.Header>
+                     <Modal.Title>Settings</Modal.Title>
+                  </Modal.Header>
+                  <Modal.Body>
+                     {message ? <Alert variant="danger">{message}</Alert> : null}
+                     <Form.Group controlId="formGroupBasePath">
+                        <Form.Label>Base Books Path</Form.Label>
+                        <Form.Control type="text" placeholder="Enter Base Path" required defaultValue={settings.baseBooksPath}
+                           onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ baseBooksPath: e.currentTarget.value || "" })} />
+                     </Form.Group>
+                     <Form.Group controlId="fromGroupInviteEmail">
+                        <Form.Label>Invite Email Address</Form.Label>
+                        <Form.Control type="email" placeholder="Enter Invite Email Address" required defaultValue={settings.inviteEmail}
+                           onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ inviteEmail: e.currentTarget.value || "" })} />
+                     </Form.Group>
+                     <Form.Group controlId="fromGroupInviteEmailPassword">
+                        <Form.Label>Invite Email Address</Form.Label>
+                        <Form.Control type="password" placeholder="Enter Invite Email Password" required defaultValue={settings.inviteEmailPassword}
+                           onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ inviteEmailPassword: e.currentTarget.value || "" })} />
+                     </Form.Group>
+                  </Modal.Body>
+                  <Modal.Footer>
+                     {!saving ?
+                        <Fragment>
+                           {props.onClose && <Button variant="secondary" onClick={props.onClose}>Cancel</Button>}
+                           <Button variant="primary" type="submit">Save</Button>
+                        </Fragment> : <Loading text="Saving..." />}
+                  </Modal.Footer>
+               </Modal.Dialog>
+            </Form>
+         </OverlayComponent>
       )
    }
    else {
