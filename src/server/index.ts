@@ -45,21 +45,21 @@ var checksumSecret = "";
 var authorizationExpiration = new Map<string, moment.Moment>()
 var books = new Directory();
 var rootDir = __dirname;
-const getNewExpiration = () => moment().add(24, "hours")
-const validateAuthorization = (authorization: string, reply: fastify.FastifyReply<ServerResponse>) => {
-   var expires = authorizationExpiration.has(authorization) ? authorizationExpiration.get(authorization) : undefined;
-
-   if (!expires || expires < moment()) {
-      reply.code(401)
-
-      return new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In again" })
+const tryParse = (text: string, reviver?: (this: any, key: string, value: any) => any) => {
+   try {
+      return JSON.parse(text, reviver)
    }
-
-   authorizationExpiration.set(authorization, getNewExpiration())
-   return true;
+   catch {
+      return undefined
+   }
 }
-const validateRequest = async (token: ServerToken, reply: fastify.FastifyReply<ServerResponse>, adminOnly?: boolean) => {
-   if (!await token.isChecksumValid(checksumSecret)) {
+const getNewExpiration = () => moment().add(24, "hours")
+const validateRequest = async (request: fastify.FastifyRequest<IncomingMessage, fastify.DefaultQuery, fastify.DefaultParams, fastify.DefaultHeaders, any>, reply: fastify.FastifyReply<ServerResponse>, adminOnly?: boolean) => {
+   const cookies = cookie.parse(request.headers["cookie"] || "") || {};
+   const tokenJson = cookies.loginCookie ? new ServerToken(tryParse(cookies.loginCookie)) : undefined
+   const token = new ServerToken(tokenJson)
+
+   if (!tokenJson || !await token.isChecksumValid(checksumSecret)) {
       reply.code(401);
 
       return new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In" })
@@ -70,7 +70,17 @@ const validateRequest = async (token: ServerToken, reply: fastify.FastifyReply<S
       return new AccessDenied({ type: ApiMessageType.AccessDenied, message: "Access Denied" })
    }
    else {
-      return validateAuthorization(token.authorization, reply)
+      var expires = authorizationExpiration.has(token.authorization) ? authorizationExpiration.get(token.authorization) : undefined;
+
+      if (!expires || expires < moment()) {
+         reply.code(401)
+
+         return new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In again" })
+      }
+
+      authorizationExpiration.set(token.authorization, getNewExpiration())
+
+      return token;
    }
 }
 const createMailer = () => {
@@ -154,6 +164,10 @@ sqlite.open("db.sqlite").then(async db => {
             settings.inviteEmailPassword = row.value
             break;
          }
+         case "uploadLocation": {
+            settings.uploadLocation = row.value
+            break
+         }
       }
    })
 
@@ -201,16 +215,15 @@ sqlite.open("db.sqlite").then(async db => {
    })
 
    server.post("/books", async (request, reply) => {
-      var token = new ServerToken(request.body)
-      var reqValidation = await validateRequest(token, reply);
+      var token = await validateRequest(request, reply);
 
-      if (reqValidation !== true) {
-         return reqValidation;
+      if (!(token instanceof ServerToken)) {
+         return token;
       }
 
-      if (!settings.baseBooksPath || !settings.inviteEmail || !settings.inviteEmailPassword) {
+      if (!settings.baseBooksPath || !settings.inviteEmail || !settings.inviteEmailPassword || !settings.uploadLocation) {
          if (token.user.isAdmin) {
-            return new SettingsRequired({ type: ApiMessageType.SettingsRequired, message: "You must specify a settings", settings: settings })
+            return new SettingsRequired({ type: ApiMessageType.SettingsRequired, message: "You must specify a setting", settings: settings })
          }
          else {
             return new AccessDenied({ type: ApiMessageType.AccessDenied, message: "Some settings are missing, but they must be specified by an administrator" })
@@ -221,11 +234,10 @@ sqlite.open("db.sqlite").then(async db => {
    })
 
    server.post("/settings", async (request, reply) => {
-      var token = new ServerToken(request.body)
-      var reqValidation = await validateRequest(token, reply, true);
+      var token = await validateRequest(request, reply, true);
 
-      if (reqValidation !== true) {
-         return reqValidation;
+      if (!(token instanceof ServerToken)) {
+         return token;
       }
 
       return new SettingsRequired({ type: ApiMessageType.SettingsRequired, settings: settings, message: "" });
@@ -233,13 +245,12 @@ sqlite.open("db.sqlite").then(async db => {
 
    server.post("/updateSettings", async (request, reply) => {
       var settingsUpdate = new SettingsUpdate(request.body)
-      var token = new ServerToken(settingsUpdate.token)
-      var reqValidation = await validateRequest(token, reply, true);
       var inviteChanged = false;
       var messages = new Array<string>();
+      var token = await validateRequest(request, reply, true);
 
-      if (reqValidation !== true) {
-         return reqValidation;
+      if (!(token instanceof ServerToken)) {
+         return token;
       }
 
       if (settingsUpdate.settings.inviteEmail !== settings.inviteEmail) {
@@ -256,6 +267,13 @@ sqlite.open("db.sqlite").then(async db => {
          await db.run("REPLACE INTO setting (key, value) VALUES('inviteEmailPassword', ?)", settings.inviteEmailPassword)
          inviteChanged = true
          messages.push("Invite email password updated")
+      }
+
+      if (settingsUpdate.settings.uploadLocation !== settings.uploadLocation) {
+         settings.uploadLocation = settingsUpdate.settings.uploadLocation
+
+         await db.run("REPLACE INTO setting (key, value) VALUES('uploadLocation', ?)", settings.uploadLocation)
+         messages.push("Upload location updated")
       }
 
       if (inviteChanged) {
@@ -282,11 +300,10 @@ sqlite.open("db.sqlite").then(async db => {
    })
 
    server.post("/users", async (request, reply) => {
-      var token = new ServerToken(request.body)
-      var reqValidation = await validateRequest(token, reply, true);
+      var token = await validateRequest(request, reply, true);
 
-      if (reqValidation !== true) {
-         return reqValidation;
+      if (!(token instanceof ServerToken)) {
+         return token;
       }
 
       return await getAllUsers()
@@ -294,10 +311,10 @@ sqlite.open("db.sqlite").then(async db => {
 
    server.post("/addUser", async (request, reply) => {
       var userRequest = new AddUserRequest(request.body)
-      var reqValidation = await validateRequest(new ServerToken(userRequest.token), reply, true);
+      var token = await validateRequest(request, reply, true);
 
-      if (reqValidation !== true) {
-         return reqValidation;
+      if (!(token instanceof ServerToken)) {
+         return token;
       }
 
       var message = `${userRequest.user.email} has been invited`
@@ -333,10 +350,10 @@ sqlite.open("db.sqlite").then(async db => {
 
    server.post("/deleteUser", async (request, reply) => {
       var userRequest = new DeleteUserRequest(request.body)
-      var reqValidation = await validateRequest(new ServerToken(userRequest.token), reply, true);
+      var token = await validateRequest(request, reply, true);
 
-      if (reqValidation !== true) {
-         return reqValidation;
+      if (!(token instanceof ServerToken)) {
+         return token;
       }
 
       await db.run("DELETE FROM User WHERE id = ?", userRequest.userId)
@@ -364,10 +381,10 @@ sqlite.open("db.sqlite").then(async db => {
 
       if (changeRequest.token.authorization) {
          //This is a change password request for someone that's already logged in
-         var reqValidation = await validateRequest(new ServerToken(changeRequest.token), reply)
+         var token = await validateRequest(request, reply);
 
-         if (reqValidation !== true) {
-            return reqValidation
+         if (!(token instanceof ServerToken)) {
+            return token;
          }
       }
       else {
@@ -390,10 +407,10 @@ sqlite.open("db.sqlite").then(async db => {
 
    server.post("/changeBookStatus", async (request, reply) => {
       var statusRequest = new ChangeBookStatusRequest(request.body)
-      var reqValidation = await validateRequest(new ServerToken(statusRequest.token), reply);
+      var token = await validateRequest(request, reply);
 
-      if (reqValidation !== true) {
-         return reqValidation;
+      if (!(token instanceof ServerToken)) {
+         return token;
       }
 
       const release = await changeBookStatusMutex.acquire()
@@ -413,14 +430,11 @@ sqlite.open("db.sqlite").then(async db => {
    })
 
    server.get("/files/*", (request, reply) => {
-      var cookies = cookie.parse(request.headers["cookie"]) || {};
-      var token = new ServerToken(cookies.loginCookie ? JSON.parse(cookies.loginCookie) : undefined)
-
-      validateRequest(token, reply).then(reqValidation => {
+      validateRequest(request, reply).then(token => {
          var filePath = request.params["*"] as string;
 
-         if (reqValidation !== true) {
-            reply.send(reqValidation)
+         if (!(token instanceof ServerToken)) {
+            reply.send(token)
          }
          else if (filePath.endsWith(".jpg")) {
             reply.header("Cache-control", `public, max-age=${30 * 24 * 60 * 60}`)
