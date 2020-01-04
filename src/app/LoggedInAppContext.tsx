@@ -6,6 +6,7 @@ export enum VisibleComponent {
    Settings,
    Users,
    ChangePassword,
+   Upload,
 }
 
 interface LoggedInAppContextType {

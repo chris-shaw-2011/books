@@ -14,6 +14,7 @@ import AppContext, { VisibleComponent } from "./LoggedInAppContext";
 import UserList from "./UserList";
 import ChangePassword from "./ChangePassword";
 import Token from "../shared/api/Token";
+import UploadBooks from "./UploadBooks";
 
 interface Props {
    searchWords: { typing: boolean, words: Array<string> },
@@ -111,6 +112,8 @@ const Authenticated: React.FC<Props> = (props: Props) => {
                   return <EditSettings onSettingsSaved={viewBooks} onClose={state ? viewBooks : undefined} />
                case VisibleComponent.Users:
                   return <UserList onClose={viewBooks} />
+               case VisibleComponent.Upload:
+                  return <UploadBooks onClose={viewBooks} />
                default:
                   return null;
             }

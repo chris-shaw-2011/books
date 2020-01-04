@@ -12,6 +12,7 @@ import Users from "./svg/Users"
 import ChangePassword from './ChangePassword';
 import LogOut from './svg/LogOut';
 import Lock from './svg/Lock';
+import Upload from './svg/Upload';
 
 var typingTimeout: NodeJS.Timeout
 
@@ -64,12 +65,13 @@ const App: React.FC = () => {
                   </Form>
                   <Nav>
                      <NavDropdown title="" id="nav-dropdown" className="mainNav">
+                        <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.Upload); return false; }}><Upload /> Upload Books</NavDropdown.Item>
                         {token.user.isAdmin &&
                            <Fragment>
                               <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.Users); return false; }}><Users /> Manage Users</NavDropdown.Item>
                               <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.Settings); return false; }}><Gear /> Settings</NavDropdown.Item>
-                              <NavDropdown.Divider />
                            </Fragment>}
+                        <NavDropdown.Divider />
                         <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.ChangePassword); return false; }}><Lock /> Change Password</NavDropdown.Item>
                         <NavDropdown.Item onClick={() => { logOut(); return false; }}><LogOut /> Log Out</NavDropdown.Item>
                      </NavDropdown>

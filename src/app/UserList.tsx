@@ -8,6 +8,7 @@ import Unauthorized from "../shared/api/Unauthorized"
 import AccessDenied from "../shared/api/AccessDenied"
 import Loading from "./Loading"
 import moment from "moment"
+import OverlayComponent from "./OverlayComponent"
 
 interface Props {
    onClose: () => void,
@@ -60,7 +61,7 @@ const UserList: React.FC<Props> = (props: Props) => {
          setAddingUserState(s => { return { ...s, validated: true } });
       }
    };
-
+   const cancelAddUser = () => setAddingUserState(s => { return { ...s, addingUser: false } })
    useEffect(() => {
       async function getUsers() {
          var ret = await Api.users(token)
@@ -76,82 +77,86 @@ const UserList: React.FC<Props> = (props: Props) => {
    }
 
    return (
-      <div>
-         {addingUserState.addingUser &&
-            <Form className="addUser" noValidate validated={addingUserState.validated} onSubmit={handleSubmit}>
-               <Modal.Dialog>
-                  <Modal.Header>
-                     <Modal.Title>Add User</Modal.Title>
-                  </Modal.Header>
-                  <Modal.Body>
-                     <Form.Group controlId="formGroupEmail">
-                        <Form.Label>Email address</Form.Label>
-                        <Form.Control type="email" placeholder="Enter email" required autoFocus
-                           onChange={(e: FormEvent<HTMLInputElement>) => mergeAddingUserState({ email: e.currentTarget.value || "" })} />
-                     </Form.Group>
-                     <Form.Group controlId="formGroupIsAdmin">
-                        <Form.Check type="checkbox" label="Is Admin?" onChange={(e: FormEvent<HTMLInputElement>) => mergeAddingUserState({ isAdmin: e.currentTarget.checked })} />
-                     </Form.Group>
-                  </Modal.Body>
-                  <Modal.Footer>
-                     {!addingUserState.saving ?
-                        <Fragment>
-                           <Button variant="secondary" type="button" onClick={() => setAddingUserState(s => { return { ...s, addingUser: false } })}>Cancel</Button>
-                           <Button variant="primary" type="submit">Add User</Button>
-                        </Fragment> :
-                        <Loading text="Adding User..." />}
-                  </Modal.Footer>
-               </Modal.Dialog>
-            </Form>
-         }
-         <Table striped bordered hover style={{ padding: "10px" }}>
-            <thead>
-               <tr>
-                  <th>Email</th>
-                  <th>Admin</th>
-                  <th>Last Login</th>
-                  <th>Actions</th>
-               </tr>
-            </thead>
-            <tbody>
-               {users.users.map(u => {
-                  return (
-                     <tr key={u.id}>
-                        <td>{u.email}</td>
-                        <td>{u.isAdmin ? "Yes" : "No"}</td>
-                        <td>{u.lastLogin ? moment(u.lastLoginDate).format("MM/D/YYYY, h:mm:ss a") : "Never"}</td>
-                        <td>
-                           {u.id !== token.user.id ?
+      <OverlayComponent onClose={props.onClose}>
+         <Fragment>
+            {addingUserState.addingUser &&
+               <OverlayComponent onClose={cancelAddUser}>
+                  <Form className="addUser" noValidate validated={addingUserState.validated} onSubmit={handleSubmit} onClick={(e: { target: any; currentTarget: any }) => { e.target === e.currentTarget && cancelAddUser() }}>
+                     <Modal.Dialog>
+                        <Modal.Header>
+                           <Modal.Title>Add User</Modal.Title>
+                        </Modal.Header>
+                        <Modal.Body>
+                           <Form.Group controlId="formGroupEmail">
+                              <Form.Label>Email address</Form.Label>
+                              <Form.Control type="email" placeholder="Enter email" required autoFocus
+                                 onChange={(e: FormEvent<HTMLInputElement>) => mergeAddingUserState({ email: e.currentTarget.value || "" })} />
+                           </Form.Group>
+                           <Form.Group controlId="formGroupIsAdmin">
+                              <Form.Check type="checkbox" label="Is Admin?" onChange={(e: FormEvent<HTMLInputElement>) => mergeAddingUserState({ isAdmin: e.currentTarget.checked })} />
+                           </Form.Group>
+                        </Modal.Body>
+                        <Modal.Footer>
+                           {!addingUserState.saving ?
                               <Fragment>
-                                 {u.id === users.confirmDeleteUser && users.deletingUser === u.id ?
-                                    <Loading text="Deleting..." /> :
-                                    u.id === users.confirmDeleteUser ?
-                                       <Fragment>
-                                          <Button variant="secondary" onClick={() => { setUsers(s => { return { ...s, confirmDeleteUser: "" } }) }}>Cancel</Button>&nbsp;
-                                          <Button variant="danger" onClick={() => { setUsers(s => { return { ...s, deletingUser: u.id } }); Api.deleteUser(token, u.id).then(ret => handleUserListResponse(ret)) }}>Confirm Delete</Button>
-                                       </Fragment> :
-                                       <Button variant="danger" onClick={() => { setUsers(s => { return { ...s, confirmDeleteUser: u.id } }) }}>Delete</Button>
-                                 }
+                                 <Button variant="secondary" type="button" onClick={cancelAddUser}>Cancel</Button>
+                                 <Button variant="primary" type="submit">Add User</Button>
                               </Fragment> :
-                              "Cannot delete logged in user"}
-                        </td>
-                     </tr>
-                  )
-               })}
-            </tbody>
-            <tfoot>
-               <tr>
-                  <td colSpan={4}>
-                     {users.message && <Alert variant="primary">{users.message}</Alert>}
-                     <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-around" }}>
-                        <Button variant="secondary" type="button" onClick={props.onClose}>Cancel</Button>
-                        <Button variant="primary" type="submit" onClick={() => { setUsers(u => { return { ...u, message: "" } }); setAddingUserState({ addingUser: true, email: "", isAdmin: false, validated: false, saving: false }) }}>Add User</Button>
-                     </div>
-                  </td>
-               </tr>
-            </tfoot>
-         </Table>
-      </div>
+                              <Loading text="Adding User..." />}
+                        </Modal.Footer>
+                     </Modal.Dialog>
+                  </Form>
+               </OverlayComponent>
+            }
+            <Table striped bordered hover style={{ backgroundColor: "white", }}>
+               <thead>
+                  <tr>
+                     <th>Email</th>
+                     <th>Admin</th>
+                     <th>Last Login</th>
+                     <th>Actions</th>
+                  </tr>
+               </thead>
+               <tbody>
+                  {users.users.map(u => {
+                     return (
+                        <tr key={u.id}>
+                           <td>{u.email}</td>
+                           <td>{u.isAdmin ? "Yes" : "No"}</td>
+                           <td>{u.lastLogin ? moment(u.lastLoginDate).format("MM/D/YYYY, h:mm:ss a") : "Never"}</td>
+                           <td>
+                              {u.id !== token.user.id ?
+                                 <Fragment>
+                                    {u.id === users.confirmDeleteUser && users.deletingUser === u.id ?
+                                       <Loading text="Deleting..." /> :
+                                       u.id === users.confirmDeleteUser ?
+                                          <Fragment>
+                                             <Button variant="secondary" onClick={() => { setUsers(s => { return { ...s, confirmDeleteUser: "" } }) }}>Cancel</Button>&nbsp;
+                                          <Button variant="danger" onClick={() => { setUsers(s => { return { ...s, deletingUser: u.id } }); Api.deleteUser(token, u.id).then(ret => handleUserListResponse(ret)) }}>Confirm Delete</Button>
+                                          </Fragment> :
+                                          <Button variant="danger" onClick={() => { setUsers(s => { return { ...s, confirmDeleteUser: u.id } }) }}>Delete</Button>
+                                    }
+                                 </Fragment> :
+                                 "Cannot delete logged in user"}
+                           </td>
+                        </tr>
+                     )
+                  })}
+               </tbody>
+               <tfoot>
+                  <tr>
+                     <td colSpan={4}>
+                        {users.message && <Alert variant="primary">{users.message}</Alert>}
+                        <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-around" }}>
+                           <Button variant="secondary" type="button" onClick={props.onClose}>Cancel</Button>
+                           <Button variant="primary" type="submit" onClick={() => { setUsers(u => { return { ...u, message: "" } }); setAddingUserState({ addingUser: true, email: "", isAdmin: false, validated: false, saving: false }) }}>Add User</Button>
+                        </div>
+                     </td>
+                  </tr>
+               </tfoot>
+            </Table>
+         </Fragment>
+      </OverlayComponent>
    )
 }
 

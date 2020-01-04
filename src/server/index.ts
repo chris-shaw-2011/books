@@ -37,8 +37,15 @@ import BookStatuses, { BookWithStatus } from "./BookStatuses"
 import Token from "../shared/api/Token";
 import { Mutex } from 'async-mutex';
 import cookie from "cookie"
+import fastifyMultipart from "fastify-multipart"
+import pump from "pump"
+import Converter from "./Converter"
+import ConversionUpdateResponse from "../shared/api/ConversionUpdateResponse"
+import UploadResponse from "../shared/api/UploadResponse"
+import ConversionUpdateRequest from "../shared/api/ConversionUpdateRequest";
+import { ConverterStatus } from "../shared/ConverterStatus"
 
-const server = fastify({ logger: true });
+const server = fastify({ logger: true, bodyLimit: 10_000_000_000 });
 const settings = new Settings()
 var noUsers = false;
 var checksumSecret = "";
@@ -94,6 +101,19 @@ const createMailer = () => {
 }
 var mailer = createMailer()
 const changeBookStatusMutex = new Mutex()
+var conversions = new Map<string, Converter>()
+const conversionMutex = new Mutex();
+
+server.register(fastifyMultipart, {
+   limits: {
+      fieldNameSize: 100, // Max field name size in bytes
+      fieldSize: 10_000_000_000, // Max field value size in bytes
+      fields: 10,         // Max number of non-file fields
+      fileSize: 10_000_000_000,      // For multipart forms, the max file size
+      files: 1,           // Max number of file fields
+      headerPairs: 2000   // Max number of header key=>value pairs
+   }
+})
 
 sqlite.open("db.sqlite").then(async db => {
    const getAllUsers = async (message?: string) => {
@@ -429,6 +449,60 @@ sqlite.open("db.sqlite").then(async db => {
       return await bookList(statusRequest.token)
    })
 
+   server.post("/upload", (request, reply) => {
+      validateRequest(request, reply).then(token => {
+         if (!(token instanceof ServerToken)) {
+            reply.send(token)
+            return;
+         }
+
+         const id = uuid.v4()
+         const mp = request.multipart(handler, onEnd)
+         const fileName = `${id}.aax`
+         const filePath = path.join(settings.uploadLocation, fileName)
+
+         /*mp.on('field', function (key: any, value: any) {
+         })*/
+
+         function onEnd(err: Error) {
+            var conversion = new Converter();
+
+            conversions.set(id, conversion)
+
+            conversion.convert(fileName, settings.uploadLocation, conversionMutex).then(() => {
+               setTimeout(() => conversions.delete(id), 60000)
+            })
+
+            reply.code(200).send(new UploadResponse({ type: ApiMessageType.UploadResponse, conversionId: id }))
+         }
+
+         function handler(field: string, file: any, filename: string, encoding: string, mimetype: string) {
+            pump(file, fs.createWriteStream(filePath))
+         }
+      })
+   })
+
+   server.post("/conversionUpdate", async (request, reply) => {
+      var updateRequest = new ConversionUpdateRequest(request.body)
+      var token = await validateRequest(request, reply);
+      var conversion = conversions.get(updateRequest.conversionId)
+      var response = { conversionPercent: 100, errorMessage: "", converterStatus: ConverterStatus.Complete }
+
+      if (!(token instanceof ServerToken)) {
+         return token;
+      }
+
+      if (conversion) {
+         if (conversion.status !== ConverterStatus.Error) {
+            await conversion.waitForUpdate(updateRequest.knownPercent, updateRequest.knownConverterStatus)
+         }
+
+         response = { conversionPercent: conversion.percentComplete, errorMessage: conversion.errorMessage, converterStatus: conversion.status }
+      }
+
+      return new ConversionUpdateResponse({ ...response, type: ApiMessageType.ConversionUpdateResponse })
+   })
+
    server.get("/files/*", (request, reply) => {
       validateRequest(request, reply).then(token => {
          var filePath = request.params["*"] as string;
@@ -440,7 +514,7 @@ sqlite.open("db.sqlite").then(async db => {
             reply.header("Cache-control", `public, max-age=${30 * 24 * 60 * 60}`)
             sendFile(request, reply, settings.baseBooksPath, filePath)
          }
-         else if (filePath.endsWith(".m4b")) {
+         else if (filePath.endsWith(".m4b") || filePath.endsWith(".mp3")) {
             var splitPath = filePath.split("/");
 
             reply.header("Content-Disposition", `attachment; filename=\"${splitPath[splitPath.length - 1]}\"`)
@@ -511,7 +585,7 @@ async function Recursive(pathTree: string[], name: string): Promise<Directory | 
 
          console.log(`${bookPath} - reading tags`)
 
-         const metadata = (await mm.parseFile(bookPath));
+         const metadata = (await mm.parseFile(bookPath, { skipPostHeaders: true, skipCovers: fs.existsSync(photoPath), includeChapters: false, }));
          const tags = metadata.common
 
          if (tags) {

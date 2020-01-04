@@ -103,6 +103,11 @@ const EditSettings: React.FC<Props> = (props: Props) => {
                         <Form.Control type="text" placeholder="Enter Base Path" required defaultValue={settings.baseBooksPath}
                            onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ baseBooksPath: e.currentTarget.value || "" })} />
                      </Form.Group>
+                     <Form.Group controlId="fromGroupUploadLocation">
+                        <Form.Label>Upload Location</Form.Label>
+                        <Form.Control type="text" placeholder="Enter Upload Location" required defaultValue={settings.uploadLocation}
+                           onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ uploadLocation: e.currentTarget.value || "" })} />
+                     </Form.Group>
                      <Form.Group controlId="fromGroupInviteEmail">
                         <Form.Label>Invite Email Address</Form.Label>
                         <Form.Control type="email" placeholder="Enter Invite Email Address" required defaultValue={settings.inviteEmail}

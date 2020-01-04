@@ -16,6 +16,10 @@ import UserRequest from "../shared/api/UserRequest";
 import UserResponse from "../shared/api/UserResponse";
 import { Status } from "../shared/Book";
 import ChangeBookStatusRequest from "../shared/api/ChangeBookStatusRequest";
+import ConversionUpdateRequest from "../shared/api/ConversionUpdateRequest";
+import ConversionUpdateResponse from "../shared/api/ConversionUpdateResponse";
+import UploadResponse from "../shared/api/UploadResponse";
+import { ConverterStatus } from "../shared/ConverterStatus";
 
 class ApiClass {
    auth = async (email: string, password: string) => {
@@ -63,6 +67,10 @@ class ApiClass {
       return await this.fetch("/changeBookStatus", new ChangeBookStatusRequest({ bookId: bookId, status: status, token: token, type: ApiMessageType.ChangeBookStatusRequest }))
    }
 
+   conversionUpdate = async (conversionId: string, knownPercent: number, knownConverterStatus: ConverterStatus) => {
+      return await this.fetch("/conversionUpdate", new ConversionUpdateRequest({ type: ApiMessageType.ConversionUpdateRequest, conversionId: conversionId, knownPercent: knownPercent, knownConverterStatus }))
+   }
+
    fetch = async (url: string, jsonSend?: any) => {
       var result = await fetch(url, {
          method: "POST",
@@ -103,6 +111,12 @@ class ApiClass {
       }
       else if (json.type === ApiMessageType.UserResponse) {
          return new UserResponse(json as UserResponse)
+      }
+      else if (json.type === ApiMessageType.ConversionUpdateResponse) {
+         return new ConversionUpdateResponse(json as ConversionUpdateResponse)
+      }
+      else if (json.type === ApiMessageType.UploadResponse) {
+         return new UploadResponse(json as UploadResponse)
       }
       else {
          throw Error(`Unknown ApiMessageType: ${json.type}`)
