@@ -1,6 +1,6 @@
 import React, { useState, Fragment, useEffect, useContext } from "react"
 import OverlayComponent from "./OverlayComponent"
-import { Form, Modal, Button } from "react-bootstrap"
+import { Form, Modal, Button, ListGroup } from "react-bootstrap"
 import uuid from "uuid";
 import { Line } from "rc-progress"
 import Api from "./Api";
@@ -45,7 +45,14 @@ export default (props: Props) => {
                <Modal.Title>Upload Files</Modal.Title>
             </Modal.Header>
             <Modal.Body>
-               {fileUploadRowKeys.map(k => <FileUploadRow onUploadStarted={onUploadStarted} key={k} onComplete={() => onComplete(k)} />)}
+               <h5>Allowed Uploads</h5>
+               <ul>
+                  <li>Books downloaded from audible (.aax)</li>
+                  <li>Zip file containing mp3s of a book</li>
+               </ul>
+               <ListGroup>
+                  {fileUploadRowKeys.map(k => <ListGroup.Item><FileUploadRow onUploadStarted={onUploadStarted} key={k} onComplete={() => onComplete(k)} /></ListGroup.Item>)}
+               </ListGroup>
             </Modal.Body>
             <Modal.Footer>
                <Button variant="secondary" onClick={props.onClose}>Close</Button>
@@ -83,7 +90,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
    const fileName = uploadState.fileName
 
    const uploadFile = (files: FileList | null) => {
-      if (!files || !files.length || !files[0].name.endsWith(".aax")) {
+      if (!files || !files.length || !(files[0].name.endsWith(".aax") || files[0].name.endsWith(".zip"))) {
 
          console.log("wrong file type")
          return;
@@ -96,6 +103,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
       setUploadState(prev => { return { ...prev, uploadState, percent: 0, status: UploadStatus.Uploading, fileName: file.name } })
       props.onUploadStarted()
 
+      data.append("fileName", file.name)
       data.append("file", file)
 
       request.open("POST", "/upload", true)
@@ -130,7 +138,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
          var ret = await Api.conversionUpdate(conversionId, percent, converterStatus)
 
          if (ret instanceof ConversionUpdateResponse) {
-            var status = ret.converterStatus === ConverterStatus.Error ? UploadStatus.Error : ret.conversionPercent === 100 ? UploadStatus.Complete : UploadStatus.Converting
+            var status = ret.converterStatus === ConverterStatus.Error ? UploadStatus.Error : ret.converterStatus === ConverterStatus.Complete ? UploadStatus.Complete : UploadStatus.Converting
             setUploadState({ percent: ret.conversionPercent, status: status, conversionId: conversionId, errorMessage: ret.errorMessage, forceUpdate: {}, converterStatus: ret.converterStatus, fileName: fileName, })
 
             if (status === UploadStatus.Complete) {
@@ -156,7 +164,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
             {status === UploadStatus.Pending ?
                <Fragment>
                   <div>
-                     <Form.Control type="file" required placeholder="Specify File" accept=".aax" onChange={(e: React.ChangeEvent<HTMLInputElement>) => uploadFile(e.currentTarget.files)} />
+                     <Form.Control type="file" required placeholder="Specify File" accept=".aax,.zip" onChange={(e: React.ChangeEvent<HTMLInputElement>) => uploadFile(e.currentTarget.files)} />
                   </div>
                </Fragment> :
                <Fragment>

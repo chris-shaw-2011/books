@@ -207,7 +207,12 @@ sqlite.open("db.sqlite").then(async db => {
 
    if (settings.baseBooksPath) {
       console.log("Loading all books into memory")
-      books = await Recursive([], "")
+      try {
+         books = await Recursive([], "")
+      }
+      catch {
+
+      }
       console.log(`${books.bookCount()} Books loaded, starting website`)
    }
 
@@ -458,11 +463,17 @@ sqlite.open("db.sqlite").then(async db => {
 
          const id = uuid.v4()
          const mp = request.multipart(handler, onEnd)
-         const fileName = `${id}.aax`
-         const filePath = path.join(settings.uploadLocation, fileName)
+         var fileName = ""
+         var filePath = ""
 
-         /*mp.on('field', function (key: any, value: any) {
-         })*/
+         mp.on('field', function (key: any, value: any) {
+            if (key === "fileName") {
+               var parts = (value as string).split(".")
+
+               fileName = `${id}.${parts[parts.length - 1]}`
+               filePath = path.join(settings.uploadLocation, fileName)
+            }
+         })
 
          function onEnd(err: Error) {
             var conversion = new Converter();
@@ -577,7 +588,7 @@ async function Recursive(pathTree: string[], name: string): Promise<Directory | 
             dir.items.push(result)
          }
       }
-      else if (p.isFile() && p.name.endsWith(".m4b")) {
+      else if (p.isFile() && (p.name.endsWith(".m4b") || p.name.endsWith(".mp3"))) {
          var book = new Book();
          var bookPath = path.join(currPath, p.name);
          var photoPath = bookPath + ".jpg"
