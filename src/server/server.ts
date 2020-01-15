@@ -1,9 +1,7 @@
-import fastify, { FastifyReply } from "fastify";
+import fastify from "fastify";
 import fs from "fs";
 import path from "path";
 import { IncomingMessage, ServerResponse } from "http";
-import send from "send"
-import { PassThrough } from "readable-stream"
 import User from "../shared/User"
 import Unauthorized from "../shared/api/Unauthorized"
 import AccessDenied from "../shared/api/AccessDenied"
@@ -37,6 +35,7 @@ import db from "./Database"
 import bookList from "./BookList"
 import Books from "../shared/api/Books"
 import { Status } from "../shared/Book";
+import fastifyStatic from "fastify-static"
 
 const authorizationExpiration = new Map<string, moment.Moment>()
 var rootDir = __dirname;
@@ -82,33 +81,37 @@ const validatePassword = async (email: string, password: string, reply: fastify.
 const passwordHash = async (password: string) => {
    return await bcrypt.hash(password, 10)
 }
-const validateRequest = async (request: fastify.FastifyRequest<IncomingMessage, fastify.DefaultQuery, fastify.DefaultParams, fastify.DefaultHeaders, any>, reply: fastify.FastifyReply<ServerResponse>, adminOnly?: boolean) => {
+const requestToken = (request: fastify.FastifyRequest<IncomingMessage, fastify.DefaultQuery, fastify.DefaultParams, fastify.DefaultHeaders, any>) => {
    const cookies = cookie.parse(request.headers["cookie"] || "") || {};
    const tokenJson = cookies.loginCookie ? new ServerToken(tryParse(cookies.loginCookie)) : undefined
-   const token = new ServerToken(tokenJson)
 
-   if (!tokenJson || !await token.isChecksumValid(db.settings.checksumSecret)) {
-      reply.code(401);
+   return new ServerToken(tokenJson)
+}
+const validateRequest = async (request: fastify.FastifyRequest<IncomingMessage, fastify.DefaultQuery, fastify.DefaultParams, fastify.DefaultHeaders, any>, reply: fastify.FastifyReply<ServerResponse>) => {
+   const token = requestToken(request)
 
-      return new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In" })
-   }
-   else if (adminOnly && !token.user.isAdmin) {
-      reply.code(403)
-
-      return new AccessDenied({ type: ApiMessageType.AccessDenied, message: "Access Denied" })
+   if (!token.user.id || !await token.isChecksumValid(db.settings.checksumSecret)) {
+      reply.code(401).send(new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In" }))
    }
    else {
       var expires = authorizationExpiration.has(token.authorization) ? authorizationExpiration.get(token.authorization) : undefined;
 
       if (!expires || expires < moment()) {
-         reply.code(401)
+         reply.code(401).send(new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In again" }))
 
-         return new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In again" })
+         return;
       }
 
       authorizationExpiration.set(token.authorization, getNewExpiration())
 
       return token;
+   }
+}
+const validateAdminRequest = async (request: fastify.FastifyRequest<IncomingMessage, fastify.DefaultQuery, fastify.DefaultParams, fastify.DefaultHeaders, any>, reply: fastify.FastifyReply<ServerResponse>) => {
+   var resp = await validateRequest(request, reply);
+
+   if (resp instanceof ServerToken && !resp.user.isAdmin) {
+      reply.code(403).send(new AccessDenied({ type: ApiMessageType.AccessDenied, message: "Access Denied" }))
    }
 }
 const statusesForUser = async (userId: string) => {
@@ -117,6 +120,9 @@ const statusesForUser = async (userId: string) => {
    return new BookStatuses(json ? JSON.parse(json) : undefined)
 }
 
+while (!fs.existsSync(path.join(rootDir, "package.json"))) {
+   rootDir = path.join(rootDir, "../")
+}
 
 server.register(fastifyMultipart, {
    limits: {
@@ -127,6 +133,11 @@ server.register(fastifyMultipart, {
       files: 1,           // Max number of file fields
       headerPairs: 2000   // Max number of header key=>value pairs
    }
+})
+
+server.register(fastifyStatic, {
+   root: rootDir,
+   prefix: "/unused/",
 })
 
 server.post("/auth", async (request, reply) => {
@@ -144,12 +155,8 @@ server.post("/auth", async (request, reply) => {
    return await validatePassword(user.email, user.password, reply)
 })
 
-server.post("/books", async (request, reply) => {
-   var token = await validateRequest(request, reply);
-
-   if (!(token instanceof ServerToken)) {
-      return token;
-   }
+server.post("/books", { preHandler: validateRequest }, async (request, reply) => {
+   var token = requestToken(request);
 
    if (!db.settings.baseBooksPath || !db.settings.inviteEmail || !db.settings.inviteEmailPassword || !db.settings.uploadLocation) {
       if (token.user.isAdmin) {
@@ -166,23 +173,12 @@ server.post("/books", async (request, reply) => {
    return new Books({ type: ApiMessageType.Books, directory: books, bookStatuses: statuses })
 })
 
-server.post("/settings", async (request, reply) => {
-   var token = await validateRequest(request, reply, true);
-
-   if (!(token instanceof ServerToken)) {
-      return token;
-   }
-
-   return new SettingsRequired({ type: ApiMessageType.SettingsRequired, settings: db.settings, message: "" });
+server.post("/settings", { preHandler: validateAdminRequest }, (request, reply) => {
+   reply.send(new SettingsRequired({ type: ApiMessageType.SettingsRequired, settings: db.settings, message: "" }));
 })
 
-server.post("/updateSettings", async (request, reply) => {
+server.post("/updateSettings", { preHandler: validateAdminRequest }, (request, reply) => {
    var settingsUpdate = new SettingsUpdate(request.body)
-   var token = await validateRequest(request, reply, true);
-
-   if (!(token instanceof ServerToken)) {
-      return token;
-   }
 
    db.settings.inviteEmail = settingsUpdate.settings.inviteEmail
    db.settings.inviteEmailPassword = settingsUpdate.settings.inviteEmailPassword
@@ -190,7 +186,7 @@ server.post("/updateSettings", async (request, reply) => {
 
    if (settingsUpdate.settings.baseBooksPath !== db.settings.baseBooksPath) {
       if (!fs.existsSync(settingsUpdate.settings.baseBooksPath)) {
-         return new SettingsUpdateResponse({ type: ApiMessageType.SettingsUpdateResponse, message: `Path "${settingsUpdate.settings.baseBooksPath}" does not exist`, successful: false })
+         reply.send(new SettingsUpdateResponse({ type: ApiMessageType.SettingsUpdateResponse, message: `Path "${settingsUpdate.settings.baseBooksPath}" does not exist`, successful: false }))
       }
 
       db.settings.baseBooksPath = settingsUpdate.settings.baseBooksPath
@@ -199,27 +195,15 @@ server.post("/updateSettings", async (request, reply) => {
       bookList.loadBooks()
    }
 
-   return new SettingsUpdateResponse({ type: ApiMessageType.SettingsUpdateResponse, message: "", successful: true })
+   reply.send(new SettingsUpdateResponse({ type: ApiMessageType.SettingsUpdateResponse, message: "", successful: true }))
 })
 
-server.post("/users", async (request, reply) => {
-   var token = await validateRequest(request, reply, true);
-
-   if (!(token instanceof ServerToken)) {
-      return token;
-   }
-
+server.post("/users", { preHandler: validateAdminRequest }, async (request, reply) => {
    return await getAllUsers()
 })
 
-server.post("/addUser", async (request, reply) => {
+server.post("/addUser", { preHandler: validateAdminRequest }, async (request, reply) => {
    var userRequest = new AddUserRequest(request.body)
-   var token = await validateRequest(request, reply, true);
-
-   if (!(token instanceof ServerToken)) {
-      return token;
-   }
-
    var message = `${userRequest.user.email} has been invited`
 
    if (!userRequest.user.email) {
@@ -251,13 +235,8 @@ server.post("/addUser", async (request, reply) => {
    return await getAllUsers(message)
 })
 
-server.post("/deleteUser", async (request, reply) => {
+server.post("/deleteUser", { preHandler: validateAdminRequest }, async (request, reply) => {
    var userRequest = new DeleteUserRequest(request.body)
-   var token = await validateRequest(request, reply, true);
-
-   if (!(token instanceof ServerToken)) {
-      return token;
-   }
 
    await db.run("DELETE FROM User WHERE id = ?", [userRequest.userId])
 
@@ -308,14 +287,8 @@ server.post("/changePassword", async (request, reply) => {
    return await validatePassword(changeRequest.token.user.email, changeRequest.newPassword, reply)
 })
 
-server.post("/changeBookStatus", async (request, reply) => {
+server.post("/changeBookStatus", { preHandler: validateRequest }, async (request, reply) => {
    var statusRequest = new ChangeBookStatusRequest(request.body)
-   var token = await validateRequest(request, reply);
-
-   if (!(token instanceof ServerToken)) {
-      return token;
-   }
-
    const release = await changeBookStatusMutex.acquire()
    var statuses: BookStatuses
 
@@ -340,54 +313,42 @@ server.post("/changeBookStatus", async (request, reply) => {
    return new Books({ type: ApiMessageType.Books, directory: books, bookStatuses: statuses })
 })
 
-server.post("/upload", (request, reply) => {
-   validateRequest(request, reply).then(token => {
-      if (!(token instanceof ServerToken)) {
-         reply.send(token)
-         return;
-      }
+server.post("/upload", { preHandler: validateRequest }, (request, reply) => {
+   const id = uuid.v4()
+   const mp = request.multipart(handler, onEnd)
+   var fileName = ""
+   var filePath = ""
 
-      const id = uuid.v4()
-      const mp = request.multipart(handler, onEnd)
-      var fileName = ""
-      var filePath = ""
+   mp.on('field', function (key: any, value: any) {
+      if (key === "fileName") {
+         var parts = (value as string).split(".")
 
-      mp.on('field', function (key: any, value: any) {
-         if (key === "fileName") {
-            var parts = (value as string).split(".")
-
-            fileName = `${id}.${parts[parts.length - 1]}`
-            filePath = path.join(db.settings.uploadLocation, fileName)
-         }
-      })
-
-      function onEnd(err: Error) {
-         var conversion = new Converter();
-
-         conversions.set(id, conversion)
-
-         conversion.convert(fileName, db.settings.uploadLocation, conversionMutex).then(() => {
-            setTimeout(() => conversions.delete(id), 60000)
-         })
-
-         reply.code(200).send(new UploadResponse({ type: ApiMessageType.UploadResponse, conversionId: id }))
-      }
-
-      function handler(field: string, file: any, filename: string, encoding: string, mimetype: string) {
-         pump(file, fs.createWriteStream(filePath))
+         fileName = `${id}.${parts[parts.length - 1]}`
+         filePath = path.join(db.settings.uploadLocation, fileName)
       }
    })
+
+   function onEnd(err: Error) {
+      var conversion = new Converter();
+
+      conversions.set(id, conversion)
+
+      conversion.convert(fileName, db.settings.uploadLocation, conversionMutex).then(() => {
+         setTimeout(() => conversions.delete(id), 60000)
+      })
+
+      reply.code(200).send(new UploadResponse({ type: ApiMessageType.UploadResponse, conversionId: id }))
+   }
+
+   function handler(field: string, file: any, filename: string, encoding: string, mimetype: string) {
+      pump(file, fs.createWriteStream(filePath))
+   }
 })
 
-server.post("/conversionUpdate", async (request, reply) => {
+server.post("/conversionUpdate", { preHandler: validateRequest }, async (request, reply) => {
    var updateRequest = new ConversionUpdateRequest(request.body)
-   var token = await validateRequest(request, reply);
    var conversion = conversions.get(updateRequest.conversionId)
    var response = { conversionPercent: 100, errorMessage: "", converterStatus: ConverterStatus.Complete }
-
-   if (!(token instanceof ServerToken)) {
-      return token;
-   }
 
    if (conversion) {
       if (conversion.status !== ConverterStatus.Error) {
@@ -400,35 +361,28 @@ server.post("/conversionUpdate", async (request, reply) => {
    return new ConversionUpdateResponse({ ...response, type: ApiMessageType.ConversionUpdateResponse })
 })
 
-server.get("/files/*", (request, reply) => {
-   validateRequest(request, reply).then(token => {
-      var filePath = request.params["*"] as string;
+server.get("/files/*", { preHandler: validateRequest }, (request, reply) => {
+   var filePath = request.params["*"] as string;
 
-      if (!(token instanceof ServerToken)) {
-         reply.send(token)
-      }
-      else if (filePath.endsWith(".jpg")) {
-         reply.header("Cache-control", `public, max-age=${30 * 24 * 60 * 60}`)
-         sendFile(request, reply, db.settings.baseBooksPath, filePath)
-      }
-      else if (filePath.endsWith(".m4b") || filePath.endsWith(".mp3")) {
-         var splitPath = filePath.split("/");
+   if (filePath.endsWith(".jpg")) {
+      reply.sendFile(filePath, db.settings.baseBooksPath)
+   }
+   else if (filePath.endsWith(".m4b") || filePath.endsWith(".mp3")) {
+      var splitPath = filePath.split("/");
 
-         reply.header("Content-Disposition", `attachment; filename=\"${splitPath[splitPath.length - 1]}\"`)
-
-         sendFile(request, reply, db.settings.baseBooksPath, filePath)
-      }
-      else {
-         reply.code(404).send("Not Found");
-      }
-   })
+      reply.header("Content-Disposition", `attachment; filename=\"${splitPath[splitPath.length - 1]}\"`)
+      reply.sendFile(filePath, db.settings.baseBooksPath)
+   }
+   else {
+      reply.code(404).send("Not Found");
+   }
 })
 
 //This handles requests to the root of the site in production
 server.get("/*", (request, reply) => {
    var filePath = request.params["*"] as string || "index.html"
 
-   sendFile(request, reply, path.join(rootDir, "build"), filePath)
+   reply.sendFile(filePath, path.join(rootDir, "build"))
 })
 
 
@@ -443,80 +397,3 @@ const start = async () => {
 }
 
 export default { start: start };
-
-//Function copied from fastify-static
-function sendFile(request: fastify.FastifyRequest<IncomingMessage, fastify.DefaultQuery, fastify.DefaultParams, fastify.DefaultHeaders, any>, reply: FastifyReply<ServerResponse>, root: string, path: string) {
-   const stream = send(request.raw, path, { root: root })
-   var resolvedFilename: string;
-   var finished = false;
-
-   stream.on('file', function (file) {
-      resolvedFilename = file
-   })
-
-   const wrap = new PassThrough({
-      flush(cb) {
-         if (reply.res.statusCode === 304) {
-            reply.send('')
-         }
-         cb(undefined, undefined)
-      }
-   })
-   const getHeader = reply.getHeader.bind(reply);
-   const setHeader = reply.header.bind(reply);
-   const socket = request.raw.socket;
-
-   Object.defineProperty(wrap, "getHeader", {
-      get() {
-         return getHeader
-      }
-   })
-   Object.defineProperty(wrap, "setHeader", {
-      get() {
-         return setHeader
-      }
-   })
-   Object.defineProperty(wrap, "socket", {
-      get() {
-         return socket;
-      }
-   })
-   Object.defineProperty(wrap, "finished", {
-      get() {
-         return finished
-      },
-      set(value: boolean) {
-         finished = value;
-      }
-   })
-   Object.defineProperty(wrap, 'filename', {
-      get() {
-         return resolvedFilename
-      }
-   })
-   Object.defineProperty(wrap, 'statusCode', {
-      get() {
-         return reply.res.statusCode
-      },
-      set(code) {
-         reply.code(code)
-      }
-   })
-
-   wrap.on('pipe', function () {
-      reply.send(wrap)
-   })
-
-   stream.on('error', function (err) {
-      if (err) {
-         if (err.code === 'ENOENT') {
-            return reply.callNotFound()
-         }
-         reply.send(err)
-      }
-   })
-
-   // we cannot use pump, because send error
-   // handling is not compatible
-   stream.pipe(wrap)
-}
