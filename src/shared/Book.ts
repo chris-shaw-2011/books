@@ -19,7 +19,7 @@ export default class Book {
    id = ""
    readonly type = ItemType.book
 
-   constructor(json?: Book) {
+   constructor(json?: Book, status?: Status) {
       if (json) {
          this.name = json.name
          this.author = json.author
@@ -31,6 +31,10 @@ export default class Book {
          this.comment = json.comment
          this.duration = json.duration
          this.id = json.id
+      }
+
+      if (status) {
+         this.status = status
       }
    }
 }
