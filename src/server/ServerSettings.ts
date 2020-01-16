@@ -1,17 +1,9 @@
-import uuid from "uuid";
-import Settings from "../shared/Settings"
-import sqlite from "sqlite"
 import nodemailer from "nodemailer"
+import sqlite from "sqlite"
+import uuid from "uuid"
+import Settings from "../shared/Settings"
 
 export default class ServerSettings implements Settings {
-   private _baseBooksPath = ""
-   private _checksumSecret = ""
-   private _inviteEmail = ""
-   private _inviteEmailPassword = ""
-   private _uploadLocation = ""
-   private _db: sqlite.Database
-   mailer = this.createMailer()
-
    get baseBooksPath() {
       return this._baseBooksPath
    }
@@ -63,6 +55,13 @@ export default class ServerSettings implements Settings {
          this.updateDbSetting("uploadLocation", value)
       }
    }
+   mailer = this.createMailer()
+   private _baseBooksPath = ""
+   private _checksumSecret = ""
+   private _inviteEmail = ""
+   private _inviteEmailPassword = ""
+   private _uploadLocation = ""
+   private _db: sqlite.Database
 
    constructor(db: sqlite.Database) {
       this._db = db
@@ -73,19 +72,19 @@ export default class ServerSettings implements Settings {
          switch (row.key) {
             case "baseBooksPath": {
                this._baseBooksPath = row.value
-               break;
+               break
             }
             case "checksumSecret": {
-               this._checksumSecret = row.value;
-               break;
+               this._checksumSecret = row.value
+               break
             }
             case "inviteEmail": {
                this._inviteEmail = row.value
-               break;
+               break
             }
             case "inviteEmailPassword": {
                this._inviteEmailPassword = row.value
-               break;
+               break
             }
             case "uploadLocation": {
                this._uploadLocation = row.value
@@ -97,10 +96,15 @@ export default class ServerSettings implements Settings {
       if (!this.checksumSecret) {
          this.checksumSecret = uuid.v4()
 
+         // tslint:disable-next-line: no-console
          console.log("Creating checksum secret")
       }
 
       this.mailer = this.createMailer()
+   }
+
+   toJSON() {
+      return new Settings(this)
    }
 
    private updateDbSetting(name: string, value: string) {
@@ -113,11 +117,7 @@ export default class ServerSettings implements Settings {
          auth: {
             user: this.inviteEmail,
             pass: this.inviteEmailPassword,
-         }
+         },
       })
-   }
-
-   toJSON() {
-      return new Settings(this)
    }
 }

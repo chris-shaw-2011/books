@@ -1,34 +1,34 @@
-import React, { useState, FormEvent } from "react"
-import { Form, Button, Modal, Alert } from "react-bootstrap"
-import Api from "./Api"
-import Loading from "./Loading"
+import React, { FormEvent, useState } from "react"
+import { Alert, Button, Form, Modal } from "react-bootstrap"
+import AccessDenied from "../shared/api/AccessDenied"
 import Token from "../shared/api/Token"
 import Unauthorized from "../shared/api/Unauthorized"
-import AccessDenied from "../shared/api/AccessDenied"
+import Api from "./Api"
+import Loading from "./Loading"
 
 interface Props {
    onAuthenticated: (token: Token) => void,
    message?: string,
 }
 
-const LogIn: React.FC<Props> = (props: Props) => {
+export default (props: Props) => {
    const [email, setEmail] = useState("")
    const [password, setPassword] = useState("")
-   const [validated, setValidated] = useState(false);
+   const [validated, setValidated] = useState(false)
    const [logInState, setLogInState] = useState({ loggingIn: false, failedMessage: "" })
    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-      const form = event.currentTarget;
+      const form = event.currentTarget
 
-      event.preventDefault();
-      event.stopPropagation();
+      event.preventDefault()
+      event.stopPropagation()
 
       if (form.checkValidity()) {
          setLogInState({ loggingIn: true, failedMessage: "" })
-         var ret = await Api.auth(email, password);
+         const ret = await Api.auth(email, password)
 
          if (ret instanceof Token) {
             props.onAuthenticated(ret)
-            return;
+            return
          }
          else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
             setLogInState({ loggingIn: false, failedMessage: ret.message })
@@ -38,11 +38,11 @@ const LogIn: React.FC<Props> = (props: Props) => {
          }
       }
 
-      setValidated(true);
-   };
+      setValidated(true)
+   }
 
    return (
-      <Form className="logIn" noValidate validated={validated} onSubmit={handleSubmit}>
+      <Form className="logIn" noValidate={true} validated={validated} onSubmit={handleSubmit}>
          <Modal.Dialog>
             <Modal.Header>
                <Modal.Title>Log In</Modal.Title>
@@ -51,13 +51,21 @@ const LogIn: React.FC<Props> = (props: Props) => {
                {logInState.failedMessage ? <Alert variant="danger">{logInState.failedMessage}</Alert> : props.message ? <Alert variant="danger">{props.message}</Alert> : null}
                <Form.Group controlId="formGroupEmail">
                   <Form.Label>Email address</Form.Label>
-                  <Form.Control type="email" placeholder="Enter email" required
-                     onChange={(e: FormEvent<HTMLInputElement>) => setEmail(e.currentTarget.value || "")} />
+                  <Form.Control
+                     type="email"
+                     placeholder="Enter email"
+                     required={true}
+                     onChange={(e: FormEvent<HTMLInputElement>) => setEmail(e.currentTarget.value || "")}
+                  />
                </Form.Group>
                <Form.Group controlId="formGroupPassword">
                   <Form.Label>Password</Form.Label>
-                  <Form.Control type="password" placeholder="Password" required
-                     onChange={(e: FormEvent<HTMLInputElement>) => setPassword(e.currentTarget.value || "")} />
+                  <Form.Control
+                     type="password"
+                     placeholder="Password"
+                     required={true}
+                     onChange={(e: FormEvent<HTMLInputElement>) => setPassword(e.currentTarget.value || "")}
+                  />
                </Form.Group>
             </Modal.Body>
             <Modal.Footer>
@@ -67,5 +75,3 @@ const LogIn: React.FC<Props> = (props: Props) => {
       </Form>
    )
 }
-
-export default LogIn;

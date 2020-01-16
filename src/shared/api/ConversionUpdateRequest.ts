@@ -1,5 +1,5 @@
-import ApiMessage, { ApiMessageType } from "./ApiMessage"
 import { ConverterStatus } from "../ConverterStatus"
+import ApiMessage, { ApiMessageType } from "./ApiMessage"
 
 export default class ConversionUpdateRequest extends ApiMessage {
    knownPercent = 0

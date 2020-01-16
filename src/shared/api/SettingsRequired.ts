@@ -1,5 +1,5 @@
-import ApiMessage, { ApiMessageType } from "./ApiMessage"
 import Settings from "../Settings"
+import ApiMessage, { ApiMessageType } from "./ApiMessage"
 
 export default class SettingsRequired extends ApiMessage {
    message: string = ""

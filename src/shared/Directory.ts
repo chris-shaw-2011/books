@@ -1,6 +1,6 @@
 import Book, { Status } from "./Book"
-import { ItemType } from "./ItemType"
 import BookStatuses from "./BookStatuses"
+import { ItemType } from "./ItemType"
 
 export default class Directory {
    items: Array<Directory | Book> = []
@@ -15,11 +15,10 @@ export default class Directory {
 
          json.items.forEach(i => {
             if (i.type === ItemType.book) {
-               var status = bookStatuses ? bookStatuses[i.id]?.status : Status.Unread
+               const status = bookStatuses ? bookStatuses[i.id]?.status : Status.Unread
 
                this.items.push(new Book(i, status))
-            }
-            else {
+            } else {
                this.items.push(new Directory(i, bookStatuses))
             }
          })
@@ -27,17 +26,16 @@ export default class Directory {
    }
 
    bookCount() {
-      var count = 0;
+      let count = 0
 
       this.items.forEach(i => {
          if (i.type === ItemType.book) {
-            count += 1;
-         }
-         else {
+            count += 1
+         } else {
             count += (i as Directory).bookCount()
          }
       })
 
-      return count;
+      return count
    }
 }

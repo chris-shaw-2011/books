@@ -1,4 +1,4 @@
 export enum ItemType {
    book,
-   directory
+   directory,
 }

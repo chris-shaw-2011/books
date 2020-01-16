@@ -1,12 +1,12 @@
-import React, { useState, FormEvent, useEffect, useContext, Fragment } from "react"
-import Settings from "../shared/Settings"
-import { Form, Modal, Button, Alert } from "react-bootstrap"
-import Loading from "./Loading"
-import Api from "./Api"
-import SettingsUpdateResponse from "../shared/api/SettingsUpdateResponse"
-import Unauthorized from "../shared/api/Unauthorized"
+import React, { FormEvent, Fragment, useContext, useEffect, useState } from "react"
+import { Alert, Button, Form, Modal } from "react-bootstrap"
 import AccessDenied from "../shared/api/AccessDenied"
 import SettingsRequired from "../shared/api/SettingsRequired"
+import SettingsUpdateResponse from "../shared/api/SettingsUpdateResponse"
+import Unauthorized from "../shared/api/Unauthorized"
+import Settings from "../shared/Settings"
+import Api from "./Api"
+import Loading from "./Loading"
 import AppContext from "./LoggedInAppContext"
 import OverlayComponent from "./OverlayComponent"
 
@@ -16,9 +16,9 @@ interface Props {
    onClose?: () => void,
 }
 
-const EditSettings: React.FC<Props> = (props: Props) => {
+export default (props: Props) => {
    const [settings, setSettings] = useState<Settings | undefined>()
-   const [validated, setValidated] = useState(false);
+   const [validated, setValidated] = useState(false)
    const [saving, setSaving] = useState(false)
    const [message, setMessage] = useState(props.message)
    const context = useContext(AppContext)
@@ -36,7 +36,7 @@ const EditSettings: React.FC<Props> = (props: Props) => {
 
    useEffect(() => {
       async function getSettings() {
-         var ret = await Api.settings(token)
+         const ret = await Api.settings(token)
 
          if (ret instanceof SettingsRequired) {
             setSettings(ret.settings)
@@ -54,31 +54,31 @@ const EditSettings: React.FC<Props> = (props: Props) => {
 
    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
       setSaving(true)
-      const form = event.currentTarget;
+      const form = event.currentTarget
 
-      event.preventDefault();
-      event.stopPropagation();
+      event.preventDefault()
+      event.stopPropagation()
 
       if (form.checkValidity()) {
-         var ret = await Api.updateSettings(token, settings!)
+         const ret = await Api.updateSettings(token, settings!)
 
          if (ret instanceof SettingsUpdateResponse) {
             if (ret.successful) {
                props.onSettingsSaved()
-               return;
+               return
             }
             else {
                setMessage(ret.message)
-               setValidated(false);
+               setValidated(false)
             }
          }
          else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
             context.logOut(ret.message)
-            return;
+            return
          }
          else {
             context.logOut("Received an unexpected response")
-            return;
+            return
          }
       }
       else {
@@ -86,12 +86,12 @@ const EditSettings: React.FC<Props> = (props: Props) => {
       }
 
       setSaving(false)
-   };
+   }
 
    if (settings) {
       return (
          <OverlayComponent onClose={props.onClose}>
-            <Form className="settings" noValidate validated={validated} onSubmit={handleSubmit}>
+            <Form className="settings" noValidate={true} validated={validated} onSubmit={handleSubmit}>
                <Modal.Dialog>
                   <Modal.Header>
                      <Modal.Title>Settings</Modal.Title>
@@ -100,23 +100,43 @@ const EditSettings: React.FC<Props> = (props: Props) => {
                      {message ? <Alert variant="danger">{message}</Alert> : null}
                      <Form.Group controlId="formGroupBasePath">
                         <Form.Label>Base Books Path</Form.Label>
-                        <Form.Control type="text" placeholder="Enter Base Path" required defaultValue={settings.baseBooksPath}
-                           onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ baseBooksPath: e.currentTarget.value || "" })} />
+                        <Form.Control
+                           type="text"
+                           placeholder="Enter Base Path"
+                           required={true}
+                           defaultValue={settings.baseBooksPath}
+                           onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ baseBooksPath: e.currentTarget.value || "" })}
+                        />
                      </Form.Group>
                      <Form.Group controlId="fromGroupUploadLocation">
                         <Form.Label>Upload Location</Form.Label>
-                        <Form.Control type="text" placeholder="Enter Upload Location" required defaultValue={settings.uploadLocation}
-                           onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ uploadLocation: e.currentTarget.value || "" })} />
+                        <Form.Control
+                           type="text"
+                           placeholder="Enter Upload Location"
+                           required={true}
+                           defaultValue={settings.uploadLocation}
+                           onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ uploadLocation: e.currentTarget.value || "" })}
+                        />
                      </Form.Group>
                      <Form.Group controlId="fromGroupInviteEmail">
                         <Form.Label>Invite Email Address</Form.Label>
-                        <Form.Control type="email" placeholder="Enter Invite Email Address" required defaultValue={settings.inviteEmail}
-                           onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ inviteEmail: e.currentTarget.value || "" })} />
+                        <Form.Control
+                           type="email"
+                           placeholder="Enter Invite Email Address"
+                           required={true}
+                           defaultValue={settings.inviteEmail}
+                           onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ inviteEmail: e.currentTarget.value || "" })}
+                        />
                      </Form.Group>
                      <Form.Group controlId="fromGroupInviteEmailPassword">
                         <Form.Label>Invite Email Address</Form.Label>
-                        <Form.Control type="password" placeholder="Enter Invite Email Password" required defaultValue={settings.inviteEmailPassword}
-                           onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ inviteEmailPassword: e.currentTarget.value || "" })} />
+                        <Form.Control
+                           type="password"
+                           placeholder="Enter Invite Email Password"
+                           required={true}
+                           defaultValue={settings.inviteEmailPassword}
+                           onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ inviteEmailPassword: e.currentTarget.value || "" })}
+                        />
                      </Form.Group>
                   </Modal.Body>
                   <Modal.Footer>
@@ -135,5 +155,3 @@ const EditSettings: React.FC<Props> = (props: Props) => {
       return <Loading />
    }
 }
-
-export default EditSettings

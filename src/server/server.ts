@@ -1,44 +1,45 @@
-import fastify from "fastify";
-import fs from "fs";
-import path from "path";
-import { IncomingMessage, ServerResponse } from "http";
-import User from "../shared/User"
-import Unauthorized from "../shared/api/Unauthorized"
-import AccessDenied from "../shared/api/AccessDenied"
-import uuid from "uuid"
+import { Mutex } from "async-mutex"
 import bcrypt from "bcrypt"
-import ServerToken from "./ServerToken"
+import cookie from "cookie"
+import fastify from "fastify"
+import fastifyMultipart from "fastify-multipart"
+import fastifyStatic from "fastify-static"
+import fs from "fs"
+import { IncomingMessage, ServerResponse } from "http"
 import moment from "moment"
+import path from "path"
+import pump from "pump"
+import url from "url"
+import uuid from "uuid"
+import AccessDenied from "../shared/api/AccessDenied"
+import AddUserRequest from "../shared/api/AddUserRequest"
+import { ApiMessageType } from "../shared/api/ApiMessage"
+import Books from "../shared/api/Books"
+import ChangeBookStatusRequest from "../shared/api/ChangeBookStatusRequest"
+import ChangePasswordRequest from "../shared/api/ChangePasswordRequest"
+import ConversionUpdateRequest from "../shared/api/ConversionUpdateRequest"
+import ConversionUpdateResponse from "../shared/api/ConversionUpdateResponse"
+import DeleteUserRequest from "../shared/api/DeleteUserRequest"
 import SettingsRequired from "../shared/api/SettingsRequired"
-import { ApiMessageType } from "../shared/api/ApiMessage";
 import SettingsUpdate from "../shared/api/SettingsUpdate"
 import SettingsUpdateResponse from "../shared/api/SettingsUpdateResponse"
+import Unauthorized from "../shared/api/Unauthorized"
+import UploadResponse from "../shared/api/UploadResponse"
 import UserListResponse from "../shared/api/UserListResponse"
-import AddUserRequest from "../shared/api/AddUserRequest"
-import DeleteUserRequest from "../shared/api/DeleteUserRequest"
-import url from "url"
 import UserRequest from "../shared/api/UserRequest"
 import UserResponse from "../shared/api/UserResponse"
-import ChangePasswordRequest from "../shared/api/ChangePasswordRequest"
-import ChangeBookStatusRequest from "../shared/api/ChangeBookStatusRequest";
-import BookStatuses, { BookWithStatus } from "../shared/BookStatuses"
-import { Mutex } from 'async-mutex';
-import cookie from "cookie"
-import fastifyMultipart from "fastify-multipart"
-import pump from "pump"
-import Converter from "./Converter"
-import ConversionUpdateResponse from "../shared/api/ConversionUpdateResponse"
-import UploadResponse from "../shared/api/UploadResponse"
-import ConversionUpdateRequest from "../shared/api/ConversionUpdateRequest";
+import { Status } from "../shared/Book"
+import BookStatuses from "../shared/BookStatuses"
+import BookWithStatus from "../shared/BookWithStatus"
 import { ConverterStatus } from "../shared/ConverterStatus"
-import db from "./Database"
+import User from "../shared/User"
 import bookList from "./BookList"
-import Books from "../shared/api/Books"
-import { Status } from "../shared/Book";
-import fastifyStatic from "fastify-static"
+import Converter from "./Converter"
+import db from "./Database"
+import ServerToken from "./ServerToken"
 
 const authorizationExpiration = new Map<string, moment.Moment>()
-var rootDir = __dirname;
+let rootDir = __dirname
 const tryParse = (text: string, reviver?: (this: any, key: string, value: any) => any) => {
    try {
       return JSON.parse(text, reviver)
@@ -49,21 +50,21 @@ const tryParse = (text: string, reviver?: (this: any, key: string, value: any) =
 }
 const getNewExpiration = () => moment().add(24, "hours")
 const changeBookStatusMutex = new Mutex()
-var conversions = new Map<string, Converter>()
-const conversionMutex = new Mutex();
-const server = fastify({ logger: true, bodyLimit: 10_000_000_000 });
+const conversions = new Map<string, Converter>()
+const conversionMutex = new Mutex()
+const server = fastify({ logger: true, bodyLimit: 10_000_000_000 })
 const getAllUsers = async (message?: string) => {
-   var users = await db.all("SELECT id, email, isAdmin, lastLogIn FROM user")
+   const users = await db.all("SELECT id, email, isAdmin, lastLogIn FROM user")
 
-   return new UserListResponse({ users: users, type: ApiMessageType.UserListResponse, message: message || "" })
+   return new UserListResponse({ users, type: ApiMessageType.UserListResponse, message: message || "" })
 }
 const validatePassword = async (email: string, password: string, reply: fastify.FastifyReply<ServerResponse>) => {
-   var dbUser = await db.get("SELECT id, email, hash, isAdmin, lastLogIn FROM user WHERE email = ?", [email])
+   const dbUser = await db.get("SELECT id, email, hash, isAdmin, lastLogIn FROM user WHERE email = ?", [email])
 
    if (dbUser) {
       if (await bcrypt.compare(password, dbUser.hash)) {
-         var validatedUser = new User(dbUser as User);
-         var authorization = uuid.v4()
+         const validatedUser = new User(dbUser as User)
+         const authorization = uuid.v4()
 
          validatedUser.lastLogin = new Date().getTime()
          authorizationExpiration.set(authorization, getNewExpiration())
@@ -82,7 +83,7 @@ const passwordHash = async (password: string) => {
    return await bcrypt.hash(password, 10)
 }
 const requestToken = (request: fastify.FastifyRequest<IncomingMessage, fastify.DefaultQuery, fastify.DefaultParams, fastify.DefaultHeaders, any>) => {
-   const cookies = cookie.parse(request.headers["cookie"] || "") || {};
+   const cookies = cookie.parse(request.headers.cookie || "") || {}
    const tokenJson = cookies.loginCookie ? new ServerToken(tryParse(cookies.loginCookie)) : undefined
 
    return new ServerToken(tokenJson)
@@ -94,28 +95,28 @@ const validateRequest = async (request: fastify.FastifyRequest<IncomingMessage, 
       reply.code(401).send(new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In" }))
    }
    else {
-      var expires = authorizationExpiration.has(token.authorization) ? authorizationExpiration.get(token.authorization) : undefined;
+      const expires = authorizationExpiration.has(token.authorization) ? authorizationExpiration.get(token.authorization) : undefined
 
       if (!expires || expires < moment()) {
          reply.code(401).send(new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In again" }))
 
-         return;
+         return
       }
 
       authorizationExpiration.set(token.authorization, getNewExpiration())
 
-      return token;
+      return token
    }
 }
 const validateAdminRequest = async (request: fastify.FastifyRequest<IncomingMessage, fastify.DefaultQuery, fastify.DefaultParams, fastify.DefaultHeaders, any>, reply: fastify.FastifyReply<ServerResponse>) => {
-   var resp = await validateRequest(request, reply);
+   const resp = await validateRequest(request, reply)
 
    if (resp instanceof ServerToken && !resp.user.isAdmin) {
       reply.code(403).send(new AccessDenied({ type: ApiMessageType.AccessDenied, message: "Access Denied" }))
    }
 }
 const statusesForUser = async (userId: string) => {
-   var json = (await db.get("SELECT bookStatuses FROM User WHERE id = ?", [userId])).bookStatuses
+   const json = (await db.get("SELECT bookStatuses FROM User WHERE id = ?", [userId])).bookStatuses
 
    return new BookStatuses(json ? JSON.parse(json) : undefined)
 }
@@ -131,8 +132,8 @@ server.register(fastifyMultipart, {
       fields: 10,         // Max number of non-file fields
       fileSize: 10_000_000_000,      // For multipart forms, the max file size
       files: 1,           // Max number of file fields
-      headerPairs: 2000   // Max number of header key=>value pairs
-   }
+      headerPairs: 2000,   // Max number of header key=>value pairs
+   },
 })
 
 server.register(fastifyStatic, {
@@ -141,10 +142,10 @@ server.register(fastifyStatic, {
 })
 
 server.post("/auth", async (request, reply) => {
-   var user = new User(request.body)
+   const user = new User(request.body)
 
    if (db.noUsers) {
-      db.noUsers = false;
+      db.noUsers = false
       console.warn(`Adding user ${user.email} to the database since they are the first login attempt`)
 
       const hash = await passwordHash(user.password)
@@ -156,7 +157,7 @@ server.post("/auth", async (request, reply) => {
 })
 
 server.post("/books", { preHandler: validateRequest }, async (request, reply) => {
-   var token = requestToken(request);
+   const token = requestToken(request)
 
    if (!db.settings.baseBooksPath || !db.settings.inviteEmail || !db.settings.inviteEmailPassword || !db.settings.uploadLocation) {
       if (token.user.isAdmin) {
@@ -167,18 +168,18 @@ server.post("/books", { preHandler: validateRequest }, async (request, reply) =>
       }
    }
 
-   const books = await bookList.allBooks();
+   const books = await bookList.allBooks()
    const statuses = await statusesForUser(token.user.id)
 
    return new Books({ type: ApiMessageType.Books, directory: books, bookStatuses: statuses })
 })
 
 server.post("/settings", { preHandler: validateAdminRequest }, (request, reply) => {
-   reply.send(new SettingsRequired({ type: ApiMessageType.SettingsRequired, settings: db.settings, message: "" }));
+   reply.send(new SettingsRequired({ type: ApiMessageType.SettingsRequired, settings: db.settings, message: "" }))
 })
 
 server.post("/updateSettings", { preHandler: validateAdminRequest }, (request, reply) => {
-   var settingsUpdate = new SettingsUpdate(request.body)
+   const settingsUpdate = new SettingsUpdate(request.body)
 
    db.settings.inviteEmail = settingsUpdate.settings.inviteEmail
    db.settings.inviteEmailPassword = settingsUpdate.settings.inviteEmailPassword
@@ -191,6 +192,7 @@ server.post("/updateSettings", { preHandler: validateAdminRequest }, (request, r
 
       db.settings.baseBooksPath = settingsUpdate.settings.baseBooksPath
 
+      // tslint:disable-next-line: no-console
       console.log("Loading all books into memory because of a settings change")
       bookList.loadBooks()
    }
@@ -203,8 +205,8 @@ server.post("/users", { preHandler: validateAdminRequest }, async (request, repl
 })
 
 server.post("/addUser", { preHandler: validateAdminRequest }, async (request, reply) => {
-   var userRequest = new AddUserRequest(request.body)
-   var message = `${userRequest.user.email} has been invited`
+   const userRequest = new AddUserRequest(request.body)
+   let message = `${userRequest.user.email} has been invited`
 
    if (!userRequest.user.email) {
       message = "Email must be specified"
@@ -214,11 +216,11 @@ server.post("/addUser", { preHandler: validateAdminRequest }, async (request, re
          message = "User already exists"
       }
       else {
-         var userId = uuid.v4()
+         const userId = uuid.v4()
 
          await db.run("INSERT INTO User (id, email, isAdmin) VALUES(?, ?, ?)", [userId, userRequest.user.email, userRequest.user.isAdmin])
 
-         var link = url.resolve(request.headers.referer, `/invite/${userId}`);
+         const link = url.resolve(request.headers.referer, `/invite/${userId}`)
 
          db.settings.mailer.sendMail({
             from: db.settings.inviteEmail,
@@ -227,7 +229,7 @@ server.post("/addUser", { preHandler: validateAdminRequest }, async (request, re
             html: `
             You have been invited to the audio books website.<br /><br />
             You can sign up at: <a href="${link}">${link}</a>.
-         `
+         `,
          })
       }
    }
@@ -236,7 +238,7 @@ server.post("/addUser", { preHandler: validateAdminRequest }, async (request, re
 })
 
 server.post("/deleteUser", { preHandler: validateAdminRequest }, async (request, reply) => {
-   var userRequest = new DeleteUserRequest(request.body)
+   const userRequest = new DeleteUserRequest(request.body)
 
    await db.run("DELETE FROM User WHERE id = ?", [userRequest.userId])
 
@@ -244,9 +246,9 @@ server.post("/deleteUser", { preHandler: validateAdminRequest }, async (request,
 })
 
 server.post("/user", async (request, reply) => {
-   var userRequest = new UserRequest(request.body)
+   const userRequest = new UserRequest(request.body)
 
-   var dbUser = await db.get("SELECT id, email, hash, isAdmin, lastLogin FROM User WHERE id = ?", [userRequest.userId])
+   const dbUser = await db.get("SELECT id, email, hash, isAdmin, lastLogin FROM User WHERE id = ?", [userRequest.userId])
 
    if (dbUser.lastLogin || dbUser.hash) {
       reply.code(403)
@@ -259,19 +261,19 @@ server.post("/user", async (request, reply) => {
 })
 
 server.post("/changePassword", async (request, reply) => {
-   var changeRequest = new ChangePasswordRequest(request.body)
+   const changeRequest = new ChangePasswordRequest(request.body)
 
    if (changeRequest.token.authorization) {
-      //This is a change password request for someone that's already logged in
-      var token = await validateRequest(request, reply);
+      // This is a change password request for someone that's already logged in
+      const token = await validateRequest(request, reply)
 
       if (!(token instanceof ServerToken)) {
-         return token;
+         return token
       }
    }
    else {
-      //This is a change password request for someone that's never logged in
-      var dbUser = await db.get("SELECT hash, lastLogin FROM User WHERE id = ?", [changeRequest.token.user.id])
+      // This is a change password request for someone that's never logged in
+      const dbUser = await db.get("SELECT hash, lastLogin FROM User WHERE id = ?", [changeRequest.token.user.id])
 
       if (dbUser.lastLogin || dbUser.hash) {
          reply.code(403)
@@ -280,7 +282,7 @@ server.post("/changePassword", async (request, reply) => {
       }
    }
 
-   var hash = await passwordHash(changeRequest.newPassword)
+   const hash = await passwordHash(changeRequest.newPassword)
 
    await db.run("UPDATE User SET hash = ? WHERE id = ?", [hash, changeRequest.token.user.id])
 
@@ -288,9 +290,9 @@ server.post("/changePassword", async (request, reply) => {
 })
 
 server.post("/changeBookStatus", { preHandler: validateRequest }, async (request, reply) => {
-   var statusRequest = new ChangeBookStatusRequest(request.body)
+   const statusRequest = new ChangeBookStatusRequest(request.body)
    const release = await changeBookStatusMutex.acquire()
-   var statuses: BookStatuses
+   let statuses: BookStatuses
 
    try {
       statuses = await statusesForUser(statusRequest.token.user.id)
@@ -316,12 +318,12 @@ server.post("/changeBookStatus", { preHandler: validateRequest }, async (request
 server.post("/upload", { preHandler: validateRequest }, (request, reply) => {
    const id = uuid.v4()
    const mp = request.multipart(handler, onEnd)
-   var fileName = ""
-   var filePath = ""
+   let fileName = ""
+   let filePath = ""
 
-   mp.on('field', function (key: any, value: any) {
+   mp.on("field", (key: any, value: any) => {
       if (key === "fileName") {
-         var parts = (value as string).split(".")
+         const parts = (value as string).split(".")
 
          fileName = `${id}.${parts[parts.length - 1]}`
          filePath = path.join(db.settings.uploadLocation, fileName)
@@ -329,7 +331,7 @@ server.post("/upload", { preHandler: validateRequest }, (request, reply) => {
    })
 
    function onEnd(err: Error) {
-      var conversion = new Converter();
+      const conversion = new Converter()
 
       conversions.set(id, conversion)
 
@@ -346,9 +348,9 @@ server.post("/upload", { preHandler: validateRequest }, (request, reply) => {
 })
 
 server.post("/conversionUpdate", { preHandler: validateRequest }, async (request, reply) => {
-   var updateRequest = new ConversionUpdateRequest(request.body)
-   var conversion = conversions.get(updateRequest.conversionId)
-   var response = { conversionPercent: 100, errorMessage: "", converterStatus: ConverterStatus.Complete }
+   const updateRequest = new ConversionUpdateRequest(request.body)
+   const conversion = conversions.get(updateRequest.conversionId)
+   let response = { conversionPercent: 100, errorMessage: "", converterStatus: ConverterStatus.Complete }
 
    if (conversion) {
       if (conversion.status !== ConverterStatus.Error) {
@@ -362,25 +364,25 @@ server.post("/conversionUpdate", { preHandler: validateRequest }, async (request
 })
 
 server.get("/files/*", { preHandler: validateRequest }, (request, reply) => {
-   var filePath = request.params["*"] as string;
+   const filePath = request.params["*"] as string
 
    if (filePath.endsWith(".jpg")) {
       reply.sendFile(filePath, db.settings.baseBooksPath)
    }
    else if (filePath.endsWith(".m4b") || filePath.endsWith(".mp3")) {
-      var splitPath = filePath.split("/");
+      const splitPath = filePath.split("/")
 
       reply.header("Content-Disposition", `attachment; filename=\"${splitPath[splitPath.length - 1]}\"`)
       reply.sendFile(filePath, db.settings.baseBooksPath)
    }
    else {
-      reply.code(404).send("Not Found");
+      reply.code(404).send("Not Found")
    }
 })
 
-//This handles requests to the root of the site in production
+// This handles requests to the root of the site in production
 server.get("/*", (request, reply) => {
-   var filePath = request.params["*"] as string || "index.html"
+   const filePath = request.params["*"] as string || "index.html"
 
    reply.sendFile(filePath, path.join(rootDir, "build"))
 })
@@ -396,4 +398,4 @@ const start = async () => {
    }
 }
 
-export default { start: start };
+export default { start }

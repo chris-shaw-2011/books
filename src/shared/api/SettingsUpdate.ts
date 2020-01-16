@@ -1,6 +1,6 @@
-import ApiMessage, { ApiMessageType } from "./ApiMessage";
-import Settings from "../Settings";
-import Token from "./Token";
+import Settings from "../Settings"
+import ApiMessage, { ApiMessageType } from "./ApiMessage"
+import Token from "./Token"
 
 export default class SettingsUpdate extends ApiMessage {
    settings = new Settings()

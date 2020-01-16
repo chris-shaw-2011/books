@@ -1,8 +1,8 @@
-import ApiMessage, { ApiMessageType } from "./ApiMessage";
 import { ConverterStatus } from "../ConverterStatus"
+import ApiMessage, { ApiMessageType } from "./ApiMessage"
 
 export default class ConversionUpdateResponse extends ApiMessage {
-   conversionPercent = 0;
+   conversionPercent = 0
    errorMessage = ""
    converterStatus = ConverterStatus.Waiting
 

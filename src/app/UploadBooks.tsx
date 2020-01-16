@@ -1,22 +1,22 @@
-import React, { useState, Fragment, useEffect, useContext } from "react"
-import OverlayComponent from "./OverlayComponent"
-import { Form, Modal, Button, ListGroup } from "react-bootstrap"
-import uuid from "uuid";
 import { Line } from "rc-progress"
-import Api from "./Api";
-import LoggedInAppContext from "./LoggedInAppContext";
-import ConversionUpdateResponse from "../shared/api/ConversionUpdateResponse";
-import Unauthorized from "../shared/api/Unauthorized";
-import AccessDenied from "../shared/api/AccessDenied";
-import UploadResponse from "../shared/api/UploadResponse";
-import { ConverterStatus } from "../shared/ConverterStatus";
+import React, { Fragment, useContext, useEffect, useState } from "react"
+import { Button, Form, ListGroup, Modal } from "react-bootstrap"
+import uuid from "uuid"
+import AccessDenied from "../shared/api/AccessDenied"
+import ConversionUpdateResponse from "../shared/api/ConversionUpdateResponse"
+import Unauthorized from "../shared/api/Unauthorized"
+import UploadResponse from "../shared/api/UploadResponse"
+import { ConverterStatus } from "../shared/ConverterStatus"
+import Api from "./Api"
+import LoggedInAppContext from "./LoggedInAppContext"
+import OverlayComponent from "./OverlayComponent"
 
 enum UploadStatus {
    Pending = "Pending",
    Uploading = "Uploading",
    Converting = "Converting",
    Complete = "Complete",
-   Error = "Error"
+   Error = "Error",
 }
 
 interface Props {
@@ -26,13 +26,13 @@ interface Props {
 export default (props: Props) => {
    const [fileUploadRowKeys, setFileUploadRowKeys] = useState([uuid.v4()])
    const onUploadStarted = () => {
-      //Add a new row
+      // Add a new row
       setFileUploadRowKeys(prev => {
          return [...prev, uuid.v4()]
       })
    }
    const onComplete = (key: string) => {
-      //Remove the row
+      // Remove the row
       setFileUploadRowKeys(prev => {
          return prev.filter(i => i !== key)
       })
@@ -51,7 +51,7 @@ export default (props: Props) => {
                   <li>Zip file containing mp3s of a book</li>
                </ul>
                <ListGroup>
-                  {fileUploadRowKeys.map(k => <ListGroup.Item><FileUploadRow onUploadStarted={onUploadStarted} key={k} onComplete={() => onComplete(k)} /></ListGroup.Item>)}
+                  {fileUploadRowKeys.map(k => <ListGroup.Item key={k}><FileUploadRow onUploadStarted={onUploadStarted} onComplete={() => onComplete(k)} /></ListGroup.Item>)}
                </ListGroup>
             </Modal.Body>
             <Modal.Footer>
@@ -77,6 +77,7 @@ interface FileUploadRowState {
    fileName: string,
 }
 
+// tslint:disable-next-line: variable-name
 const FileUploadRow = (props: FileUploadRowProps) => {
    const [uploadState, setUploadState] = useState<FileUploadRowState>({ status: UploadStatus.Pending, percent: 0, conversionId: "", errorMessage: "", forceUpdate: {}, converterStatus: ConverterStatus.Waiting, fileName: "" })
    const status = uploadState.status
@@ -92,23 +93,22 @@ const FileUploadRow = (props: FileUploadRowProps) => {
    const uploadFile = (files: FileList | null) => {
       if (!files || !files.length || !(files[0].name.endsWith(".aax") || files[0].name.endsWith(".zip"))) {
 
-         console.log("wrong file type")
-         return;
+         return
       }
 
       const file = files[0]
       const request = new XMLHttpRequest()
-      var data = new FormData()
+      const data = new FormData()
 
-      setUploadState(prev => { return { ...prev, uploadState, percent: 0, status: UploadStatus.Uploading, fileName: file.name } })
+      setUploadState(prev => ({ ...prev, uploadState, percent: 0, status: UploadStatus.Uploading, fileName: file.name }))
       props.onUploadStarted()
 
       data.append("fileName", file.name)
       data.append("file", file)
 
       request.open("POST", "/upload", true)
-      request.upload.onprogress = (e) => {
-         setUploadState(prev => { return { ...prev, percent: (e.loaded / e.total) * 100, status: UploadStatus.Uploading } })
+      request.upload.onprogress = e => {
+         setUploadState(prev => ({ ...prev, percent: (e.loaded / e.total) * 100, status: UploadStatus.Uploading }))
       }
       request.onreadystatechange = () => {
          if (request.readyState === XMLHttpRequest.DONE) {
@@ -116,7 +116,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
                const ret = Api.parseJson(JSON.parse(request.response))
 
                if (ret instanceof UploadResponse) {
-                  setUploadState(prev => { return { ...prev, conversionId: ret.conversionId, percent: 0, status: UploadStatus.Converting } })
+                  setUploadState(prev => ({ ...prev, conversionId: ret.conversionId, percent: 0, status: UploadStatus.Converting }))
                }
                else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
                   onUnauthorized(ret.message)
@@ -135,14 +135,14 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 
    useEffect(() => {
       async function getConversionUpdate() {
-         var ret = await Api.conversionUpdate(conversionId, percent, converterStatus)
+         const ret = await Api.conversionUpdate(conversionId, percent, converterStatus)
 
          if (ret instanceof ConversionUpdateResponse) {
-            var status = ret.converterStatus === ConverterStatus.Error ? UploadStatus.Error : ret.converterStatus === ConverterStatus.Complete ? UploadStatus.Complete : UploadStatus.Converting
-            setUploadState({ percent: ret.conversionPercent, status: status, conversionId: conversionId, errorMessage: ret.errorMessage, forceUpdate: {}, converterStatus: ret.converterStatus, fileName: fileName, })
+            const newStatus = ret.converterStatus === ConverterStatus.Error ? UploadStatus.Error : ret.converterStatus === ConverterStatus.Complete ? UploadStatus.Complete : UploadStatus.Converting
+            setUploadState({ percent: ret.conversionPercent, status: newStatus, conversionId, errorMessage: ret.errorMessage, forceUpdate: {}, converterStatus: ret.converterStatus, fileName })
 
-            if (status === UploadStatus.Complete) {
-               setTimeout(onComplete, 1000);
+            if (newStatus === UploadStatus.Complete) {
+               setTimeout(onComplete, 1000)
             }
          }
          else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
@@ -164,7 +164,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
             {status === UploadStatus.Pending ?
                <Fragment>
                   <div>
-                     <Form.Control type="file" required placeholder="Specify File" accept=".aax,.zip" onChange={(e: React.ChangeEvent<HTMLInputElement>) => uploadFile(e.currentTarget.files)} />
+                     <Form.Control type="file" required={true} placeholder="Specify File" accept=".aax,.zip" onChange={(e: React.ChangeEvent<HTMLInputElement>) => uploadFile(e.currentTarget.files)} />
                   </div>
                </Fragment> :
                <Fragment>

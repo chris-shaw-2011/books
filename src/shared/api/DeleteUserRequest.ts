@@ -1,5 +1,5 @@
-import ApiMessage, { ApiMessageType } from "./ApiMessage";
-import Token from "./Token";
+import ApiMessage, { ApiMessageType } from "./ApiMessage"
+import Token from "./Token"
 
 export default class DeleteUserRequest extends ApiMessage {
    userId = ""

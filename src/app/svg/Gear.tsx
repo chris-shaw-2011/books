@@ -1,6 +1,6 @@
 import React from "react"
 
-const Gear: React.FC = () => (
+export default () => (
    <svg x="0px" y="0px" viewBox="0 0 172 172" style={{ fill: "#000000" }}>
       <g transform="translate(4.73,4.73) scale(0.945,0.945)">
          <g fill="#ffffff" stroke="#000000" strokeWidth="10" strokeLinejoin="round">
@@ -13,5 +13,3 @@ const Gear: React.FC = () => (
       </g>
    </svg>
 )
-
-export default Gear

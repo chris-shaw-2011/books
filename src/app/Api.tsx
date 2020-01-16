@@ -1,32 +1,32 @@
+import AccessDenied from "../shared/api/AccessDenied"
+import AddUserRequest from "../shared/api/AddUserRequest"
+import ApiMessage, { ApiMessageType } from "../shared/api/ApiMessage"
+import Books from "../shared/api/Books"
+import ChangeBookStatusRequest from "../shared/api/ChangeBookStatusRequest"
+import ChangePasswordRequest from "../shared/api/ChangePasswordRequest"
+import ConversionUpdateRequest from "../shared/api/ConversionUpdateRequest"
+import ConversionUpdateResponse from "../shared/api/ConversionUpdateResponse"
+import DeleteUserRequest from "../shared/api/DeleteUserRequest"
+import SettingsRequired from "../shared/api/SettingsRequired"
+import SettingsUpdate from "../shared/api/SettingsUpdate"
+import SettingsUpdateResponse from "../shared/api/SettingsUpdateResponse"
+import Token from "../shared/api/Token"
+import Unauthorized from "../shared/api/Unauthorized"
+import UploadResponse from "../shared/api/UploadResponse"
+import UserListResponse from "../shared/api/UserListResponse"
+import UserRequest from "../shared/api/UserRequest"
+import UserResponse from "../shared/api/UserResponse"
+import { Status } from "../shared/Book"
+import { ConverterStatus } from "../shared/ConverterStatus"
+import Settings from "../shared/Settings"
 import User from "../shared/User"
-import Token from "../shared/api/Token";
-import Books from "../shared/api/Books";
-import ApiMessage, { ApiMessageType } from "../shared/api/ApiMessage";
-import AccessDenied from "../shared/api/AccessDenied";
-import Unauthorized from "../shared/api/Unauthorized";
-import SettingsRequired from "../shared/api/SettingsRequired";
-import SettingsUpdate from "../shared/api/SettingsUpdate";
-import Settings from "../shared/Settings";
-import SettingsUpdateResponse from "../shared/api/SettingsUpdateResponse";
-import UserListResponse from "../shared/api/UserListResponse";
-import AddUserRequest from "../shared/api/AddUserRequest";
-import DeleteUserRequest from "../shared/api/DeleteUserRequest";
-import ChangePasswordRequest from "../shared/api/ChangePasswordRequest";
-import UserRequest from "../shared/api/UserRequest";
-import UserResponse from "../shared/api/UserResponse";
-import { Status } from "../shared/Book";
-import ChangeBookStatusRequest from "../shared/api/ChangeBookStatusRequest";
-import ConversionUpdateRequest from "../shared/api/ConversionUpdateRequest";
-import ConversionUpdateResponse from "../shared/api/ConversionUpdateResponse";
-import UploadResponse from "../shared/api/UploadResponse";
-import { ConverterStatus } from "../shared/ConverterStatus";
 
 class ApiClass {
    auth = async (email: string, password: string) => {
-      var user = new User()
+      const user = new User()
 
-      user.email = email;
-      user.password = password;
+      user.email = email
+      user.password = password
 
       return await this.fetch("/auth", user)
    }
@@ -36,7 +36,7 @@ class ApiClass {
    }
 
    updateSettings = async (token: Token, settings: Settings) => {
-      return await this.fetch("/updateSettings", new SettingsUpdate({ type: ApiMessageType.SettingsUpdate, settings: settings, token: token }))
+      return await this.fetch("/updateSettings", new SettingsUpdate({ type: ApiMessageType.SettingsUpdate, settings, token }))
    }
 
    settings = async (token: Token) => {
@@ -48,40 +48,40 @@ class ApiClass {
    }
 
    addUser = async (token: Token, user: User) => {
-      return await this.fetch("/addUser", new AddUserRequest({ type: ApiMessageType.AddUserRequest, user: user, token: token }))
+      return await this.fetch("/addUser", new AddUserRequest({ type: ApiMessageType.AddUserRequest, user, token }))
    }
 
    deleteUser = async (token: Token, userId: string) => {
-      return await this.fetch("/deleteUser", new DeleteUserRequest({ type: ApiMessageType.DeleteUserRequest, userId: userId, token: token }))
+      return await this.fetch("/deleteUser", new DeleteUserRequest({ type: ApiMessageType.DeleteUserRequest, userId, token }))
    }
 
    changePassword = async (token: Token, newPassword: string) => {
-      return await this.fetch("/changePassword", new ChangePasswordRequest({ type: ApiMessageType.ChangePasswordRequest, token: token, newPassword: newPassword }))
+      return await this.fetch("/changePassword", new ChangePasswordRequest({ type: ApiMessageType.ChangePasswordRequest, token, newPassword }))
    }
 
    user = async (userId: string) => {
-      return await this.fetch("/user", new UserRequest({ type: ApiMessageType.UserRequest, userId: userId }))
+      return await this.fetch("/user", new UserRequest({ type: ApiMessageType.UserRequest, userId }))
    }
 
    changeBookStatus = async (bookId: string, status: Status, token: Token) => {
-      return await this.fetch("/changeBookStatus", new ChangeBookStatusRequest({ bookId: bookId, status: status, token: token, type: ApiMessageType.ChangeBookStatusRequest }))
+      return await this.fetch("/changeBookStatus", new ChangeBookStatusRequest({ bookId, status, token, type: ApiMessageType.ChangeBookStatusRequest }))
    }
 
    conversionUpdate = async (conversionId: string, knownPercent: number, knownConverterStatus: ConverterStatus) => {
-      return await this.fetch("/conversionUpdate", new ConversionUpdateRequest({ type: ApiMessageType.ConversionUpdateRequest, conversionId: conversionId, knownPercent: knownPercent, knownConverterStatus }))
+      return await this.fetch("/conversionUpdate", new ConversionUpdateRequest({ type: ApiMessageType.ConversionUpdateRequest, conversionId, knownPercent, knownConverterStatus }))
    }
 
    fetch = async (url: string, jsonSend?: any) => {
-      var result = await fetch(url, {
+      const result = await fetch(url, {
          method: "POST",
          headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
          },
          body: jsonSend ? JSON.stringify(jsonSend) : "",
       })
-      var jsonRet = await result.json()
+      const jsonRet = await result.json()
 
-      return this.parseJson(jsonRet);
+      return this.parseJson(jsonRet)
    }
 
    parseJson(json?: ApiMessage) {
@@ -124,6 +124,4 @@ class ApiClass {
    }
 }
 
-const Api = new ApiClass()
-
-export default Api
+export default new ApiClass()

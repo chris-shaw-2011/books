@@ -1,6 +1,6 @@
-import ApiMessage, { ApiMessageType } from "./ApiMessage";
-import Token from "./Token";
-import { Status } from "../Book";
+import { Status } from "../Book"
+import ApiMessage, { ApiMessageType } from "./ApiMessage"
+import Token from "./Token"
 
 export default class ChangeBookStatusRequest extends ApiMessage {
    token = new Token()

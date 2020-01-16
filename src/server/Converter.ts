@@ -1,15 +1,15 @@
-import ffmpegPath from "ffmpeg-static"
-import { spawn, ChildProcess, ChildProcessWithoutNullStreams } from "child_process"
-import fs from "fs"
+import { Mutex } from "async-mutex"
+import { ChildProcess, ChildProcessWithoutNullStreams, spawn } from "child_process"
 import EventEmitter from "events"
+import ffmpegPath from "ffmpeg-static"
+import { path as ffprobePath } from "ffprobe-static"
+import fs from "fs"
 import * as mm from "music-metadata"
 import path from "path"
 import sanitize from "sanitize-filename"
-import { Mutex } from "async-mutex"
-import { path as ffprobePath } from "ffprobe-static"
-import { ConverterStatus } from "../shared/ConverterStatus"
 import unzipper from "unzipper"
 import uuid from "uuid"
+import { ConverterStatus } from "../shared/ConverterStatus"
 
 export default class Converter {
    totalDuration = 0
@@ -34,34 +34,35 @@ export default class Converter {
 
    waitForUpdate = async (knownPercent: number, knownStatus: ConverterStatus) => {
       if (knownPercent === this.percentComplete && this.status !== ConverterStatus.Complete && this.status !== ConverterStatus.Error && this.status === knownStatus) {
-         var promise = new Promise<number>((resolve, reject) => {
+         const promise = new Promise<number>((resolve, reject) => {
             this.eventEmitter.once("update", resolve)
          })
 
          return await Promise.race([promise, new Promise<number>((resolve, reject) => {
-            setTimeout(() => { this.eventEmitter.removeListener("update", resolve); resolve() }, 10000);
+            setTimeout(() => { this.eventEmitter.removeListener("update", resolve); resolve() }, 10000)
          })])
       }
    }
 
    parseData = (data: any, outputFile: string) => {
-      var str: string = data.toString()
+      const str: string = data.toString()
 
       if (this.totalDuration === 0) {
-         var matches = str.match(/Duration: ([\d]{1,3}):([\d]{1,2})(?::([\d]{1,2}))?.*, start/);
+         const matches = str.match(/Duration: ([\d]{1,3}):([\d]{1,2})(?::([\d]{1,2}))?.*, start/)
 
          if (matches) {
             this.totalDuration = this.durationToSeconds(matches)
          }
       }
       else {
-         var matches = str.match(/frame=.* time=([\d]{1,3}):([\d]{1,2})(?::([\d]{1,2}))?.* bitrate=/);
+         const matches = str.match(/frame=.* time=([\d]{1,3}):([\d]{1,2})(?::([\d]{1,2}))?.* bitrate=/)
 
          if (matches) {
             const completeDuration = this.durationToSeconds(matches)
 
             this.percentComplete = Math.round(completeDuration / this.totalDuration * 100)
 
+            // tslint:disable-next-line: no-console
             console.log(`${outputFile} - ${this.percentComplete}% complete`)
          }
       }
@@ -85,12 +86,11 @@ export default class Converter {
       const unzipPath = zipPath.replace(".zip", "")
       const files = (await unzipper.Open.file(zipPath)).files
       const sizeToUnzip = files.map(f => f.uncompressedSize).reduce((totalSize: number, currSize) => totalSize + currSize)
-      var sizeUnzipped = 0
+      let sizeUnzipped = 0
 
       await fs.promises.mkdir(unzipPath)
 
-      for (var i = 0; i < files.length; ++i) {
-         const file = files[i]
+      for (const file of files) {
          await new Promise(resolve => file.stream().pipe(fs.createWriteStream(path.join(unzipPath, file.path))).on("finish", resolve))
          sizeUnzipped += file.uncompressedSize
          this.percentComplete = Math.round((sizeUnzipped / sizeToUnzip) * 100)
@@ -107,14 +107,14 @@ export default class Converter {
       this._percentComplete = 0
       this.status = ConverterStatus.Converting
 
-      var paths = await fs.promises.readdir(currPath, { withFileTypes: true });
-      var mp3s = []
-      var bestCover = ""
-      var bestCoverSize = 0;
-      var outputName = ""
+      const paths = await fs.promises.readdir(currPath, { withFileTypes: true })
+      const mp3s = []
+      let bestCover = ""
+      let bestCoverSize = 0
+      let outputName = ""
       const addMetaData = (args: string[], key: string, value: string | number | undefined) => {
-         if (value != undefined) {
-            if (typeof value == "number") {
+         if (value !== undefined) {
+            if (typeof value === "number") {
                args.push("-metadata", `${key}=${value}`)
             }
             else {
@@ -133,7 +133,7 @@ export default class Converter {
                }
             }
             else if (p.name.toLowerCase().endsWith("jpg")) {
-               var size = (await fs.promises.stat(path.join(currPath, p.name))).size
+               const size = (await fs.promises.stat(path.join(currPath, p.name))).size
 
                if (size > bestCoverSize) {
                   bestCover = p.name
@@ -144,9 +144,9 @@ export default class Converter {
       }
 
       if (mp3s.length) {
-         var outputFileName = `${uuid.v4()}.mp3`
+         const outputFileName = `${uuid.v4()}.mp3`
          const opt = { cwd: currPath, pipeStdio: true, metaDataOverrides: { title: outputName, coverPicturePath: bestCover } }
-         var args = ["-i"]
+         const args = ["-i"]
          const metadata = opt.metaDataOverrides
          const coverPicturePath = metadata && metadata.coverPicturePath ? metadata.coverPicturePath : ""
          const outputFilePath = path.join(currPath, outputFileName)
@@ -192,7 +192,7 @@ export default class Converter {
             return false
          }
 
-         var finalFilePath = path.join(baseFilePath, outputName + ".mp3")
+         let finalFilePath = path.join(baseFilePath, outputName + ".mp3")
 
          if (fs.existsSync(finalFilePath)) {
             finalFilePath = path.join(baseFilePath, outputName + uuid.v4() + ".mp3")
@@ -202,7 +202,7 @@ export default class Converter {
 
          await fs.promises.rmdir(currPath, { recursive: true })
 
-         return true;
+         return true
       }
    }
 
@@ -226,11 +226,11 @@ export default class Converter {
 
       await fs.promises.unlink(inputFilePath)
 
-      const metadata = (await mm.parseFile(outputFilePath, { skipCovers: true, skipPostHeaders: true, includeChapters: false, }));
+      const metadata = (await mm.parseFile(outputFilePath, { skipCovers: true, skipPostHeaders: true, includeChapters: false }))
 
       if (metadata.common.title) {
          const sanitized = sanitize(metadata.common.title.replace(/:/gi, " - "))
-         var desiredFilePath = path.join(baseFilePath, `${sanitized}.m4b`)
+         let desiredFilePath = path.join(baseFilePath, `${sanitized}.m4b`)
 
          if (fs.existsSync(desiredFilePath)) {
             desiredFilePath = path.join(baseFilePath, `${sanitized} - ${outputFileName}`)
@@ -246,7 +246,7 @@ export default class Converter {
       this.status = ConverterStatus.Cracking
 
       const ffprobe = spawn(ffprobePath, [`"${inputFilePath}"`], { windowsVerbatimArguments: true, detached: false })
-      var probeOutput = ""
+      let probeOutput = ""
 
       ffprobe.stdout.on("data", data => probeOutput += data.toString())
       ffprobe.stderr.on("data", data => probeOutput += data.toString())
@@ -258,10 +258,10 @@ export default class Converter {
          this.errorMessage = probeOutput
          this.status = ConverterStatus.Error
 
-         return "";
+         return ""
       }
 
-      var matches = probeOutput.match(/file checksum == (.*)/)
+      const matches = probeOutput.match(/file checksum == (.*)/)
 
       if (!matches) {
          this.errorMessage = `Couldn't find checksum from ffprobe
@@ -269,12 +269,12 @@ export default class Converter {
          ${probeOutput}`
          this.status = ConverterStatus.Error
 
-         return "";
+         return ""
       }
 
-      var cracker: ChildProcessWithoutNullStreams
-      var crackerArgs = [".", "-h", matches[1]]
-      var crackerOutput = ""
+      let cracker: ChildProcessWithoutNullStreams
+      const crackerArgs = [".", "-h", matches[1]]
+      let crackerOutput = ""
 
       if (process.platform === "win32") {
          cracker = spawn(path.join(__dirname, "inAudible-NG", "run", "rcrack.exe"), crackerArgs, { windowsVerbatimArguments: true, detached: false })
@@ -296,7 +296,7 @@ export default class Converter {
          return ""
       }
 
-      var activationBytesMatches = crackerOutput.match(/hex\:(.*)/)
+      const activationBytesMatches = crackerOutput.match(/hex\:(.*)/)
 
       if (activationBytesMatches) {
          return activationBytesMatches[1]
@@ -338,33 +338,33 @@ export default class Converter {
 
 
    private durationToSeconds(matches: RegExpMatchArray) {
-      var multiplier = 1;
-      var seconds = 0;
+      let multiplier = 1
+      let seconds = 0
 
       matches.reverse().forEach(m => {
-         var num = parseInt(m)
+         const num = parseInt(m, 10)
 
          if (m && !isNaN(num)) {
-            seconds += num * multiplier;
+            seconds += num * multiplier
             multiplier *= 60
          }
       })
 
-      return seconds;
+      return seconds
    }
 }
 
 function onExit(childProcess: ChildProcess): Promise<void> {
    return new Promise((resolve, reject) => {
-      childProcess.once('exit', (code: number, signal: string) => {
+      childProcess.once("exit", (code: number, signal: string) => {
          if (code === 0) {
-            resolve(undefined);
+            resolve(undefined)
          } else {
-            reject(new Error('Exit with error code: ' + code));
+            reject(new Error("Exit with error code: " + code))
          }
-      });
-      childProcess.once('error', (err: Error) => {
-         reject(err);
-      });
-   });
+      })
+      childProcess.once("error", (err: Error) => {
+         reject(err)
+      })
+   })
 }

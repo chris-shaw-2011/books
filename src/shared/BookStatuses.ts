@@ -1,16 +1,4 @@
-import { Status } from "./Book"
-
-export class BookWithStatus {
-   dateStatusSet = 0
-   status = Status.Unread
-
-   constructor(json?: BookWithStatus) {
-      if (json) {
-         this.status = json.status
-         this.dateStatusSet = json.dateStatusSet
-      }
-   }
-}
+import BookWithStatus from "./BookWithStatus"
 
 export default class BookStatuses {
    [key: string]: BookWithStatus | undefined

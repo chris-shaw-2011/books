@@ -1,5 +1,5 @@
-import ApiMessage, { ApiMessageType } from "./ApiMessage";
-import User from "../User";
+import User from "../User"
+import ApiMessage, { ApiMessageType } from "./ApiMessage"
 
 export default class UserListResponse extends ApiMessage {
    users = new Array<User>()

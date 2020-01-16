@@ -16,11 +16,9 @@ interface LoggedInAppContextType {
    setVisibleComponent: (component: VisibleComponent) => void,
 }
 
-const LoggedInAppContext = React.createContext<LoggedInAppContextType>({
-   logOut: (message?: string) => { },
+export default React.createContext<LoggedInAppContextType>({
+   logOut: (message?: string) => { return },
    token: new Token(),
    visibleComponent: VisibleComponent.Books,
-   setVisibleComponent: (component: VisibleComponent) => { },
+   setVisibleComponent: (component: VisibleComponent) => { return },
 })
-
-export default LoggedInAppContext

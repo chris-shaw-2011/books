@@ -1,6 +1,6 @@
-import ApiMessage, { ApiMessageType } from "./ApiMessage";
-import User from "../User";
-import Token from "./Token";
+import User from "../User"
+import ApiMessage, { ApiMessageType } from "./ApiMessage"
+import Token from "./Token"
 
 export default class AddUserRequest extends ApiMessage {
    user = new User()

@@ -1,6 +1,6 @@
-import ApiMessage, { ApiMessageType } from "./ApiMessage";
-import Directory from "../Directory";
-import BookStatuses from "../BookStatuses";
+import BookStatuses from "../BookStatuses"
+import Directory from "../Directory"
+import ApiMessage, { ApiMessageType } from "./ApiMessage"
 
 export default class Books extends ApiMessage {
    directory = new Directory()

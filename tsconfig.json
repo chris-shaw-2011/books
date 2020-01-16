@@ -19,6 +19,15 @@
       "noEmit": true,
       "jsx": "react",
       "outDir": "dist",
+      "plugins": [
+         {
+            "name": "typescript-tslint-plugin",
+            "alwaysShowRuleFailuresAsWarnings": false,
+            "ignoreDefinitionFiles": true,
+            "configFile": "../tslint.json",
+            "suppressWhileTypeErrorsPresent": false
+         }
+      ]
    },
    "include": [
       "src/shared",

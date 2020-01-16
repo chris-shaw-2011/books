@@ -1,13 +1,13 @@
-import React, { useEffect, useContext, useState, FormEvent, Fragment, useCallback } from "react"
-import { Table, Button, Form, Modal, Alert } from "react-bootstrap"
-import Api from "./Api"
-import LoggedInAppContext from "./LoggedInAppContext"
-import User from "../shared/User"
-import UserListResponse from "../shared/api/UserListResponse"
-import Unauthorized from "../shared/api/Unauthorized"
-import AccessDenied from "../shared/api/AccessDenied"
-import Loading from "./Loading"
 import moment from "moment"
+import React, { FormEvent, Fragment, useCallback, useContext, useEffect, useState } from "react"
+import { Alert, Button, Form, Modal, Table } from "react-bootstrap"
+import AccessDenied from "../shared/api/AccessDenied"
+import Unauthorized from "../shared/api/Unauthorized"
+import UserListResponse from "../shared/api/UserListResponse"
+import User from "../shared/User"
+import Api from "./Api"
+import Loading from "./Loading"
+import LoggedInAppContext from "./LoggedInAppContext"
 import OverlayComponent from "./OverlayComponent"
 
 interface Props {
@@ -22,14 +22,14 @@ interface AddingUserState {
    saving: boolean,
 }
 
-const UserList: React.FC<Props> = (props: Props) => {
+export default (props: Props) => {
    const context = useContext(LoggedInAppContext)
    const [users, setUsers] = useState({ users: new Array<User>(), message: "", confirmDeleteUser: "", deletingUser: "" })
    const [addingUserState, setAddingUserState] = useState<AddingUserState>({ addingUser: false, email: "", isAdmin: false, validated: false, saving: false })
    const token = context.token
    const onUnauthorized = context.logOut
    const mergeAddingUserState = (obj: any) => {
-      setAddingUserState(s => { return { ...s, ...obj } })
+      setAddingUserState(s => ({ ...s, ...obj }))
    }
    const handleUserListResponse = useCallback((ret: any) => {
       if (ret instanceof UserListResponse) {
@@ -43,33 +43,33 @@ const UserList: React.FC<Props> = (props: Props) => {
       }
    }, [onUnauthorized])
    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-      const form = event.currentTarget;
+      const form = event.currentTarget
 
-      event.preventDefault();
-      event.stopPropagation();
+      event.preventDefault()
+      event.stopPropagation()
 
       if (form.checkValidity()) {
-         setAddingUserState(s => { return { ...s, saving: true } })
+         setAddingUserState(s => ({ ...s, saving: true }))
 
-         var ret = await Api.addUser(token, new User({ email: addingUserState.email, isAdmin: addingUserState.isAdmin, id: "", lastLogin: 0, lastLoginDate: new Date() }));
+         const ret = await Api.addUser(token, new User({ email: addingUserState.email, isAdmin: addingUserState.isAdmin, id: "", lastLogin: 0, lastLoginDate: new Date() }))
 
-         setAddingUserState(s => { return { ...s, addingUser: false } })
+         setAddingUserState(s => ({ ...s, addingUser: false }))
 
-         handleUserListResponse(ret);
+         handleUserListResponse(ret)
       }
       else {
-         setAddingUserState(s => { return { ...s, validated: true } });
+         setAddingUserState(s => ({ ...s, validated: true }))
       }
-   };
-   const cancelAddUser = () => setAddingUserState(s => { return { ...s, addingUser: false } })
+   }
+   const cancelAddUser = () => setAddingUserState(s => ({ ...s, addingUser: false }))
    useEffect(() => {
       async function getUsers() {
-         var ret = await Api.users(token)
+         const ret = await Api.users(token)
 
          handleUserListResponse(ret)
       }
 
-      getUsers();
+      getUsers()
    }, [token, onUnauthorized, setUsers, handleUserListResponse])
 
    if (!users.users.length) {
@@ -81,7 +81,7 @@ const UserList: React.FC<Props> = (props: Props) => {
          <Fragment>
             {addingUserState.addingUser &&
                <OverlayComponent onClose={cancelAddUser}>
-                  <Form className="addUser" noValidate validated={addingUserState.validated} onSubmit={handleSubmit} onClick={(e: { target: any; currentTarget: any }) => { e.target === e.currentTarget && cancelAddUser() }}>
+                  <Form className="addUser" noValidate={true} validated={addingUserState.validated} onSubmit={handleSubmit} onClick={(e: { target: any; currentTarget: any }) => { if (e.target === e.currentTarget) { cancelAddUser() } }}>
                      <Modal.Dialog>
                         <Modal.Header>
                            <Modal.Title>Add User</Modal.Title>
@@ -89,8 +89,13 @@ const UserList: React.FC<Props> = (props: Props) => {
                         <Modal.Body>
                            <Form.Group controlId="formGroupEmail">
                               <Form.Label>Email address</Form.Label>
-                              <Form.Control type="email" placeholder="Enter email" required autoFocus
-                                 onChange={(e: FormEvent<HTMLInputElement>) => mergeAddingUserState({ email: e.currentTarget.value || "" })} />
+                              <Form.Control
+                                 type="email"
+                                 placeholder="Enter email"
+                                 required={true}
+                                 autoFocus={true}
+                                 onChange={(e: FormEvent<HTMLInputElement>) => mergeAddingUserState({ email: e.currentTarget.value || "" })}
+                              />
                            </Form.Group>
                            <Form.Group controlId="formGroupIsAdmin">
                               <Form.Check type="checkbox" label="Is Admin?" onChange={(e: FormEvent<HTMLInputElement>) => mergeAddingUserState({ isAdmin: e.currentTarget.checked })} />
@@ -108,7 +113,7 @@ const UserList: React.FC<Props> = (props: Props) => {
                   </Form>
                </OverlayComponent>
             }
-            <Table striped bordered hover style={{ backgroundColor: "white", }}>
+            <Table striped={true} bordered={true} hover={true} style={{ backgroundColor: "white" }}>
                <thead>
                   <tr>
                      <th>Email</th>
@@ -131,10 +136,10 @@ const UserList: React.FC<Props> = (props: Props) => {
                                        <Loading text="Deleting..." /> :
                                        u.id === users.confirmDeleteUser ?
                                           <Fragment>
-                                             <Button variant="secondary" onClick={() => { setUsers(s => { return { ...s, confirmDeleteUser: "" } }) }}>Cancel</Button>&nbsp;
-                                          <Button variant="danger" onClick={() => { setUsers(s => { return { ...s, deletingUser: u.id } }); Api.deleteUser(token, u.id).then(ret => handleUserListResponse(ret)) }}>Confirm Delete</Button>
+                                             <Button variant="secondary" onClick={() => { setUsers(s => ({ ...s, confirmDeleteUser: "" })) }}>Cancel</Button>&nbsp;
+                                          <Button variant="danger" onClick={() => { setUsers(s => ({ ...s, deletingUser: u.id })); Api.deleteUser(token, u.id).then(ret => handleUserListResponse(ret)) }}>Confirm Delete</Button>
                                           </Fragment> :
-                                          <Button variant="danger" onClick={() => { setUsers(s => { return { ...s, confirmDeleteUser: u.id } }) }}>Delete</Button>
+                                          <Button variant="danger" onClick={() => { setUsers(s => ({ ...s, confirmDeleteUser: u.id })) }}>Delete</Button>
                                     }
                                  </Fragment> :
                                  "Cannot delete logged in user"}
@@ -149,7 +154,7 @@ const UserList: React.FC<Props> = (props: Props) => {
                         {users.message && <Alert variant="primary">{users.message}</Alert>}
                         <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-around" }}>
                            <Button variant="secondary" type="button" onClick={props.onClose}>Cancel</Button>
-                           <Button variant="primary" type="submit" onClick={() => { setUsers(u => { return { ...u, message: "" } }); setAddingUserState({ addingUser: true, email: "", isAdmin: false, validated: false, saving: false }) }}>Add User</Button>
+                           <Button variant="primary" type="submit" onClick={() => { setUsers(u => ({ ...u, message: "" })); setAddingUserState({ addingUser: true, email: "", isAdmin: false, validated: false, saving: false }) }}>Add User</Button>
                         </div>
                      </td>
                   </tr>
@@ -159,5 +164,3 @@ const UserList: React.FC<Props> = (props: Props) => {
       </OverlayComponent>
    )
 }
-
-export default UserList

@@ -1,4 +1,4 @@
-import ApiMessage, { ApiMessageType } from "./ApiMessage";
+import ApiMessage, { ApiMessageType } from "./ApiMessage"
 
 export default class SettingsUpdateResponse extends ApiMessage {
    successful = false

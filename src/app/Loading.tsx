@@ -5,7 +5,7 @@ interface Props {
    text?: string
 }
 
-const Loading: React.FC<Props> = (props: Props) => {
+export default (props: Props) => {
    return (
       <div className="loading">
          <div className="inner">
@@ -14,5 +14,3 @@ const Loading: React.FC<Props> = (props: Props) => {
       </div>
    )
 }
-
-export default Loading;

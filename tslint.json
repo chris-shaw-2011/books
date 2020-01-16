@@ -1,0 +1,67 @@
+{
+   "extends": [
+      "tslint:recommended",
+      "tslint-react"
+   ],
+   "rules": {
+      "max-line-length": false,
+      "semicolon": [
+         true,
+         "never"
+      ],
+      "new-parens": true,
+      "no-arg": true,
+      "no-bitwise": true,
+      "no-conditional-assignment": true,
+      "no-consecutive-blank-lines": false,
+      "quotemark": [
+         true,
+         "double",
+         "jsx-double"
+      ],
+      "no-console": {
+         "severity": "warning",
+         "options": [
+            "debug",
+            "info",
+            "log",
+            "time",
+            "timeEnd",
+            "trace"
+         ]
+      },
+      "no-trailing-whitespace": true,
+      "trailing-comma": [
+         true,
+         {
+            "multiline": "always",
+            "singleline": "never"
+         }
+      ],
+      "object-literal-sort-keys": false,
+      "member-access": false,
+      "arrow-parens": [
+         true,
+         "ban-single-arg-parens"
+      ],
+      "variable-name": {
+         "options": [
+            "ban-keywords",
+            "check-format",
+            "allow-leading-underscore",
+            "require-const-for-all-caps"
+         ]
+      },
+      "one-line": false,
+      "jsx-no-multiline-js": false,
+      "jsx-wrap-multiline": false,
+      "jsx-no-lambda": false,
+      "interface-name": [
+         true,
+         "never-prefix"
+      ]
+   },
+   "jsRules": {
+      "max-line-length": false
+   }
+}

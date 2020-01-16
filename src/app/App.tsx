@@ -1,22 +1,22 @@
-import React, { useState, Fragment, useCallback, useMemo } from 'react';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import { Navbar, Form, FormControl, Nav, NavDropdown } from "react-bootstrap"
-import Authenticated from './Authenticated';
+import "bootstrap/dist/css/bootstrap.min.css"
+import React, { Fragment, useCallback, useMemo, useState } from "react"
+import { Form, FormControl, Nav, Navbar, NavDropdown } from "react-bootstrap"
+import { CookiesProvider, useCookies } from "react-cookie"
+import Token from "../shared/api/Token"
+import Authenticated from "./Authenticated"
+import ChangePassword from "./ChangePassword"
+import AppContext, { VisibleComponent } from "./LoggedInAppContext"
+import LogIn from "./LogIn"
 import "./styles.css"
-import LogIn from './LogIn';
-import Token from '../shared/api/Token';
-import { CookiesProvider, useCookies } from 'react-cookie';
 import Gear from "./svg/Gear"
-import AppContext, { VisibleComponent } from './LoggedInAppContext';
+import Lock from "./svg/Lock"
+import LogOut from "./svg/LogOut"
+import Upload from "./svg/Upload"
 import Users from "./svg/Users"
-import ChangePassword from './ChangePassword';
-import LogOut from './svg/LogOut';
-import Lock from './svg/Lock';
-import Upload from './svg/Upload';
 
-var typingTimeout: NodeJS.Timeout
+let typingTimeout: NodeJS.Timeout
 
-const App: React.FC = () => {
+export default () => {
    const [searchWords, setSearchWords] = useState({ typing: false, words: new Array<string>() })
    const [cookies, setCookies] = useCookies(["loginCookie"])
    const [loginMessage, setLoginMessage] = useState("")
@@ -28,14 +28,14 @@ const App: React.FC = () => {
       if (inviteUserId) {
          window.history.replaceState({}, document.title, "/")
       }
-      setCookies("loginCookie", "", { maxAge: 0 });
+      setCookies("loginCookie", "", { maxAge: 0 })
       setLoginMessage(message || "")
    }, [setCookies, setLoginMessage, inviteUserId])
-   const onLogIn = useCallback((token: Token) => {
+   const onLogIn = useCallback((t: Token) => {
       if (inviteUserId) {
          window.history.replaceState({}, document.title, "/")
       }
-      setCookies("loginCookie", JSON.stringify(token), { maxAge: 12 * 30 * 24 * 60 * 60, path: "/" });
+      setCookies("loginCookie", JSON.stringify(t), { maxAge: 12 * 30 * 24 * 60 * 60, path: "/" })
       setLoginMessage("")
    }, [setCookies, setLoginMessage, inviteUserId])
 
@@ -45,42 +45,46 @@ const App: React.FC = () => {
             <Navbar bg="dark" className="navbar" variant="dark">
                <Navbar.Brand className="brand"><img src="favicon.svg" alt="Book" /><span style={{ paddingLeft: "5px" }}>Audio Books</span></Navbar.Brand>
                {token && <Fragment>
-                  <Nav className="mr-auto">
-                  </Nav>
-                  <Form inline>
-                     <FormControl type="text" placeholder="Search" className="mr-sm-2" onChange={(e: React.FormEvent<HTMLInputElement>) => {
-                        clearTimeout(typingTimeout)
+                  <Nav className="mr-auto" />
+                  <Form inline={true}>
+                     <FormControl
+                        type="text"
+                        placeholder="Search"
+                        className="mr-sm-2"
+                        onChange={(e: React.FormEvent<HTMLInputElement>) => {
+                           clearTimeout(typingTimeout)
 
-                        var search = (e.currentTarget.value || "").trim();
+                           const search = (e.currentTarget.value || "").trim()
 
-                        if (search) {
-                           setSearchWords({ typing: true, words: search.split(" ").map(w => w.toLowerCase()) })
+                           if (search) {
+                              setSearchWords({ typing: true, words: search.split(" ").map(w => w.toLowerCase()) })
 
-                           typingTimeout = setTimeout(() => setSearchWords(s => { return { ...s, typing: false } }), 500)
-                        }
-                        else {
-                           setSearchWords({ typing: false, words: [] })
-                        }
-                     }} />
+                              typingTimeout = setTimeout(() => setSearchWords(s => ({ ...s, typing: false })), 500)
+                           }
+                           else {
+                              setSearchWords({ typing: false, words: [] })
+                           }
+                        }}
+                     />
                   </Form>
                   <Nav>
                      <NavDropdown title="" id="nav-dropdown" className="mainNav">
-                        <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.Upload); return false; }}><Upload /> Upload Books</NavDropdown.Item>
+                        <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.Upload); return false }}><Upload /> Upload Books</NavDropdown.Item>
                         {token.user.isAdmin &&
                            <Fragment>
-                              <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.Users); return false; }}><Users /> Manage Users</NavDropdown.Item>
-                              <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.Settings); return false; }}><Gear /> Settings</NavDropdown.Item>
+                              <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.Users); return false }}><Users /> Manage Users</NavDropdown.Item>
+                              <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.Settings); return false }}><Gear /> Settings</NavDropdown.Item>
                            </Fragment>}
                         <NavDropdown.Divider />
-                        <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.ChangePassword); return false; }}><Lock /> Change Password</NavDropdown.Item>
-                        <NavDropdown.Item onClick={() => { logOut(); return false; }}><LogOut /> Log Out</NavDropdown.Item>
+                        <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.ChangePassword); return false }}><Lock /> Change Password</NavDropdown.Item>
+                        <NavDropdown.Item onClick={() => { logOut(); return false }}><LogOut /> Log Out</NavDropdown.Item>
                      </NavDropdown>
                   </Nav>
                </Fragment>}
             </Navbar>
             <div className="mainContent">
                {token ?
-                  <AppContext.Provider value={{ logOut: logOut, token: token, visibleComponent: visibleComponent, setVisibleComponent: setVisibleComponent }}>
+                  <AppContext.Provider value={{ logOut, token, visibleComponent, setVisibleComponent }}>
                      <Authenticated searchWords={searchWords} onPasswordChanged={onLogIn} />
                   </AppContext.Provider> :
                   inviteUserId ?
@@ -90,7 +94,5 @@ const App: React.FC = () => {
             </div>
          </CookiesProvider>
       </div>
-   );
+   )
 }
-
-export default App;
