@@ -91,23 +91,35 @@ export default class Converter {
       await fs.promises.mkdir(unzipPath)
 
       for (const file of files) {
-         await new Promise(resolve => file.stream().pipe(fs.createWriteStream(path.join(unzipPath, file.path))).on("finish", resolve))
-         sizeUnzipped += file.uncompressedSize
+         if (file.type === "Directory") {
+            fs.mkdirSync(path.join(unzipPath, file.path))
+         }
+         else {
+            await new Promise(resolve => file.stream().pipe(fs.createWriteStream(path.join(unzipPath, file.path))).on("finish", resolve))
+            sizeUnzipped += file.uncompressedSize
+         }
+
          this.percentComplete = Math.round((sizeUnzipped / sizeToUnzip) * 100)
       }
 
       await fs.promises.unlink(zipPath)
 
       if (await this.combineMp3s(unzipPath, baseFilePath)) {
+         await fs.promises.rmdir(unzipPath, { recursive: true })
          this.status = ConverterStatus.Complete
       }
    }
 
-   private combineMp3s = async (currPath: string, baseFilePath: string) => {
+   private combineMp3s = async (currPath: string, baseFilePath: string): Promise<boolean> => {
       this._percentComplete = 0
       this.status = ConverterStatus.Converting
 
       const paths = await fs.promises.readdir(currPath, { withFileTypes: true })
+
+      if (paths.length === 1 && paths[0].isDirectory()) {
+         return await this.combineMp3s(path.join(currPath, paths[0].name), baseFilePath)
+      }
+
       const mp3s = []
       let bestCover = ""
       let bestCoverSize = 0
@@ -199,8 +211,6 @@ export default class Converter {
          }
 
          await fs.promises.rename(outputFilePath, finalFilePath)
-
-         await fs.promises.rmdir(currPath, { recursive: true })
 
          return true
       }
