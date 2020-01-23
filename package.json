@@ -6,6 +6,7 @@
       "async-mutex": "^0.1.4",
       "bcrypt": "^3.0.7",
       "bootstrap": "^4.4.1",
+      "chokidar": "^3.3.1",
       "classnames": "^2.2.6",
       "cookie": "^0.4.0",
       "fastify": "^2.11.0",

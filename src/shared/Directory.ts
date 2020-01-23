@@ -18,7 +18,8 @@ export default class Directory {
                const status = bookStatuses ? bookStatuses[i.id]?.status : Status.Unread
 
                this.items.push(new Book(i, status))
-            } else {
+            }
+            else {
                this.items.push(new Directory(i, bookStatuses))
             }
          })

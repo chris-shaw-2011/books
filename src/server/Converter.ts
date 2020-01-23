@@ -84,22 +84,32 @@ export default class Converter {
 
       const zipPath = path.join(baseFilePath, fileName)
       const unzipPath = zipPath.replace(".zip", "")
-      const files = (await unzipper.Open.file(zipPath)).files
+      const openFile = (await unzipper.Open.file(zipPath))
+      const files = openFile.files
       const sizeToUnzip = files.map(f => f.uncompressedSize).reduce((totalSize: number, currSize) => totalSize + currSize)
       let sizeUnzipped = 0
 
       await fs.promises.mkdir(unzipPath)
 
+      // Create directories first
       for (const file of files) {
-         if (file.type === "Directory") {
-            fs.mkdirSync(path.join(unzipPath, file.path))
+         const destPath = path.join(unzipPath, file.path)
+
+         if (file.type === "Directory" && !fs.existsSync(destPath)) {
+            fs.mkdirSync(destPath)
          }
          else {
+            const destParsed = path.parse(destPath)
+
+            if (!fs.existsSync(destParsed.dir)) {
+               fs.mkdirSync(destParsed.dir, { recursive: true })
+            }
+
             await new Promise(resolve => file.stream().pipe(fs.createWriteStream(path.join(unzipPath, file.path))).on("finish", resolve))
             sizeUnzipped += file.uncompressedSize
-         }
 
-         this.percentComplete = Math.round((sizeUnzipped / sizeToUnzip) * 100)
+            this.percentComplete = Math.round((sizeUnzipped / sizeToUnzip) * 100)
+         }
       }
 
       await fs.promises.unlink(zipPath)
@@ -214,6 +224,8 @@ export default class Converter {
 
          return true
       }
+
+      return false
    }
 
    private convertAax = async (fileName: string, baseFilePath: string) => {

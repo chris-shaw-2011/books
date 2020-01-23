@@ -17,6 +17,7 @@ export default class Book {
    comment = ""
    duration?: number
    id = ""
+   fullPath = ""
    readonly type = ItemType.book
 
    constructor(json?: Book, status?: Status) {
@@ -36,5 +37,12 @@ export default class Book {
       if (status) {
          this.status = status
       }
+   }
+
+   toJSON() {
+      const json = { ...this }
+      json.fullPath = ""
+
+      return json
    }
 }
