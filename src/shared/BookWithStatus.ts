@@ -1,6 +1,5 @@
 import { Status } from "./Book"
 
-
 export default class BookWithStatus {
    dateStatusSet = 0
    status = Status.Unread

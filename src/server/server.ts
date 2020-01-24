@@ -144,6 +144,10 @@ server.register(fastifyStatic, {
 server.post("/auth", async (request, reply) => {
    const user = new User(request.body)
 
+   if (!user.password) {
+      return new Unauthorized({ message: "You must specify a password", type: ApiMessageType.Unauthorized })
+   }
+
    if (db.noUsers) {
       db.noUsers = false
       console.warn(`Adding user ${user.email} to the database since they are the first login attempt`)
@@ -386,7 +390,6 @@ server.get("/*", (request, reply) => {
 
    reply.sendFile(filePath, path.join(rootDir, "build"))
 })
-
 
 const start = async () => {
    try {

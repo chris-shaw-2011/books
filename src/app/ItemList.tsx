@@ -7,7 +7,7 @@ import BookLInk from "./BookLInk"
 import DirectoryLink from "./DirectoryLink"
 
 interface Props {
-   items: Array<Directory | Book>,
+   items: (Directory | Book)[],
    className?: string,
    searchWords: string[],
    statusChanged: (books: Books) => void,

@@ -3,7 +3,7 @@ import BookStatuses from "./BookStatuses"
 import { ItemType } from "./ItemType"
 
 export default class Directory {
-   items: Array<Directory | Book> = []
+   items: (Directory | Book)[] = []
    name = ""
    id = ""
    readonly type = ItemType.directory

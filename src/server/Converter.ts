@@ -1,6 +1,6 @@
 import { Mutex } from "async-mutex"
 import { ChildProcess, ChildProcessWithoutNullStreams, spawn } from "child_process"
-import EventEmitter from "events"
+import { EventEmitter } from "events"
 import ffmpegPath from "ffmpeg-static"
 import { path as ffprobePath } from "ffprobe-static"
 import fs from "fs"
@@ -357,7 +357,6 @@ export default class Converter {
 
       return true
    }
-
 
    private durationToSeconds(matches: RegExpMatchArray) {
       let multiplier = 1

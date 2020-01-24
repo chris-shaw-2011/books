@@ -31,49 +31,49 @@ class Database implements sqlite.Database {
    }
 
    close(): Promise<void> {
-      return this.db.close()
+      return this.db!.close()
    }
 
    run(sql: string | SQLStatement, params?: any[]): Promise<sqlite.Statement>
    run(sql: any, rest?: any[]) {
-      return this.db.run(sql, rest)
+      return this.db!.run(sql, rest)
    }
 
    get(sql: string | SQLStatement, params?: any[]): Promise<any>
    get<T>(sql: string | SQLStatement, params?: any[]): Promise<T>
    get(sql: any, rest?: any[]) {
-      return this.db.get(sql, rest)
+      return this.db!.get(sql, rest)
    }
 
    all(sql: string | SQLStatement, params?: any[]): Promise<any[]>
    all<T>(sql: string | SQLStatement, params?: any[]): Promise<T[]>
    all(sql: any, ...rest: any[]) {
-      return this.db.all(sql, rest)
+      return this.db!.all(sql, rest)
    }
 
    exec(sql: string): Promise<sqlite.Database> {
-      return this.db.exec(sql)
+      return this.db!.exec(sql)
    }
 
    each(sql: string | SQLStatement, callback?: (err: Error, row: any) => void): Promise<number>
    each(sql: string | SQLStatement, params: any[]): Promise<number>
    each(sql: any, callback?: any, rest?: any[]) {
-      return this.db.each(sql, callback, rest)
+      return this.db!.each(sql, callback, rest)
    }
 
    prepare(sql: string | SQLStatement, params?: any[]): Promise<sqlite.Statement>
    prepare(sql: any, rest?: any[]) {
-      return this.db.prepare(sql, rest)
+      return this.db!.prepare(sql, rest)
    }
 
    configure(option: "busyTimeout", value: number): void
    configure(option: string, value: any): void
    configure(option: any, value: any) {
-      this.db.configure(option, value)
+      this.db!.configure(option, value)
    }
 
    migrate(options: { force?: string; table?: string; migrationsPath?: string; }): Promise<sqlite.Database> {
-      return this.db.migrate(options)
+      return this.db!.migrate(options)
    }
 
    on(event: "trace", listener: (sql: string) => void): void
@@ -82,7 +82,7 @@ class Database implements sqlite.Database {
    on(event: "open" | "close", listener: () => void): void
    on(event: string, listener: (...args: any[]) => void): void
    on(event: any, listener: any) {
-      this.db.on(event, listener)
+      this.db!.on(event, listener)
    }
 }
 
