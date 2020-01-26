@@ -1,5 +1,5 @@
 import { Mutex } from "async-mutex"
-import { ChildProcess, ChildProcessWithoutNullStreams, spawn } from "child_process"
+import { ChildProcess, exec } from "child_process"
 import { EventEmitter } from "events"
 import ffmpegPath from "ffmpeg-static"
 import { path as ffprobePath } from "ffprobe-static"
@@ -10,6 +10,7 @@ import sanitize from "sanitize-filename"
 import unzipper from "unzipper"
 import uuid from "uuid"
 import { ConverterStatus } from "../shared/ConverterStatus"
+import util from "util"
 
 export default class Converter {
    totalDuration = 0
@@ -267,11 +268,11 @@ export default class Converter {
    private crack = async (inputFilePath: string) => {
       this.status = ConverterStatus.Cracking
 
-      const ffprobe = spawn(ffprobePath, [`"${inputFilePath}"`], { windowsVerbatimArguments: true, detached: false })
+      const ffprobe = exec(`${ffprobePath} "${inputFilePath}"`)
       let probeOutput = ""
 
-      ffprobe.stdout.on("data", data => probeOutput += data.toString())
-      ffprobe.stderr.on("data", data => probeOutput += data.toString())
+      ffprobe.stdout?.on("data", data => probeOutput += data.toString())
+      ffprobe.stderr?.on("data", data => probeOutput += data.toString())
 
       try {
          await onExit(ffprobe)
@@ -294,19 +295,13 @@ export default class Converter {
          return ""
       }
 
-      let cracker: ChildProcessWithoutNullStreams
       const crackerArgs = [".", "-h", matches[1]]
       let crackerOutput = ""
+      const crackerPath = process.platform === "win32" ? path.join(__dirname, "inAudible-NG", "run", "rcrack.exe") : path.join(__dirname, "inAudible-NG", "rcrack")
+      const cracker = exec(`"${crackerPath}" . -h ${matches[1]}`)
 
-      if (process.platform === "win32") {
-         cracker = spawn(path.join(__dirname, "inAudible-NG", "run", "rcrack.exe"), crackerArgs, { windowsVerbatimArguments: true, detached: false })
-      }
-      else {
-         cracker = spawn(path.join(__dirname, "rcrack"), [".", "-h", matches[1]], { windowsVerbatimArguments: true, detached: false })
-      }
-
-      cracker.stdout.on("data", data => crackerOutput += data.toString())
-      cracker.stderr.on("data", data => crackerOutput += data.toString())
+      cracker.stdout?.on("data", data => crackerOutput += data.toString())
+      cracker.stderr?.on("data", data => crackerOutput += data.toString())
 
       try {
          await onExit(cracker)
@@ -336,12 +331,12 @@ export default class Converter {
 
    private async runFfmpeg(outputFilePath: string, args: string[], workingDirectory: string) {
       const logFile = `${outputFilePath}.ffmpeg.log`
-      const ffmpeg = spawn(ffmpegPath as any, args, { windowsVerbatimArguments: true, detached: false, cwd: workingDirectory })
+      const ffmpeg = exec(`${ffmpegPath} ${args.join(" ")}`, { cwd: workingDirectory })
 
-      ffmpeg.stdout.on("data", data => this.parseData(data, outputFilePath))
-      ffmpeg.stderr.on("data", data => this.parseData(data, outputFilePath))
+      ffmpeg.stdout?.on("data", data => this.parseData(data, outputFilePath))
+      ffmpeg.stderr?.on("data", data => this.parseData(data, outputFilePath))
 
-      ffmpeg.stderr.pipe(fs.createWriteStream(logFile))
+      ffmpeg.stderr?.pipe(fs.createWriteStream(logFile))
 
       try {
          await onExit(ffmpeg)
