@@ -386,7 +386,11 @@ server.get("/files/*", { preHandler: validateRequest }, (request, reply) => {
 
 // This handles requests to the root of the site in production
 server.get("/*", (request, reply) => {
-   const filePath = request.params["*"] as string || "index.html"
+   let filePath = request.params["*"] as string || "index.html"
+
+   if (filePath.startsWith("invite/")) {
+      filePath = "index.html"
+   }
 
    reply.sendFile(filePath, path.join(rootDir, "build"))
 })
