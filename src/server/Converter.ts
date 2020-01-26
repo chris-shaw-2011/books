@@ -69,10 +69,10 @@ export default class Converter {
       }
    }
 
-   convert = async (fileName: string, baseFilePath: string, mutex: Mutex) => {
+   convert = async (fileName: string, baseFilePath: string, mutex: Mutex, rootDir: string) => {
       return await mutex.runExclusive(async () => {
          if (fileName.endsWith(".aax")) {
-            await this.convertAax(fileName, baseFilePath)
+            await this.convertAax(fileName, baseFilePath, rootDir)
          }
          else if (fileName.endsWith(".zip")) {
             await this.convertMp3(fileName, baseFilePath)
@@ -229,11 +229,11 @@ export default class Converter {
       return false
    }
 
-   private convertAax = async (fileName: string, baseFilePath: string) => {
+   private convertAax = async (fileName: string, baseFilePath: string, rootDir: string) => {
       const outputFileName = `${fileName}.m4b`
       const outputFilePath = path.join(baseFilePath, outputFileName)
       const inputFilePath = path.join(baseFilePath, fileName)
-      const encryptionKey = await this.crack(inputFilePath)
+      const encryptionKey = await this.crack(inputFilePath, rootDir)
 
       if (!encryptionKey) {
          return
@@ -265,7 +265,7 @@ export default class Converter {
       this.status = ConverterStatus.Complete
    }
 
-   private crack = async (inputFilePath: string) => {
+   private crack = async (inputFilePath: string, rootDir: string) => {
       this.status = ConverterStatus.Cracking
 
       const ffprobe = exec(`${ffprobePath} "${inputFilePath}"`)
@@ -297,7 +297,7 @@ export default class Converter {
 
       const crackerArgs = [".", "-h", matches[1]]
       let crackerOutput = ""
-      const crackerPath = process.platform === "win32" ? path.join(__dirname, "inAudible-NG", "run", "rcrack.exe") : path.join(__dirname, "inAudible-NG", "rcrack")
+      const crackerPath = process.platform === "win32" ? path.join(rootDir, "src", "server", "inAudible-NG", "run", "rcrack.exe") : path.join(rootDir, "src", "server", "inAudible-NG", "rcrack")
       const cracker = exec(`"${crackerPath}" . -h ${matches[1]}`)
 
       cracker.stdout?.on("data", data => crackerOutput += data.toString())

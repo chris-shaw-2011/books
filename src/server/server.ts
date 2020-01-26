@@ -339,7 +339,7 @@ server.post("/upload", { preHandler: validateRequest }, (request, reply) => {
 
       conversions.set(id, conversion)
 
-      conversion.convert(fileName, db.settings.uploadLocation, conversionMutex).then(() => {
+      conversion.convert(fileName, db.settings.uploadLocation, conversionMutex, rootDir).then(() => {
          setTimeout(() => conversions.delete(id), 60000)
       })
 
