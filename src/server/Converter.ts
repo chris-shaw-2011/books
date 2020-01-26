@@ -295,10 +295,10 @@ export default class Converter {
          return ""
       }
 
-      const crackerArgs = [".", "-h", matches[1]]
       let crackerOutput = ""
-      const crackerPath = process.platform === "win32" ? path.join(rootDir, "src", "server", "inAudible-NG", "run", "rcrack.exe") : path.join(rootDir, "src", "server", "inAudible-NG", "rcrack")
-      const cracker = exec(`"${crackerPath}" . -h ${matches[1]}`)
+      const cwd = path.join(rootDir, "src", "server", "inAudible-NG")
+      const crackerPath = process.platform === "win32" ? path.join(cwd, "run", "rcrack.exe") : path.join(cwd, "rcrack")
+      const cracker = exec(`"${crackerPath}" . -h ${matches[1]}`, { cwd })
 
       cracker.stdout?.on("data", data => crackerOutput += data.toString())
       cracker.stderr?.on("data", data => crackerOutput += data.toString())
