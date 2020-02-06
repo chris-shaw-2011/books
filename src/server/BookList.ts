@@ -69,6 +69,9 @@ class BookList {
             const dir = this.books.findClosestDirectory(addPath)
 
             dir?.loadBooks(path.parse(addPath))
+            dir?.items.sort((a, b) => {
+               return a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+            })
          })
          .on("unlink", delPath => {
             // tslint:disable-next-line: no-console
