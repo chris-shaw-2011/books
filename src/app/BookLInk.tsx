@@ -9,6 +9,7 @@ import Book, { Status } from "../shared/Book"
 import Api from "./Api"
 import Loading from "./Loading"
 import LoggedInAppContext from "./LoggedInAppContext"
+import moment from "moment"
 
 interface BookProps {
    book: Book,
@@ -48,6 +49,7 @@ export default (props: BookProps) => {
                   {props.book.duration ? `${readableDuration(props.book.duration)}, ` : ""}
                   {Math.round(props.book.numBytes / 1024 / 1024).toLocaleString()} MB
                </div>
+               <div className="uploadTime">Uploaded: {moment(props.book.uploadTime).format("M/D/YYYY h:mm:ss A")}</div>
                <div />
             </div>
          </a>

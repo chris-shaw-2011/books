@@ -101,6 +101,7 @@ export default class ServerDirectory extends Directory {
 
             const metadata = (await mm.parseFile(fullPath, { skipPostHeaders: true, skipCovers: fs.existsSync(photoPath), includeChapters: false }))
             const tags = metadata.common
+            const stats = (await fs.promises.stat(fullPath))
 
             if (tags) {
                book.name = p.name
@@ -120,8 +121,9 @@ export default class ServerDirectory extends Directory {
             book.id = bookUri
             book.download = `/files/${bookUri}`
             book.cover = book.download + ".jpg"
-            book.numBytes = (await fs.promises.stat(fullPath)).size
+            book.numBytes = stats.size
             book.fullPath = fullPath
+            book.uploadTime = stats.birthtime
 
             this.items.push(book)
 

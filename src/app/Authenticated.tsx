@@ -1,5 +1,5 @@
 import React, { Fragment, useCallback, useContext, useEffect, useState } from "react"
-import { Tab, Tabs } from "react-bootstrap"
+import { Tabs, Tab } from "react-bootstrap"
 import AccessDenied from "../shared/api/AccessDenied"
 import Books from "../shared/api/Books"
 import SettingsRequired from "../shared/api/SettingsRequired"
@@ -10,11 +10,11 @@ import Directory from "../shared/Directory"
 import Api from "./Api"
 import ChangePassword from "./ChangePassword"
 import EditSettings from "./EditSettings"
-import ItemList from "./ItemList"
 import Loading from "./Loading"
 import AppContext, { VisibleComponent } from "./LoggedInAppContext"
 import UploadBooks from "./UploadBooks"
 import UserList from "./UserList"
+import ItemListTabContent from "./ItemListTabContent"
 
 interface Props {
    searchWords: { typing: boolean, words: string[] },
@@ -95,12 +95,12 @@ export default (props: Props) => {
                Object.values(Status).forEach(s => map.set(s, filter(state, s, props.searchWords.words)))
 
                return Object.values(Status).map(s => {
-                  const items = map.get(s)!
-
+                  const dir = map.get(s)!
                   return (
-                     <Tab eventKey={s} title={`${s} (${items.bookCount()})`} mountOnEnter={true} key={s}>
-                        <ItemList items={items.items} className="rootItemList" searchWords={props.searchWords.words} statusChanged={statusChanged} />
-                     </Tab>)
+                     <Tab eventKey={s} title={`${s} (${dir.bookCount()})`} mountOnEnter={true} key={s}>
+                        <ItemListTabContent dir={dir} status={s} searchWords={props.searchWords.words} statusChanged={statusChanged} key={s} />
+                     </Tab>
+                  )
                })
             })()}
          </Tabs> : <Loading />}

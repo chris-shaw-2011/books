@@ -18,6 +18,7 @@ export default class Book {
    duration?: number
    id = ""
    fullPath = ""
+   uploadTime = new Date(0)
    readonly type = ItemType.book
 
    constructor(json?: Book, status?: Status) {
@@ -32,6 +33,7 @@ export default class Book {
          this.comment = json.comment
          this.duration = json.duration
          this.id = json.id
+         this.uploadTime = new Date(json.uploadTime)
       }
 
       if (status) {
@@ -40,8 +42,9 @@ export default class Book {
    }
 
    toJSON() {
-      const json = { ...this }
+      const json: any = { ...this }
       json.fullPath = ""
+      json.uploadTime = this.uploadTime.getTime()
 
       return json
    }

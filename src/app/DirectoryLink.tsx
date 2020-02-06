@@ -30,9 +30,9 @@ export default (props: DirectoryProps) => {
             {state.open || props.searchWords.length ? <FolderOpen /> : <FolderClosed />}
             <div>{props.directory.name}</div>
          </div>
-         <AnimateHeight onAnimationEnd={() => setState(s => ({ ...s, animating: false }))} height={state.open || props.searchWords.length ? "auto" : 0}>
-            {state.open || props.searchWords.length || state.animating ? <ItemList items={props.directory.items} searchWords={props.searchWords} statusChanged={props.statusChanged} /> : null}
-         </AnimateHeight>
+         {(state.open || props.searchWords.length || state.animating) && <AnimateHeight onAnimationEnd={() => setState(s => ({ ...s, animating: false }))} height={state.open || props.searchWords.length ? "auto" : 0}>
+            <ItemList items={props.directory.items} searchWords={props.searchWords} statusChanged={props.statusChanged} />
+         </AnimateHeight>}
       </div>
    )
 }

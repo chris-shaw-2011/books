@@ -3,7 +3,7 @@ import Books from "../shared/api/Books"
 import Book from "../shared/Book"
 import Directory from "../shared/Directory"
 import { ItemType } from "../shared/ItemType"
-import BookLInk from "./BookLInk"
+import BookLink from "./BookLink"
 import DirectoryLink from "./DirectoryLink"
 
 interface Props {
@@ -18,7 +18,7 @@ export default (props: Props) => {
       <Fragment>
          {props.items.map(i => {
             if (i.type === ItemType.book) {
-               return <BookLInk book={i} className={props.className} key={i.id} searchWords={props.searchWords} statusChanged={props.statusChanged} />
+               return <BookLink book={i} className={props.className} key={i.id} searchWords={props.searchWords} statusChanged={props.statusChanged} />
             }
             else {
                return <DirectoryLink directory={i} className={props.className} key={i.id} searchWords={props.searchWords} statusChanged={props.statusChanged} />
