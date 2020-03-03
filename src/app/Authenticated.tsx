@@ -21,6 +21,10 @@ interface Props {
    onPasswordChanged: (token: Token) => void,
 }
 
+function isMatch(searchWords: string[], ...checkMatch: string[]) {
+   return !searchWords.length || searchWords.every(s => checkMatch.some(m => m.indexOf(s) !== -1))
+}
+
 function filter(dir: Directory, status: Status, searchWords: string[]) {
    const ret = new Directory(dir)
 
@@ -32,15 +36,22 @@ function filter(dir: Directory, status: Status, searchWords: string[]) {
          const lName = i.name.toLowerCase()
          const lComment = i.comment.toLowerCase()
 
-         if (!searchWords.length || searchWords.every(s => lAuthor.indexOf(s) !== -1 || lName.indexOf(s) !== -1 || lComment.indexOf(s) !== -1)) {
+         if (isMatch(searchWords, lAuthor, lName, lComment)) {
             ret.items.push(i)
          }
       }
       else if (i instanceof Directory) {
-         const rec = filter(i, status, searchWords)
+         let filtered: Directory
 
-         if (rec.items.length) {
-            ret.items.push(rec)
+         if (isMatch(searchWords, i.name.toLowerCase())) {
+            filtered = filter(i, status, [])
+         }
+         else {
+            filtered = filter(i, status, searchWords)
+         }
+
+         if (filtered.items.length) {
+            ret.items.push(filtered)
          }
       }
    })
