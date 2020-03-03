@@ -1,4 +1,4 @@
-import chokidar, { FSWatcher } from "chokidar"
+import chokidar from "chokidar"
 import fs from "fs"
 import path from "path"
 import db from "./Database"
@@ -8,6 +8,11 @@ class BookList {
    private books = new ServerDirectory()
    private loadingPromise?: Promise<boolean>
    private watcher?: chokidar.FSWatcher
+   private fileAddedPendingUpdates: (() => Promise<void>)[] = []
+
+   constructor() {
+      setTimeout(this.checkForFileAddedPendingUpdates, 60000)
+   }
 
    async loadBooks() {
       if (this.watcher) {
@@ -63,15 +68,7 @@ class BookList {
          binaryInterval: 60000,
       })
          .on("add", addPath => {
-            // tslint:disable-next-line: no-console
-            console.log(`file added: ${addPath}`)
-
-            const dir = this.books.findClosestDirectory(addPath)
-
-            dir?.loadBooks(path.parse(addPath))
-            dir?.items.sort((a, b) => {
-               return a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-            })
+            this.fileAddedPendingUpdates.push(() => this.fileAdded(addPath))
          })
          .on("unlink", delPath => {
             // tslint:disable-next-line: no-console
@@ -79,6 +76,27 @@ class BookList {
 
             this.books.deleteBook(path.parse(delPath))
          })
+   }
+
+   checkForFileAddedPendingUpdates = async () => {
+      while (this.fileAddedPendingUpdates.length) {
+         const fileAddedPendingUpdate = this.fileAddedPendingUpdates.shift()!
+
+         await fileAddedPendingUpdate()
+      }
+
+      setTimeout(this.checkForFileAddedPendingUpdates, 60000)
+   }
+
+   async fileAdded(addPath: string) {
+      // tslint:disable-next-line: no-console
+      console.log(`file added: ${addPath}`)
+
+      const dir = this.books.findClosestDirectory(addPath)
+
+      await dir?.loadBooks(path.parse(addPath))
+
+      dir?.sortItems(true)
    }
 
    async allBooks() {

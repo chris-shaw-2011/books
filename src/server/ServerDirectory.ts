@@ -146,10 +146,22 @@ export default class ServerDirectory extends Directory {
       }
 
       if (this.items.length) {
+         this.sortItems()
+
          return true
       }
       else {
          return false
+      }
+   }
+
+   sortItems(sortParent?: boolean) {
+      this.items.sort((a, b) => {
+         return a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+      })
+
+      if (sortParent) {
+         this.parent?.sortItems(sortParent)
       }
    }
 }
