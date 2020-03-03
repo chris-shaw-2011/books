@@ -1,7 +1,7 @@
 import { Line } from "rc-progress"
 import React, { Fragment, useContext, useEffect, useState } from "react"
 import { Button, Form, ListGroup, Modal } from "react-bootstrap"
-import uuid from "uuid"
+import { v4 as uuid } from "uuid"
 import AccessDenied from "../shared/api/AccessDenied"
 import ConversionUpdateResponse from "../shared/api/ConversionUpdateResponse"
 import Unauthorized from "../shared/api/Unauthorized"
@@ -24,11 +24,11 @@ interface Props {
 }
 
 export default (props: Props) => {
-   const [fileUploadRowKeys, setFileUploadRowKeys] = useState([uuid.v4()])
+   const [fileUploadRowKeys, setFileUploadRowKeys] = useState([uuid()])
    const onUploadStarted = () => {
       // Add a new row
       setFileUploadRowKeys(prev => {
-         return [...prev, uuid.v4()]
+         return [...prev, uuid()]
       })
    }
    const onComplete = (key: string) => {

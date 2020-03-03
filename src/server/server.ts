@@ -10,7 +10,7 @@ import moment from "moment"
 import path from "path"
 import pump from "pump"
 import url from "url"
-import uuid from "uuid"
+import { v4 as uuid } from "uuid"
 import AccessDenied from "../shared/api/AccessDenied"
 import AddUserRequest from "../shared/api/AddUserRequest"
 import { ApiMessageType } from "../shared/api/ApiMessage"
@@ -64,7 +64,7 @@ const validatePassword = async (email: string, password: string, reply: fastify.
    if (dbUser) {
       if (await bcrypt.compare(password, dbUser.hash)) {
          const validatedUser = new User(dbUser as User)
-         const authorization = uuid.v4()
+         const authorization = uuid()
 
          validatedUser.lastLogin = new Date().getTime()
          authorizationExpiration.set(authorization, getNewExpiration())
@@ -154,7 +154,7 @@ server.post("/auth", async (request, reply) => {
 
       const hash = await passwordHash(user.password)
 
-      await db.run("INSERT INTO user (id, email, hash, isAdmin) VALUES(?, ?, ?, ?)", [uuid.v4(), user.email, hash, 1])
+      await db.run("INSERT INTO user (id, email, hash, isAdmin) VALUES(?, ?, ?, ?)", [uuid(), user.email, hash, 1])
    }
 
    return await validatePassword(user.email, user.password, reply)
@@ -220,7 +220,7 @@ server.post("/addUser", { preHandler: validateAdminRequest }, async (request, re
          message = "User already exists"
       }
       else {
-         const userId = uuid.v4()
+         const userId = uuid()
 
          await db.run("INSERT INTO User (id, email, isAdmin) VALUES(?, ?, ?)", [userId, userRequest.user.email, userRequest.user.isAdmin])
 
@@ -320,7 +320,7 @@ server.post("/changeBookStatus", { preHandler: validateRequest }, async (request
 })
 
 server.post("/upload", { preHandler: validateRequest }, (request, reply) => {
-   const id = uuid.v4()
+   const id = uuid()
    const mp = request.multipart(handler, onEnd)
    let fileName = ""
    let filePath = ""

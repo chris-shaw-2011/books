@@ -8,9 +8,8 @@ import * as mm from "music-metadata"
 import path from "path"
 import sanitize from "sanitize-filename"
 import unzipper from "unzipper"
-import uuid from "uuid"
+import { v4 as uuid } from "uuid"
 import { ConverterStatus } from "../shared/ConverterStatus"
-import util from "util"
 
 export default class Converter {
    totalDuration = 0
@@ -167,7 +166,7 @@ export default class Converter {
       }
 
       if (mp3s.length) {
-         const outputFileName = `${uuid.v4()}.mp3`
+         const outputFileName = `${uuid}.mp3`
          const opt = { cwd: currPath, pipeStdio: true, metaDataOverrides: { title: outputName, coverPicturePath: bestCover } }
          const args = ["-i"]
          const metadata = opt.metaDataOverrides
@@ -218,7 +217,7 @@ export default class Converter {
          let finalFilePath = path.join(baseFilePath, outputName + ".mp3")
 
          if (fs.existsSync(finalFilePath)) {
-            finalFilePath = path.join(baseFilePath, outputName + uuid.v4() + ".mp3")
+            finalFilePath = path.join(baseFilePath, outputName + uuid + ".mp3")
          }
 
          await fs.promises.rename(outputFilePath, finalFilePath)

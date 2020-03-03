@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer"
 import sqlite from "sqlite"
-import uuid from "uuid"
+import { v4 as uuid } from "uuid"
 import Settings from "../shared/Settings"
 
 export default class ServerSettings implements Settings {
@@ -94,7 +94,7 @@ export default class ServerSettings implements Settings {
       })
 
       if (!this.checksumSecret) {
-         this.checksumSecret = uuid.v4()
+         this.checksumSecret = uuid()
 
          // tslint:disable-next-line: no-console
          console.log("Creating checksum secret")
