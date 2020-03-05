@@ -166,7 +166,7 @@ export default class Converter {
       }
 
       if (mp3s.length) {
-         const outputFileName = `${uuid}.mp3`
+         const outputFileName = `${uuid()}.mp3`
          const opt = { cwd: currPath, pipeStdio: true, metaDataOverrides: { title: outputName, coverPicturePath: bestCover } }
          const args = ["-i"]
          const metadata = opt.metaDataOverrides
@@ -217,7 +217,7 @@ export default class Converter {
          let finalFilePath = path.join(baseFilePath, outputName + ".mp3")
 
          if (fs.existsSync(finalFilePath)) {
-            finalFilePath = path.join(baseFilePath, outputName + uuid + ".mp3")
+            finalFilePath = path.join(baseFilePath, outputName + uuid() + ".mp3")
          }
 
          await fs.promises.rename(outputFilePath, finalFilePath)
