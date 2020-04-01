@@ -21,8 +21,8 @@ html, body, #root, .App {
    position: relative;
 }
 
-.tab-content {
-   overflow: auto;
+.tab-pane {
+   height: 100%;
 }
 
 .mainContent, .tab-content {

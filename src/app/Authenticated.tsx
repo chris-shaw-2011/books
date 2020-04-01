@@ -17,7 +17,7 @@ import UserList from "./UserList"
 import ItemListTabContent from "./ItemListTabContent"
 
 interface Props {
-   searchWords: { typing: boolean, words: string[] },
+   searchWords: { words: string[] },
    onPasswordChanged: (token: Token) => void,
 }
 
@@ -93,10 +93,6 @@ export default (props: Props) => {
          getBooks()
       }
    }, [token, unAuthorized, visibleComponent, setVisibleComponent])
-
-   if (props.searchWords.typing) {
-      return <Loading text="Searching..." />
-   }
 
    return (
       <Fragment>

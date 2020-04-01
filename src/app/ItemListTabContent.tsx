@@ -27,7 +27,7 @@ export default (props: BookTabProps) => {
             </DropdownButton>
          </div>
 
-         <ItemList items={items.items} className="rootItemList" searchWords={props.searchWords} statusChanged={props.statusChanged} />
+         <ItemList items={items.items} className="rootItemList" searchWords={props.searchWords} statusChanged={props.statusChanged} rootItemList={true} />
       </>
    )
 }

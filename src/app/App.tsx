@@ -14,10 +14,8 @@ import LogOut from "./svg/LogOut"
 import Upload from "./svg/Upload"
 import Users from "./svg/Users"
 
-let typingTimeout: NodeJS.Timeout
-
 export default () => {
-   const [searchWords, setSearchWords] = useState({ typing: false, words: new Array<string>() })
+   const [searchWords, setSearchWords] = useState({ words: new Array<string>() })
    const [cookies, setCookies] = useCookies(["loginCookie"])
    const [loginMessage, setLoginMessage] = useState("")
    const [visibleComponent, setVisibleComponent] = useState(VisibleComponent.Books)
@@ -52,17 +50,13 @@ export default () => {
                         placeholder="Search"
                         className="mr-sm-2"
                         onChange={(e: React.FormEvent<HTMLInputElement>) => {
-                           clearTimeout(typingTimeout)
-
                            const search = (e.currentTarget.value || "").trim()
 
                            if (search) {
-                              setSearchWords({ typing: true, words: search.split(" ").map(w => w.toLowerCase()) })
-
-                              typingTimeout = setTimeout(() => setSearchWords(s => ({ ...s, typing: false })), 500)
+                              setSearchWords({ words: search.split(" ").map(w => w.toLowerCase()) })
                            }
                            else {
-                              setSearchWords({ typing: false, words: [] })
+                              setSearchWords({ words: [] })
                            }
                         }}
                      />

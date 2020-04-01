@@ -10,12 +10,15 @@ import Api from "./Api"
 import Loading from "./Loading"
 import LoggedInAppContext from "./LoggedInAppContext"
 import moment from "moment"
+import { CellMeasurerChildProps } from "react-virtualized/dist/es/CellMeasurer"
 
 interface BookProps {
    book: Book,
    className?: string,
    searchWords: string[],
    statusChanged: (books: Books) => void,
+   cellMeasurerChildProps?: CellMeasurerChildProps,
+   style?: React.CSSProperties,
 }
 
 export default (props: BookProps) => {
@@ -38,7 +41,7 @@ export default (props: BookProps) => {
    }
 
    return (
-      <div className={classnames("book", "item", props.className)}>
+      <div className={classnames("book", "item", props.className)} onLoad={props.cellMeasurerChildProps?.measure} ref={e => e && props.cellMeasurerChildProps?.registerChild ? props.cellMeasurerChildProps.registerChild(e) : null} style={props.style}>
          <a className="inner" href={props.book.download} onClick={e => e.stopPropagation()}>
             <img src={props.book.cover} alt="cover" />
             <div>
