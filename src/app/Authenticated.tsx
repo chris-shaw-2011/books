@@ -25,25 +25,25 @@ function isMatch(searchWords: string[], ...checkMatch: string[]) {
    return !searchWords.length || searchWords.every(s => checkMatch.some(m => m.indexOf(s) !== -1))
 }
 
-function filter(dir: Directory, status: Status, searchWords: string[]) {
+function filter(dir: Directory, status?: Status, searchWords?: string[]) {
    const ret = new Directory(dir)
 
    ret.items = []
 
    dir.items.forEach(i => {
-      if (i instanceof Book && i.status === status) {
+      if (i instanceof Book && (!status || i.status === status)) {
          const lAuthor = i.author.toLowerCase()
          const lName = i.name.toLowerCase()
          const lComment = i.comment.toLowerCase()
 
-         if (isMatch(searchWords, lAuthor, lName, lComment)) {
+         if (!searchWords || isMatch(searchWords, lAuthor, lName, lComment)) {
             ret.items.push(i)
          }
       }
       else if (i instanceof Directory) {
          let filtered: Directory
 
-         if (isMatch(searchWords, i.name.toLowerCase())) {
+         if (!searchWords || isMatch(searchWords, i.name.toLowerCase())) {
             filtered = filter(i, status, [])
          }
          else {
@@ -94,23 +94,29 @@ export default (props: Props) => {
       }
    }, [token, unAuthorized, visibleComponent, setVisibleComponent])
 
+   if (!state) {
+      return <Loading />
+   }
+
    return (
       <Fragment>
-         {state ? <Tabs defaultActiveKey={Status.Unread} id="main-tab">
-            {(() => {
-               const map = new Map<Status, Directory>()
-               Object.values(Status).forEach(s => map.set(s, filter(state, s, props.searchWords.words)))
+         {props.searchWords.words.length ?
+            <ItemListTabContent dir={filter(state, undefined, props.searchWords.words)} searchWords={props.searchWords.words} statusChanged={statusChanged} /> :
+            <Tabs defaultActiveKey={Status.Unread} id="main-tab">
+               {(() => {
+                  const map = new Map<Status, Directory>()
+                  Object.values(Status).forEach(s => map.set(s, filter(state, s)))
 
-               return Object.values(Status).map(s => {
-                  const dir = map.get(s)!
-                  return (
-                     <Tab eventKey={s} title={`${s} (${dir.bookCount()})`} mountOnEnter={true} key={s}>
-                        <ItemListTabContent dir={dir} status={s} searchWords={props.searchWords.words} statusChanged={statusChanged} key={s} />
-                     </Tab>
-                  )
-               })
-            })()}
-         </Tabs> : <Loading />}
+                  return Object.values(Status).map(s => {
+                     const dir = map.get(s)!
+                     return (
+                        <Tab eventKey={s} title={`${s} (${dir.bookCount()})`} mountOnEnter={true} key={s}>
+                           <ItemListTabContent dir={dir} status={s} searchWords={[]} statusChanged={statusChanged} key={s} />
+                        </Tab>
+                     )
+                  })
+               })()}
+            </Tabs>}
          {(() => {
             switch (visibleComponent) {
                case VisibleComponent.ChangePassword:

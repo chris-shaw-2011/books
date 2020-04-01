@@ -8,7 +8,7 @@ import ItemList from "./ItemList"
 
 interface BookTabProps {
    dir: Directory,
-   status: Status,
+   status?: Status,
    searchWords: string[],
    statusChanged: (books: Books) => void
 }
@@ -20,7 +20,7 @@ export default (props: BookTabProps) => {
    return (
       <>
          <div className="sortDropDown">
-            <DropdownButton title={`Sorted: ${sort}`} id={`${props.status}-sortButton`} variant="secondary">
+            <DropdownButton title={`Sorted: ${sort}`} id={`${props.status || "All"}-sortButton`} variant="secondary">
                {Object.values(SortOrder).map(s => (
                   <Dropdown.Item key={s} onClick={() => setSort(s)}>{s}</Dropdown.Item>
                ))}
