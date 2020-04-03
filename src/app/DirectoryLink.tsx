@@ -19,10 +19,14 @@ interface DirectoryProps {
 
 export default (props: DirectoryProps) => {
    // tslint:disable-next-line: no-empty
-   const measure = props.cellMeasurerChildProps?.measure
+   const measure = props.cellMeasurerChildProps?.measure || (() => { return })
    const registerChild = props.cellMeasurerChildProps?.registerChild
    const [open, setOpen] = useState(false)
    const displayOpen = open || props.searchWords.length
+   const statusChanged = (books: Books) => {
+      props.statusChanged(books)
+      measure()
+   }
    const onClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
       e.stopPropagation()
 
@@ -32,9 +36,7 @@ export default (props: DirectoryProps) => {
    }
 
    useEffect(() => {
-      if (measure) {
-         measure()
-      }
+      measure()
    }, [open, measure])
 
    return (
@@ -43,7 +45,7 @@ export default (props: DirectoryProps) => {
             {displayOpen ? <FolderOpen /> : <FolderClosed />}
             <Highlighter searchWords={props.searchWords} textToHighlight={props.directory.name} />
          </div>
-         {displayOpen ? <ItemList items={props.directory.items} searchWords={props.searchWords} statusChanged={props.statusChanged} measure={measure} /> : null}
+         {displayOpen ? <ItemList items={props.directory.items} searchWords={props.searchWords} statusChanged={statusChanged} measure={measure} /> : null}
       </div>
    )
 }

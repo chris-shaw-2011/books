@@ -49,7 +49,7 @@ export default (props: Props) => {
                   rowRenderer={({ index, key, parent, style }) => (
                      <CellMeasurer cache={cache.current} parent={parent} key={key} rowIndex={index} columnIndex={0}>
                         {args =>
-                           <ItemLink item={props.items[index]} props={props} cellMeasurerChildProps={args} style={style} />
+                           <ItemLink item={props.items[index]} props={props} cellMeasurerChildProps={args} style={style} key={props.items[index].id} />
                         }
                      </CellMeasurer>
                   )}

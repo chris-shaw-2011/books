@@ -10,7 +10,7 @@ interface BookTabProps {
    dir: Directory,
    status?: Status,
    searchWords: string[],
-   statusChanged: (books: Books) => void
+   statusChanged: (books: Books) => void,
 }
 
 export default (props: BookTabProps) => {

@@ -102,20 +102,16 @@ export default (props: Props) => {
       <Fragment>
          {props.searchWords.words.length ?
             <ItemListTabContent dir={filter(state, undefined, props.searchWords.words)} searchWords={props.searchWords.words} statusChanged={statusChanged} /> :
-            <Tabs defaultActiveKey={Status.Unread} id="main-tab">
-               {(() => {
-                  const map = new Map<Status, Directory>()
-                  Object.values(Status).forEach(s => map.set(s, filter(state, s)))
+            <Tabs defaultActiveKey={Status.Unread} id="main-tab" unmountOnExit={true} mountOnEnter={true}>
+               {Object.values(Status).map(s => {
+                  const dir = filter(state, s)
 
-                  return Object.values(Status).map(s => {
-                     const dir = map.get(s)!
-                     return (
-                        <Tab eventKey={s} title={`${s} (${dir.bookCount()})`} mountOnEnter={true} key={s}>
-                           <ItemListTabContent dir={dir} status={s} searchWords={[]} statusChanged={statusChanged} key={s} />
-                        </Tab>
-                     )
-                  })
-               })()}
+                  return (
+                     <Tab eventKey={s} title={`${s} (${dir.bookCount()})`} key={s}>
+                        <ItemListTabContent dir={dir} status={s} searchWords={[]} statusChanged={statusChanged} />
+                     </Tab>
+                  )
+               })}
             </Tabs>}
          {(() => {
             switch (visibleComponent) {
