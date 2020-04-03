@@ -1,4 +1,4 @@
-import Book, { Status } from "./Book"
+import Book from "./Book"
 import BookStatuses from "./BookStatuses"
 import { ItemType } from "./ItemType"
 import SortOrder from "./SortOrder"
@@ -20,7 +20,7 @@ export default class Directory {
             let upload: Date
 
             if (i.type === ItemType.book) {
-               const status = bookStatuses ? bookStatuses[i.id]?.status : Status.Unread
+               const status = bookStatuses ? bookStatuses[i.id]?.status : undefined
                const book = new Book(i, status)
 
                this.items.push(new Book(i, status))
