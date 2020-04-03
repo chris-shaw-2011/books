@@ -56,6 +56,7 @@ export default (props: Props) => {
                      placeholder="Enter email"
                      required={true}
                      onChange={(e: FormEvent<HTMLInputElement>) => setEmail(e.currentTarget.value || "")}
+                     autoFocus={true}
                   />
                </Form.Group>
                <Form.Group controlId="formGroupPassword">
