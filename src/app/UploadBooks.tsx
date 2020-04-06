@@ -7,7 +7,7 @@ import ConversionUpdateResponse from "../shared/api/ConversionUpdateResponse"
 import Unauthorized from "../shared/api/Unauthorized"
 import UploadResponse from "../shared/api/UploadResponse"
 import { ConverterStatus } from "../shared/ConverterStatus"
-import Api from "./Api"
+import Api from "./api/LoggedInApi"
 import LoggedInAppContext from "./LoggedInAppContext"
 import OverlayComponent from "./OverlayComponent"
 

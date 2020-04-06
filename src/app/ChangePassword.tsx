@@ -6,7 +6,7 @@ import Token from "../shared/api/Token"
 import Unauthorized from "../shared/api/Unauthorized"
 import UserResponse from "../shared/api/UserResponse"
 import User from "../shared/User"
-import Api from "./Api"
+import Api from "./api/Api"
 import Loading from "./Loading"
 import OverlayComponent from "./OverlayComponent"
 
@@ -85,7 +85,6 @@ export default (props: Props) => {
          getUser()
       }
    }, [logOut, userId])
-
 
    if (!user) {
       return <Loading />

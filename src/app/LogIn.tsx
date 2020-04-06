@@ -3,7 +3,7 @@ import { Alert, Button, Form, Modal } from "react-bootstrap"
 import AccessDenied from "../shared/api/AccessDenied"
 import Token from "../shared/api/Token"
 import Unauthorized from "../shared/api/Unauthorized"
-import Api from "./Api"
+import Api from "./api/Api"
 import Loading from "./Loading"
 
 interface Props {

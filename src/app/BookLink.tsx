@@ -6,10 +6,10 @@ import AccessDenied from "../shared/api/AccessDenied"
 import Books from "../shared/api/Books"
 import Unauthorized from "../shared/api/Unauthorized"
 import Book, { Status } from "../shared/Book"
-import Api from "./Api"
+import Api from "./api/LoggedInApi"
 import Loading from "./Loading"
 import LoggedInAppContext from "./LoggedInAppContext"
-import moment from "moment"
+import moment from "dayjs"
 import { CellMeasurerChildProps } from "react-virtualized/dist/es/CellMeasurer"
 
 interface BookProps {

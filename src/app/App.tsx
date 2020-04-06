@@ -1,9 +1,8 @@
 import "bootstrap/dist/css/bootstrap.min.css"
-import React, { Fragment, useCallback, useMemo, useState } from "react"
+import React, { Fragment, useCallback, useMemo, useState, Suspense } from "react"
 import { Form, FormControl, Nav, Navbar, NavDropdown } from "react-bootstrap"
 import { CookiesProvider, useCookies } from "react-cookie"
 import Token from "../shared/api/Token"
-import Authenticated from "./Authenticated"
 import ChangePassword from "./ChangePassword"
 import AppContext, { VisibleComponent } from "./LoggedInAppContext"
 import LogIn from "./LogIn"
@@ -13,6 +12,12 @@ import Lock from "./svg/Lock"
 import LogOut from "./svg/LogOut"
 import Upload from "./svg/Upload"
 import Users from "./svg/Users"
+import Loading from "./Loading"
+
+// tslint:disable-next-line: variable-name
+const Authenticated = React.lazy(() => import(/*
+   webpackChunkName: "authenticated" */
+   "./Authenticated"))
 
 export default () => {
    const [searchWords, setSearchWords] = useState({ words: new Array<string>() })
@@ -79,7 +84,9 @@ export default () => {
             <div className="mainContent">
                {token ?
                   <AppContext.Provider value={{ logOut, token, visibleComponent, setVisibleComponent }}>
-                     <Authenticated searchWords={searchWords} onPasswordChanged={onLogIn} />
+                     <Suspense fallback={<Loading />}>
+                        <Authenticated searchWords={searchWords} onPasswordChanged={onLogIn} />
+                     </Suspense>
                   </AppContext.Provider> :
                   inviteUserId ?
                      <ChangePassword userId={inviteUserId} onPasswordChanged={onLogIn} logOut={logOut} /> :

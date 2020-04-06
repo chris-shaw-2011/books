@@ -1,36 +1,24 @@
-import AccessDenied from "../shared/api/AccessDenied"
-import AddUserRequest from "../shared/api/AddUserRequest"
-import ApiMessage, { ApiMessageType } from "../shared/api/ApiMessage"
-import Books from "../shared/api/Books"
-import ChangeBookStatusRequest from "../shared/api/ChangeBookStatusRequest"
-import ChangePasswordRequest from "../shared/api/ChangePasswordRequest"
-import ConversionUpdateRequest from "../shared/api/ConversionUpdateRequest"
-import ConversionUpdateResponse from "../shared/api/ConversionUpdateResponse"
-import DeleteUserRequest from "../shared/api/DeleteUserRequest"
-import SettingsRequired from "../shared/api/SettingsRequired"
-import SettingsUpdate from "../shared/api/SettingsUpdate"
-import SettingsUpdateResponse from "../shared/api/SettingsUpdateResponse"
-import Token from "../shared/api/Token"
-import Unauthorized from "../shared/api/Unauthorized"
-import UploadResponse from "../shared/api/UploadResponse"
-import UserListResponse from "../shared/api/UserListResponse"
-import UserRequest from "../shared/api/UserRequest"
-import UserResponse from "../shared/api/UserResponse"
-import { Status } from "../shared/Book"
-import { ConverterStatus } from "../shared/ConverterStatus"
-import Settings from "../shared/Settings"
-import User from "../shared/User"
+import AccessDenied from "../../shared/api/AccessDenied"
+import AddUserRequest from "../../shared/api/AddUserRequest"
+import ApiMessage, { ApiMessageType } from "../../shared/api/ApiMessage"
+import Books from "../../shared/api/Books"
+import ChangeBookStatusRequest from "../../shared/api/ChangeBookStatusRequest"
+import ConversionUpdateRequest from "../../shared/api/ConversionUpdateRequest"
+import ConversionUpdateResponse from "../../shared/api/ConversionUpdateResponse"
+import DeleteUserRequest from "../../shared/api/DeleteUserRequest"
+import SettingsRequired from "../../shared/api/SettingsRequired"
+import SettingsUpdate from "../../shared/api/SettingsUpdate"
+import SettingsUpdateResponse from "../../shared/api/SettingsUpdateResponse"
+import Token from "../../shared/api/Token"
+import Unauthorized from "../../shared/api/Unauthorized"
+import UploadResponse from "../../shared/api/UploadResponse"
+import UserListResponse from "../../shared/api/UserListResponse"
+import { Status } from "../../shared/Book"
+import { ConverterStatus } from "../../shared/ConverterStatus"
+import Settings from "../../shared/Settings"
+import User from "../../shared/User"
 
 class ApiClass {
-   auth = async (email: string, password: string) => {
-      const user = new User()
-
-      user.email = email
-      user.password = password
-
-      return await this.fetch("/auth", user)
-   }
-
    books = async (token: Token) => {
       return await this.fetch("/books", token)
    }
@@ -53,14 +41,6 @@ class ApiClass {
 
    deleteUser = async (token: Token, userId: string) => {
       return await this.fetch("/deleteUser", new DeleteUserRequest({ type: ApiMessageType.DeleteUserRequest, userId, token }))
-   }
-
-   changePassword = async (token: Token, newPassword: string) => {
-      return await this.fetch("/changePassword", new ChangePasswordRequest({ type: ApiMessageType.ChangePasswordRequest, token, newPassword }))
-   }
-
-   user = async (userId: string) => {
-      return await this.fetch("/user", new UserRequest({ type: ApiMessageType.UserRequest, userId }))
    }
 
    changeBookStatus = async (bookId: string, status: Status, token: Token) => {
@@ -108,9 +88,6 @@ class ApiClass {
       }
       else if (json.type === ApiMessageType.UserListResponse) {
          return new UserListResponse(json as UserListResponse)
-      }
-      else if (json.type === ApiMessageType.UserResponse) {
-         return new UserResponse(json as UserResponse)
       }
       else if (json.type === ApiMessageType.ConversionUpdateResponse) {
          return new ConversionUpdateResponse(json as ConversionUpdateResponse)
