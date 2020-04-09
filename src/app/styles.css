@@ -1,13 +1,4 @@
-html, body, #root, .App {
-   height: 100%;
-}
-
-.App, .mainContent {
-   display: flex;
-   flex-direction: column
-}
-
-.mainContent, .mainContent > .nav-tabs > .active {
+.nav-tabs > .active {
    background-color: #fafafa;
 }
 
@@ -16,16 +7,11 @@ html, body, #root, .App {
    flex-shrink: 0;
 }
 
-.mainContent {
-   overflow: hidden;
-   position: relative;
-}
-
 .tab-pane {
    height: 100%;
 }
 
-.mainContent, .tab-content {
+.tab-content {
    flex-grow: 1;
    flex-shrink: 1;
 }

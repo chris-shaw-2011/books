@@ -1,18 +1,19 @@
 import "bootstrap/dist/css/bootstrap.min.css"
-import React, { Fragment, useCallback, useMemo, useState, Suspense } from "react"
-import { Form, FormControl, Nav, Navbar, NavDropdown } from "react-bootstrap"
+import React, { useCallback, useMemo, useState, Suspense } from "react"
 import { CookiesProvider, useCookies } from "react-cookie"
 import Token from "../shared/api/Token"
 import ChangePassword from "./ChangePassword"
 import AppContext, { VisibleComponent } from "./LoggedInAppContext"
 import LogIn from "./LogIn"
+import styles from "./App.module.scss"
 import "./styles.css"
-import Gear from "./svg/Gear"
-import Lock from "./svg/Lock"
-import LogOut from "./svg/LogOut"
-import Upload from "./svg/Upload"
-import Users from "./svg/Users"
 import Loading from "./Loading"
+import Textbox from "./components/Textbox"
+
+// tslint:disable-next-line: variable-name
+const Navigation = React.lazy(() => import(/*
+   webpackChunkName: "authenticated" */
+   "./Navigation"))
 
 // tslint:disable-next-line: variable-name
 const Authenticated = React.lazy(() => import(/*
@@ -41,47 +42,34 @@ export default () => {
       setCookies("loginCookie", JSON.stringify(t), { maxAge: 12 * 30 * 24 * 60 * 60, path: "/" })
       setLoginMessage("")
    }, [setCookies, setLoginMessage, inviteUserId])
+   const searchChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const search = (e.currentTarget.value || "").trim()
+
+      if (search) {
+         setSearchWords({ words: search.split(" ").map(w => w.toLowerCase()) })
+      }
+      else {
+         setSearchWords({ words: [] })
+      }
+   }
 
    return (
-      <div className="App">
+      <div className={styles.app}>
          <CookiesProvider>
-            <Navbar bg="dark" className="navbar" variant="dark">
-               <Navbar.Brand className="brand"><img src="favicon.svg" alt="Book" /><span style={{ paddingLeft: "5px" }}>Audio Books</span></Navbar.Brand>
-               {token && <Fragment>
-                  <Nav className="mr-auto" />
-                  <Form inline={true}>
-                     <FormControl
-                        type="text"
-                        placeholder="Search"
-                        className="mr-sm-2"
-                        onChange={(e: React.FormEvent<HTMLInputElement>) => {
-                           const search = (e.currentTarget.value || "").trim()
-
-                           if (search) {
-                              setSearchWords({ words: search.split(" ").map(w => w.toLowerCase()) })
-                           }
-                           else {
-                              setSearchWords({ words: [] })
-                           }
-                        }}
-                     />
-                  </Form>
-                  <Nav>
-                     <NavDropdown title="" id="nav-dropdown" className="mainNav">
-                        <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.Upload); return false }}><Upload /> Upload Books</NavDropdown.Item>
-                        {token.user.isAdmin &&
-                           <Fragment>
-                              <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.Users); return false }}><Users /> Manage Users</NavDropdown.Item>
-                              <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.Settings); return false }}><Gear /> Settings</NavDropdown.Item>
-                           </Fragment>}
-                        <NavDropdown.Divider />
-                        <NavDropdown.Item onClick={() => { setVisibleComponent(VisibleComponent.ChangePassword); return false }}><Lock /> Change Password</NavDropdown.Item>
-                        <NavDropdown.Item onClick={() => { logOut(); return false }}><LogOut /> Log Out</NavDropdown.Item>
-                     </NavDropdown>
-                  </Nav>
-               </Fragment>}
-            </Navbar>
-            <div className="mainContent">
+            <div className={styles.navbar}>
+               <img src="favicon.svg" alt="Book" />
+               <h1>Audio Books</h1>
+               <div className={styles.spacer} />
+               {token &&
+                  <>
+                     <Textbox placeholder="Search" onChange={searchChanged} />
+                     <Suspense fallback={<div />}>
+                        <Navigation token={token} setVisibleComponent={setVisibleComponent} logOut={logOut} />
+                     </Suspense>
+                  </>
+               }
+            </div>
+            <div className={styles.mainContent}>
                {token ?
                   <AppContext.Provider value={{ logOut, token, visibleComponent, setVisibleComponent }}>
                      <Suspense fallback={<Loading />}>

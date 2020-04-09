@@ -1,0 +1,33 @@
+.downArrow {
+   height: 100%;
+   fill: #aaa;
+   flex-grow: 0;
+   flex-shrink: 0;
+   display: flex;
+   align-items: center;
+   width: 38px;
+   cursor: pointer;
+   position: relative;
+
+   > svg {
+      height: 12px;
+      margin-left: auto;
+      margin-right: auto;
+   }
+
+   &:hover, &.open {
+      fill: #fff
+   }
+}
+
+.navlist {
+   right: 0;
+   top: 38px;
+
+   svg {
+      width: 40px;
+      max-height: 40px;
+      padding-right: 10px;
+      fill: black;
+   }
+}
