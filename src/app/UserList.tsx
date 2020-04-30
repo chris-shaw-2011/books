@@ -94,7 +94,7 @@ export default (props: Props) => {
                                  placeholder="Enter email"
                                  required={true}
                                  autoFocus={true}
-                                 onChange={(e: FormEvent<HTMLInputElement>) => mergeAddingUserState({ email: e.currentTarget.value || "" })}
+                                 onChange={e => mergeAddingUserState({ email: e.currentTarget.value || "" })}
                               />
                            </Form.Group>
                            <Form.Group controlId="formGroupIsAdmin">

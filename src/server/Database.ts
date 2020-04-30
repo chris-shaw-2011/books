@@ -1,28 +1,30 @@
-import { SQLStatement } from "sql-template-strings"
-import sqlite from "sqlite"
+import sqlite, { open } from "sqlite"
+import sqlite3 from "sqlite3"
 import ServerSettings from "./ServerSettings"
 
-class Database implements sqlite.Database {
+class Database implements sqlite.Database<sqlite3.Database, sqlite3.Statement> {
+   config: sqlite.ISqlite.Config
+   db: sqlite3.Database
    noUsers: boolean
    settings: ServerSettings
-   private db?: sqlite.Database
+   private database: sqlite.Database<sqlite3.Database, sqlite3.Statement>
 
    async open() {
-      if (!this.db) {
-         this.db = await sqlite.open("db.sqlite")
-         await this.db.exec(`
+      if (!this.database) {
+         this.database = await open({ filename: "db.sqlite", driver: sqlite3.Database })
+         await this.database.exec(`
             CREATE TABLE IF NOT EXISTS setting (key TEXT PRIMARY KEY, value TEXT);
             CREATE TABLE IF NOT EXISTS user (id TEXT PRIMARY KEY, email TEXT, hash TEXT, isAdmin BOOLEAN, lastLogin BIGINT, bookStatuses TEXT);
             CREATE UNIQUE INDEX IF NOT EXISTS IX_user_email ON user (email);
          `)
 
-         await this.db.exec("PRAGMA user_version = 1")
+         await this.database.exec("PRAGMA user_version = 1")
 
-         this.settings = new ServerSettings(this.db)
+         this.settings = new ServerSettings(this.database)
 
          await this.settings.loadFromDatabase()
 
-         this.noUsers = (await this.db.get("SELECT COUNT(1) as userCount FROM user")).userCount === 0
+         this.noUsers = (await this.database.get("SELECT COUNT(1) as userCount FROM user")).userCount === 0
 
          if (this.noUsers) {
             console.warn("Currently there are no users in the database so the first login attempt will create a user")
@@ -30,59 +32,47 @@ class Database implements sqlite.Database {
       }
    }
 
+   on(event: string, listener: any): void {
+      this.database.on(event, listener)
+   }
+   getDatabaseInstance(): sqlite3.Database {
+      return this.database.getDatabaseInstance()
+   }
    close(): Promise<void> {
-      return this.db!.close()
+      return this.database.close()
    }
-
-   run(sql: string | SQLStatement, params?: any[]): Promise<sqlite.Statement>
-   run(sql: any, rest?: any[]) {
-      return this.db!.run(sql, rest)
+   configure(option: sqlite.ISqlite.ConfigureOption, value: any) {
+      return this.database.configure(option, value)
    }
-
-   get(sql: string | SQLStatement, params?: any[]): Promise<any>
-   get<T>(sql: string | SQLStatement, params?: any[]): Promise<T>
-   get(sql: any, rest?: any[]) {
-      return this.db!.get(sql, rest)
+   run(sql: sqlite.ISqlite.SqlType, ...params: any[]): Promise<sqlite.ISqlite.RunResult<sqlite3.Statement>> {
+      return this.database.run(sql, params)
    }
-
-   all(sql: string | SQLStatement, params?: any[]): Promise<any[]>
-   all<T>(sql: string | SQLStatement, params?: any[]): Promise<T[]>
-   all(sql: any, ...rest: any[]) {
-      return this.db!.all(sql, rest)
+   get<T = any>(sql: sqlite.ISqlite.SqlType, ...params: any[]): Promise<T | undefined> {
+      return this.database.get(sql, params)
    }
-
-   exec(sql: string): Promise<sqlite.Database> {
-      return this.db!.exec(sql)
+   each<T = any>(sql: sqlite.ISqlite.SqlType, ...params: any[]): Promise<number> {
+      return this.database.each<T>(sql, params)
    }
-
-   each(sql: string | SQLStatement, callback?: (err: Error, row: any) => void): Promise<number>
-   each(sql: string | SQLStatement, params: any[]): Promise<number>
-   each(sql: any, callback?: any, rest?: any[]) {
-      return this.db!.each(sql, callback, rest)
+   all<T = any[]>(sql: sqlite.ISqlite.SqlType, ...params: any[]): Promise<T> {
+      return this.database.all<T>(sql, params)
    }
-
-   prepare(sql: string | SQLStatement, params?: any[]): Promise<sqlite.Statement>
-   prepare(sql: any, rest?: any[]) {
-      return this.db!.prepare(sql, rest)
+   exec(sql: sqlite.ISqlite.SqlType): Promise<void> {
+      return this.database.exec(sql)
    }
-
-   configure(option: "busyTimeout", value: number): void
-   configure(option: string, value: any): void
-   configure(option: any, value: any) {
-      this.db!.configure(option, value)
+   prepare(sql: sqlite.ISqlite.SqlType, ...params: any[]): Promise<sqlite.Statement<sqlite3.Statement>> {
+      return this.database.prepare(sql, params)
    }
-
-   migrate(options: { force?: string; table?: string; migrationsPath?: string; }): Promise<sqlite.Database> {
-      return this.db!.migrate(options)
+   loadExtension(path: string): Promise<unknown> {
+      return this.database.loadExtension(path)
    }
-
-   on(event: "trace", listener: (sql: string) => void): void
-   on(event: "profile", listener: (sql: string, time: number) => void): void
-   on(event: "error", listener: (err: Error) => void): void
-   on(event: "open" | "close", listener: () => void): void
-   on(event: string, listener: (...args: any[]) => void): void
-   on(event: any, listener: any) {
-      this.db!.on(event, listener)
+   migrate(config?: sqlite.IMigrate.MigrationParams | undefined): Promise<void> {
+      return this.migrate(config)
+   }
+   serialize(): void {
+      this.database.serialize()
+   }
+   parallelize(): void {
+      this.database.parallelize()
    }
 }
 

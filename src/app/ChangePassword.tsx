@@ -106,11 +106,11 @@ export default (props: Props) => {
                      </Form.Group>
                      <Form.Group controlId="formGroupPassword">
                         <Form.Label>New Password</Form.Label>
-                        <Form.Control type="password" placeholder="New Password" required={true} onChange={(e: FormEvent<HTMLInputElement>) => mergeState({ password: e.currentTarget.value || "" })} />
+                        <Form.Control type="password" placeholder="New Password" required={true} onChange={e => mergeState({ password: e.currentTarget.value || "" })} />
                      </Form.Group>
                      <Form.Group controlId="formGroupConfirmPassword">
                         <Form.Label>Confirm New Password</Form.Label>
-                        <Form.Control type="password" placeholder="Confirm New Password" required={true} onChange={(e: FormEvent<HTMLInputElement>) => mergeState({ confirmedPassword: e.currentTarget.value || "" })} />
+                        <Form.Control type="password" placeholder="Confirm New Password" required={true} onChange={e => mergeState({ confirmedPassword: e.currentTarget.value || "" })} />
                      </Form.Group>
                      {!passwordsMatch && <Alert variant="danger">Passwords must match</Alert>}
                   </Modal.Body>

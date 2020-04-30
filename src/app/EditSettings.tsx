@@ -105,7 +105,7 @@ export default (props: Props) => {
                            placeholder="Enter Base Path"
                            required={true}
                            defaultValue={settings.baseBooksPath}
-                           onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ baseBooksPath: e.currentTarget.value || "" })}
+                           onChange={e => onChange({ baseBooksPath: e.currentTarget.value || "" })}
                         />
                      </Form.Group>
                      <Form.Group controlId="fromGroupUploadLocation">
@@ -115,7 +115,7 @@ export default (props: Props) => {
                            placeholder="Enter Upload Location"
                            required={true}
                            defaultValue={settings.uploadLocation}
-                           onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ uploadLocation: e.currentTarget.value || "" })}
+                           onChange={e => onChange({ uploadLocation: e.currentTarget.value || "" })}
                         />
                      </Form.Group>
                      <Form.Group controlId="fromGroupInviteEmail">
@@ -125,7 +125,7 @@ export default (props: Props) => {
                            placeholder="Enter Invite Email Address"
                            required={true}
                            defaultValue={settings.inviteEmail}
-                           onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ inviteEmail: e.currentTarget.value || "" })}
+                           onChange={e => onChange({ inviteEmail: e.currentTarget.value || "" })}
                         />
                      </Form.Group>
                      <Form.Group controlId="fromGroupInviteEmailPassword">
@@ -135,7 +135,7 @@ export default (props: Props) => {
                            placeholder="Enter Invite Email Password"
                            required={true}
                            defaultValue={settings.inviteEmailPassword}
-                           onChange={(e: React.FormEvent<HTMLInputElement>) => onChange({ inviteEmailPassword: e.currentTarget.value || "" })}
+                           onChange={e => onChange({ inviteEmailPassword: e.currentTarget.value || "" })}
                         />
                      </Form.Group>
                   </Modal.Body>

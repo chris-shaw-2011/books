@@ -59,7 +59,7 @@ const getAllUsers = async (message?: string) => {
    return new UserListResponse({ users, type: ApiMessageType.UserListResponse, message: message || "" })
 }
 const validatePassword = async (email: string, password: string, reply: fastify.FastifyReply<ServerResponse>) => {
-   const dbUser = await db.get("SELECT id, email, hash, isAdmin, lastLogIn FROM user WHERE email = ?", [email])
+   const dbUser = await db.get("SELECT id, email, hash, isAdmin, lastLogIn FROM user WHERE email = ?", email)
 
    if (dbUser) {
       if (await bcrypt.compare(password, dbUser.hash)) {
@@ -69,7 +69,7 @@ const validatePassword = async (email: string, password: string, reply: fastify.
          validatedUser.lastLogin = new Date().getTime()
          authorizationExpiration.set(authorization, getNewExpiration())
 
-         await db.run("UPDATE user SET lastLogIn = ? WHERE id = ?", [validatedUser.lastLogin, validatedUser.id])
+         await db.run("UPDATE user SET lastLogIn = ? WHERE id = ?", validatedUser.lastLogin, validatedUser.id)
 
          return ServerToken.create(validatedUser, authorization, db.settings.checksumSecret)
       }
@@ -116,7 +116,7 @@ const validateAdminRequest = async (request: fastify.FastifyRequest<IncomingMess
    }
 }
 const statusesForUser = async (userId: string) => {
-   const json = (await db.get("SELECT bookStatuses FROM User WHERE id = ?", [userId])).bookStatuses
+   const json = (await db.get("SELECT bookStatuses FROM User WHERE id = ?", userId)).bookStatuses
 
    return new BookStatuses(json ? JSON.parse(json) : undefined)
 }
@@ -154,7 +154,7 @@ server.post("/auth", async (request, reply) => {
 
       const hash = await passwordHash(user.password)
 
-      await db.run("INSERT INTO user (id, email, hash, isAdmin) VALUES(?, ?, ?, ?)", [uuid(), user.email, hash, 1])
+      await db.run("INSERT INTO user (id, email, hash, isAdmin) VALUES(?, ?, ?, ?)", uuid(), user.email, hash, 1)
    }
 
    return await validatePassword(user.email, user.password, reply)
@@ -216,13 +216,13 @@ server.post("/addUser", { preHandler: validateAdminRequest }, async (request, re
       message = "Email must be specified"
    }
    else {
-      if (await db.get("SELECT id FROM User where email = ?", [userRequest.user.email])) {
+      if (await db.get("SELECT id FROM User where email = ?", userRequest.user.email)) {
          message = "User already exists"
       }
       else {
          const userId = uuid()
 
-         await db.run("INSERT INTO User (id, email, isAdmin) VALUES(?, ?, ?)", [userId, userRequest.user.email, userRequest.user.isAdmin])
+         await db.run("INSERT INTO User (id, email, isAdmin) VALUES(?, ?, ?)", userId, userRequest.user.email, userRequest.user.isAdmin)
 
          const link = url.resolve(request.headers.referer, `/invite/${userId}`)
 
@@ -244,7 +244,7 @@ server.post("/addUser", { preHandler: validateAdminRequest }, async (request, re
 server.post("/deleteUser", { preHandler: validateAdminRequest }, async (request, reply) => {
    const userRequest = new DeleteUserRequest(request.body)
 
-   await db.run("DELETE FROM User WHERE id = ?", [userRequest.userId])
+   await db.run("DELETE FROM User WHERE id = ?", userRequest.userId)
 
    return await getAllUsers("User deleted")
 })
@@ -252,7 +252,7 @@ server.post("/deleteUser", { preHandler: validateAdminRequest }, async (request,
 server.post("/user", async (request, reply) => {
    const userRequest = new UserRequest(request.body)
 
-   const dbUser = await db.get("SELECT id, email, hash, isAdmin, lastLogin FROM User WHERE id = ?", [userRequest.userId])
+   const dbUser = await db.get("SELECT id, email, hash, isAdmin, lastLogin FROM User WHERE id = ?", userRequest.userId)
 
    if (dbUser.lastLogin || dbUser.hash) {
       reply.code(403)
@@ -277,7 +277,7 @@ server.post("/changePassword", async (request, reply) => {
    }
    else {
       // This is a change password request for someone that's never logged in
-      const dbUser = await db.get("SELECT hash, lastLogin FROM User WHERE id = ?", [changeRequest.token.user.id])
+      const dbUser = await db.get("SELECT hash, lastLogin FROM User WHERE id = ?", changeRequest.token.user.id)
 
       if (dbUser.lastLogin || dbUser.hash) {
          reply.code(403)
@@ -288,7 +288,7 @@ server.post("/changePassword", async (request, reply) => {
 
    const hash = await passwordHash(changeRequest.newPassword)
 
-   await db.run("UPDATE User SET hash = ? WHERE id = ?", [hash, changeRequest.token.user.id])
+   await db.run("UPDATE User SET hash = ? WHERE id = ?", hash, changeRequest.token.user.id)
 
    return await validatePassword(changeRequest.token.user.email, changeRequest.newPassword, reply)
 })
@@ -308,7 +308,7 @@ server.post("/changeBookStatus", { preHandler: validateRequest }, async (request
          delete statuses[statusRequest.bookId]
       }
 
-      await db.run("UPDATE User SET bookStatuses = ? WHERE id = ?", [JSON.stringify(statuses), statusRequest.token.user.id])
+      await db.run("UPDATE User SET bookStatuses = ? WHERE id = ?", JSON.stringify(statuses), statusRequest.token.user.id)
    }
    finally {
       release()

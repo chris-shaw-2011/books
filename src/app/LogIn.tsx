@@ -58,7 +58,7 @@ export default (props: Props) => {
                      type="email"
                      placeholder="Enter email"
                      required={true}
-                     onChange={(e: FormEvent<HTMLInputElement>) => setEmail(e.currentTarget.value || "")}
+                     onChange={e => setEmail(e.currentTarget.value || "")}
                      autoFocus={true}
                   />
                </Form.Group>
@@ -68,7 +68,7 @@ export default (props: Props) => {
                      type="password"
                      placeholder="Password"
                      required={true}
-                     onChange={(e: FormEvent<HTMLInputElement>) => setPassword(e.currentTarget.value || "")}
+                     onChange={e => setPassword(e.currentTarget.value || "")}
                   />
                </Form.Group>
             </Modal.Body>
