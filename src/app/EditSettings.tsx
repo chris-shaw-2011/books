@@ -1,5 +1,6 @@
-import React, { FormEvent, Fragment, useContext, useEffect, useState } from "react"
-import { Alert, Button, Form, Modal } from "react-bootstrap"
+import React, { Fragment, useContext, useEffect, useState } from "react"
+import { Modal } from "react-bootstrap"
+import Alert from "./components/Alert"
 import AccessDenied from "../shared/api/AccessDenied"
 import SettingsRequired from "../shared/api/SettingsRequired"
 import SettingsUpdateResponse from "../shared/api/SettingsUpdateResponse"
@@ -9,6 +10,9 @@ import Api from "./api/LoggedInApi"
 import Loading from "./Loading"
 import AppContext from "./LoggedInAppContext"
 import OverlayComponent from "./OverlayComponent"
+import TextboxField from "./components/TextboxField"
+import CancelButton from "./components/CancelButton"
+import OkButton from "./components/OkButton"
 
 interface Props {
    onSettingsSaved: () => void,
@@ -18,7 +22,6 @@ interface Props {
 
 export default (props: Props) => {
    const [settings, setSettings] = useState<Settings | undefined>()
-   const [validated, setValidated] = useState(false)
    const [saving, setSaving] = useState(false)
    const [message, setMessage] = useState(props.message)
    const context = useContext(AppContext)
@@ -69,7 +72,6 @@ export default (props: Props) => {
             }
             else {
                setMessage(ret.message)
-               setValidated(false)
             }
          }
          else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
@@ -81,9 +83,6 @@ export default (props: Props) => {
             return
          }
       }
-      else {
-         setValidated(true)
-      }
 
       setSaving(false)
    }
@@ -91,64 +90,36 @@ export default (props: Props) => {
    if (settings) {
       return (
          <OverlayComponent onClose={props.onClose}>
-            <Form className="settings" noValidate={true} validated={validated} onSubmit={handleSubmit}>
+            <form className="settings" onSubmit={handleSubmit}>
                <Modal.Dialog>
                   <Modal.Header>
                      <Modal.Title>Settings</Modal.Title>
                   </Modal.Header>
                   <Modal.Body>
                      {message ? <Alert variant="danger">{message}</Alert> : null}
-                     <Form.Group controlId="formGroupBasePath">
-                        <Form.Label>Base Books Path</Form.Label>
-                        <Form.Control
-                           type="text"
-                           placeholder="Enter Base Path"
-                           required={true}
-                           defaultValue={settings.baseBooksPath}
-                           onChange={e => onChange({ baseBooksPath: e.currentTarget.value || "" })}
-                        />
-                     </Form.Group>
-                     <Form.Group controlId="fromGroupUploadLocation">
-                        <Form.Label>Upload Location</Form.Label>
-                        <Form.Control
-                           type="text"
-                           placeholder="Enter Upload Location"
-                           required={true}
-                           defaultValue={settings.uploadLocation}
-                           onChange={e => onChange({ uploadLocation: e.currentTarget.value || "" })}
-                        />
-                     </Form.Group>
-                     <Form.Group controlId="fromGroupInviteEmail">
-                        <Form.Label>Invite Email Address</Form.Label>
-                        <Form.Control
-                           type="email"
-                           placeholder="Enter Invite Email Address"
-                           required={true}
-                           defaultValue={settings.inviteEmail}
-                           onChange={e => onChange({ inviteEmail: e.currentTarget.value || "" })}
-                        />
-                     </Form.Group>
-                     <Form.Group controlId="fromGroupInviteEmailPassword">
-                        <Form.Label>Invite Email Address</Form.Label>
-                        <Form.Control
-                           type="password"
-                           placeholder="Enter Invite Email Password"
-                           required={true}
-                           defaultValue={settings.inviteEmailPassword}
-                           onChange={e => onChange({ inviteEmailPassword: e.currentTarget.value || "" })}
-                        />
-                     </Form.Group>
+                     <TextboxField label="Base Books Path" type="text" placeholder="Enter Base Path" required={true} defaultValue={settings.baseBooksPath}
+                        onChange={e => onChange({ baseBooksPath: e.currentTarget.value || "" })}
+                     />
+                     <TextboxField label="Upload Location" type="text" placeholder="Enter Upload Location" required={true} defaultValue={settings.uploadLocation}
+                        onChange={e => onChange({ uploadLocation: e.currentTarget.value || "" })}
+                     />
+                     <TextboxField label="Invite Email Address" type="email" placeholder="Enter Invite Email Address" required={true} defaultValue={settings.inviteEmail}
+                        onChange={e => onChange({ inviteEmail: e.currentTarget.value || "" })}
+                     />
+                     <TextboxField label="Invite Email Address" type="password" placeholder="Enter Invite Email Password" required={true} defaultValue={settings.inviteEmailPassword}
+                        onChange={e => onChange({ inviteEmailPassword: e.currentTarget.value || "" })}
+                     />
                   </Modal.Body>
                   <Modal.Footer>
                      {!saving ?
                         <Fragment>
-                           {props.onClose && <Button variant="secondary" onClick={props.onClose}>Cancel</Button>}
-                           <Button variant="primary" type="submit">Save</Button>
+                           {props.onClose && <CancelButton onClick={props.onClose} />}
+                           <OkButton type="submit" value="Save" />
                         </Fragment> : <Loading text="Saving..." />}
                   </Modal.Footer>
                </Modal.Dialog>
-            </Form>
-         </OverlayComponent>
+            </form >
+         </OverlayComponent >
       )
    }
    else {

@@ -1,8 +1,5 @@
-import React, { FormEvent, Fragment, useEffect, useState } from "react"
-import Alert from "react-bootstrap/Alert"
-import Button from "react-bootstrap/Button"
-import Form from "react-bootstrap/Form"
-import Modal from "react-bootstrap/Modal"
+import React, { Fragment, useEffect, useState } from "react"
+import Alert from "./components/Alert"
 import AccessDenied from "../shared/api/AccessDenied"
 import { ApiMessageType } from "../shared/api/ApiMessage"
 import Token from "../shared/api/Token"
@@ -12,6 +9,10 @@ import User from "../shared/User"
 import Api from "./api/Api"
 import Loading from "./Loading"
 import OverlayComponent from "./OverlayComponent"
+import styles from "./ChangePassword.module.scss"
+import TextboxField from "./components/TextboxField"
+import CancelButton from "./components/CancelButton"
+import OkButton from "./components/OkButton"
 
 interface Props {
    userId?: string,
@@ -25,7 +26,6 @@ export default (props: Props) => {
    const [state, setState] = useState({ password: "", confirmedPassword: "", changingPasswords: false })
    const [user, setUser] = useState(props.token ? props.token.user : undefined)
    const [passwordsMatch, setPasswordsMatch] = useState(true)
-   const [validated, setValidated] = useState(false)
    const userId = props.userId || ""
    const logOut = props.logOut
    const mergeState = (obj: any) => {
@@ -65,8 +65,6 @@ export default (props: Props) => {
             return
          }
       }
-
-      setValidated(true)
    }
 
    useEffect(() => {
@@ -95,35 +93,25 @@ export default (props: Props) => {
    else {
       return (
          <OverlayComponent onClose={props.onClose}>
-            <Form className="changePassword" noValidate={true} validated={validated} onSubmit={handleSubmit}>
-               <Modal.Dialog>
-                  <Modal.Header>
-                     <Modal.Title>Change Password</Modal.Title>
-                  </Modal.Header>
-                  <Modal.Body>
-                     <Form.Group controlId="formGroupEmail">
-                        <Form.Label>{user.email}</Form.Label>
-                     </Form.Group>
-                     <Form.Group controlId="formGroupPassword">
-                        <Form.Label>New Password</Form.Label>
-                        <Form.Control type="password" placeholder="New Password" required={true} onChange={e => mergeState({ password: e.currentTarget.value || "" })} />
-                     </Form.Group>
-                     <Form.Group controlId="formGroupConfirmPassword">
-                        <Form.Label>Confirm New Password</Form.Label>
-                        <Form.Control type="password" placeholder="Confirm New Password" required={true} onChange={e => mergeState({ confirmedPassword: e.currentTarget.value || "" })} />
-                     </Form.Group>
+            <form className={styles.changePassword} onSubmit={handleSubmit}>
+               <div>
+                  <div className={styles.header}>Change Password</div>
+                  <div className={styles.body}>
+                     <label className={styles.email}>{user.email}</label>
+                     <TextboxField label="New Password" type="password" placeholder="New Password" required={true} onChange={e => mergeState({ password: e.currentTarget.value || "" })} />
+                     <TextboxField label="Confirm New Password" type="password" placeholder="Confirm New Password" required={true} onChange={e => mergeState({ confirmedPassword: e.currentTarget.value || "" })} />
                      {!passwordsMatch && <Alert variant="danger">Passwords must match</Alert>}
-                  </Modal.Body>
-                  <Modal.Footer>
+                  </div>
+                  <div className={styles.footer}>
                      {!state.changingPasswords ?
                         <Fragment>
-                           {props.token && <Button variant="secondary" type="button" onClick={props.onClose}>Cancel</Button>}
-                           <Button variant="primary" type="submit">Change Password</Button>
+                           {props.token && <CancelButton onClick={props.onClose} />}
+                           <OkButton value="Change Password" />
                         </Fragment> :
                         <Loading text="Changing Password..." />}
-                  </Modal.Footer>
-               </Modal.Dialog>
-            </Form>
+                  </div>
+               </div>
+            </form>
          </OverlayComponent>
       )
    }

@@ -1,6 +1,6 @@
 import moment from "dayjs"
-import React, { FormEvent, Fragment, useCallback, useContext, useEffect, useState } from "react"
-import { Alert, Button, Form, Modal, Table } from "react-bootstrap"
+import React, { Fragment, useCallback, useContext, useEffect, useState } from "react"
+import { Modal, Table } from "react-bootstrap"
 import AccessDenied from "../shared/api/AccessDenied"
 import Unauthorized from "../shared/api/Unauthorized"
 import UserListResponse from "../shared/api/UserListResponse"
@@ -9,6 +9,12 @@ import Api from "./api/LoggedInApi"
 import Loading from "./Loading"
 import LoggedInAppContext from "./LoggedInAppContext"
 import OverlayComponent from "./OverlayComponent"
+import TextboxField from "./components/TextboxField"
+import CheckboxField from "./components/CheckboxField"
+import CancelButton from "./components/CancelButton"
+import OkButton from "./components/OkButton"
+import DeleteButton from "./components/DeleteButton"
+import Alert from "./components/Alert"
 
 interface Props {
    onClose: () => void,
@@ -18,14 +24,13 @@ interface AddingUserState {
    addingUser: boolean,
    email: string,
    isAdmin: boolean,
-   validated: boolean,
    saving: boolean,
 }
 
 export default (props: Props) => {
    const context = useContext(LoggedInAppContext)
    const [users, setUsers] = useState({ users: new Array<User>(), message: "", confirmDeleteUser: "", deletingUser: "" })
-   const [addingUserState, setAddingUserState] = useState<AddingUserState>({ addingUser: false, email: "", isAdmin: false, validated: false, saving: false })
+   const [addingUserState, setAddingUserState] = useState<AddingUserState>({ addingUser: false, email: "", isAdmin: false, saving: false })
    const token = context.token
    const onUnauthorized = context.logOut
    const mergeAddingUserState = (obj: any) => {
@@ -57,9 +62,6 @@ export default (props: Props) => {
 
          handleUserListResponse(ret)
       }
-      else {
-         setAddingUserState(s => ({ ...s, validated: true }))
-      }
    }
    const cancelAddUser = () => setAddingUserState(s => ({ ...s, addingUser: false }))
    useEffect(() => {
@@ -81,36 +83,27 @@ export default (props: Props) => {
          <Fragment>
             {addingUserState.addingUser &&
                <OverlayComponent onClose={cancelAddUser}>
-                  <Form className="addUser" noValidate={true} validated={addingUserState.validated} onSubmit={handleSubmit} onClick={(e: { target: any; currentTarget: any }) => { if (e.target === e.currentTarget) { cancelAddUser() } }}>
+                  <form className="addUser" onSubmit={handleSubmit} onClick={(e: { target: any, currentTarget: any }) => { if (e.target === e.currentTarget) { cancelAddUser() } }}>
                      <Modal.Dialog>
                         <Modal.Header>
                            <Modal.Title>Add User</Modal.Title>
                         </Modal.Header>
                         <Modal.Body>
-                           <Form.Group controlId="formGroupEmail">
-                              <Form.Label>Email address</Form.Label>
-                              <Form.Control
-                                 type="email"
-                                 placeholder="Enter email"
-                                 required={true}
-                                 autoFocus={true}
-                                 onChange={e => mergeAddingUserState({ email: e.currentTarget.value || "" })}
-                              />
-                           </Form.Group>
-                           <Form.Group controlId="formGroupIsAdmin">
-                              <Form.Check type="checkbox" label="Is Admin?" onChange={(e: FormEvent<HTMLInputElement>) => mergeAddingUserState({ isAdmin: e.currentTarget.checked })} />
-                           </Form.Group>
+                           <TextboxField label="Email address" type="email" placeholder="Enter email" required={true} autoFocus={true}
+                              onChange={e => mergeAddingUserState({ email: e.currentTarget.value || "" })}
+                           />
+                           <CheckboxField type="checkbox" label="Is Admin?" onChange={e => mergeAddingUserState({ isAdmin: e.currentTarget.checked })} />
                         </Modal.Body>
                         <Modal.Footer>
                            {!addingUserState.saving ?
                               <Fragment>
-                                 <Button variant="secondary" type="button" onClick={cancelAddUser}>Cancel</Button>
-                                 <Button variant="primary" type="submit">Add User</Button>
+                                 <CancelButton onClick={cancelAddUser} />
+                                 <OkButton value="Add User" />
                               </Fragment> :
                               <Loading text="Adding User..." />}
                         </Modal.Footer>
                      </Modal.Dialog>
-                  </Form>
+                  </form>
                </OverlayComponent>
             }
             <Table striped={true} bordered={true} hover={true} style={{ backgroundColor: "white" }}>
@@ -136,10 +129,10 @@ export default (props: Props) => {
                                        <Loading text="Deleting..." /> :
                                        u.id === users.confirmDeleteUser ?
                                           <Fragment>
-                                             <Button variant="secondary" onClick={() => { setUsers(s => ({ ...s, confirmDeleteUser: "" })) }}>Cancel</Button>&nbsp;
-                                          <Button variant="danger" onClick={() => { setUsers(s => ({ ...s, deletingUser: u.id })); Api.deleteUser(token, u.id).then(ret => handleUserListResponse(ret)) }}>Confirm Delete</Button>
+                                             <CancelButton onClick={() => { setUsers(s => ({ ...s, confirmDeleteUser: "" })) }} />&nbsp;
+                                             <DeleteButton onClick={() => { setUsers(s => ({ ...s, deletingUser: u.id })); Api.deleteUser(token, u.id).then(ret => handleUserListResponse(ret)) }} value="Confirm Delete" />
                                           </Fragment> :
-                                          <Button variant="danger" onClick={() => { setUsers(s => ({ ...s, confirmDeleteUser: u.id })) }}>Delete</Button>
+                                          <DeleteButton onClick={() => { setUsers(s => ({ ...s, confirmDeleteUser: u.id })) }} />
                                     }
                                  </Fragment> :
                                  "Cannot delete logged in user"}
@@ -153,14 +146,14 @@ export default (props: Props) => {
                      <td colSpan={4}>
                         {users.message && <Alert variant="primary">{users.message}</Alert>}
                         <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-around" }}>
-                           <Button variant="secondary" type="button" onClick={props.onClose}>Cancel</Button>
-                           <Button variant="primary" type="submit" onClick={() => { setUsers(u => ({ ...u, message: "" })); setAddingUserState({ addingUser: true, email: "", isAdmin: false, validated: false, saving: false }) }}>Add User</Button>
+                           <CancelButton onClick={props.onClose} />
+                           <OkButton onClick={() => { setUsers(u => ({ ...u, message: "" })); setAddingUserState({ addingUser: true, email: "", isAdmin: false, saving: false }) }} value="Add User" />
                         </div>
                      </td>
                   </tr>
                </tfoot>
             </Table>
          </Fragment>
-      </OverlayComponent>
+      </OverlayComponent >
    )
 }

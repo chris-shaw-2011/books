@@ -1,6 +1,6 @@
 import { Line } from "rc-progress"
 import React, { Fragment, useContext, useEffect, useState } from "react"
-import { Button, Form, ListGroup, Modal } from "react-bootstrap"
+import { ListGroup, Modal } from "react-bootstrap"
 import { v4 as uuid } from "uuid"
 import AccessDenied from "../shared/api/AccessDenied"
 import ConversionUpdateResponse from "../shared/api/ConversionUpdateResponse"
@@ -10,6 +10,7 @@ import { ConverterStatus } from "../shared/ConverterStatus"
 import Api from "./api/LoggedInApi"
 import LoggedInAppContext from "./LoggedInAppContext"
 import OverlayComponent from "./OverlayComponent"
+import CancelButton from "./components/CancelButton"
 
 enum UploadStatus {
    Pending = "Pending",
@@ -55,7 +56,7 @@ export default (props: Props) => {
                </ListGroup>
             </Modal.Body>
             <Modal.Footer>
-               <Button variant="secondary" onClick={props.onClose}>Close</Button>
+               <CancelButton onClick={props.onClose} value="Close" />
             </Modal.Footer>
          </Modal.Dialog>
       </OverlayComponent>
@@ -159,12 +160,12 @@ const FileUploadRow = (props: FileUploadRowProps) => {
    }, [status, percent, setUploadState, conversionId, onUnauthorized, onComplete, forceConversionUpdate, converterStatus, fileName])
 
    return (
-      <Form>
-         <Form.Row>
+      <form>
+         <div>
             {status === UploadStatus.Pending ?
                <Fragment>
                   <div>
-                     <Form.Control type="file" required={true} placeholder="Specify File" accept=".aax,.zip" onChange={(e: React.ChangeEvent<HTMLInputElement>) => uploadFile(e.currentTarget.files)} />
+                     <input type="file" required={true} placeholder="Specify File" accept=".aax,.zip" onChange={(e: React.ChangeEvent<HTMLInputElement>) => uploadFile(e.currentTarget.files)} />
                   </div>
                </Fragment> :
                <Fragment>
@@ -187,7 +188,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
                   </div>
                </Fragment>
             }
-         </Form.Row>
-      </Form>
+         </div>
+      </form>
    )
 }

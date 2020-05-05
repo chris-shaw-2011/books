@@ -62,7 +62,7 @@ export default () => {
                <div className={styles.spacer} />
                {token &&
                   <>
-                     <Textbox placeholder="Search" onChange={searchChanged} />
+                     <Textbox placeholder="Search" onChange={searchChanged} type="search" />
                      <Suspense fallback={<div />}>
                         <Navigation token={token} setVisibleComponent={setVisibleComponent} logOut={logOut} />
                      </Suspense>
