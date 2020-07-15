@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react"
+import React, { useState } from "react"
 import DownArrow from "./svg/DownArrow"
 import SelectList, { SelectListItem } from "./components/SelectList"
 import styles from "./Navigation.module.scss"
@@ -21,7 +21,10 @@ interface Props {
 export default (props: Props) => {
    const [open, setOpen] = useState(false)
    const openClassName: { [key: string]: boolean } = {}
-   const ref = useRef<HTMLDivElement>(null)
+   const ref = useOnclickOutside(() => {
+      setOpen(false)
+   }, { disabled: !open })
+
    const setVisibleComponent = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, component: VisibleComponent) => {
       e.preventDefault()
       e.stopPropagation()
@@ -30,10 +33,6 @@ export default (props: Props) => {
    }
 
    openClassName[styles.open] = open
-
-   useOnclickOutside(ref, e => {
-      setOpen(false)
-   }, { disabled: !open })
 
    return (
       <div className={classnames(styles.downArrow, openClassName)} onClick={() => setOpen(s => !s)} ref={ref}>
