@@ -1,11 +1,10 @@
 import { Mutex } from "async-mutex"
 import bcrypt from "bcrypt"
 import cookie from "cookie"
-import fastify from "fastify"
+import fastify, { FastifyRequest, FastifyReply } from "fastify"
 import fastifyMultipart from "fastify-multipart"
 import fastifyStatic from "fastify-static"
 import fs from "fs"
-import { IncomingMessage, ServerResponse } from "http"
 import moment from "moment"
 import path from "path"
 import pump from "pump"
@@ -58,7 +57,7 @@ const getAllUsers = async (message?: string) => {
 
    return new UserListResponse({ users, type: ApiMessageType.UserListResponse, message: message || "" })
 }
-const validatePassword = async (email: string, password: string, reply: fastify.FastifyReply<ServerResponse>) => {
+const validatePassword = async (email: string, password: string, reply: FastifyReply) => {
    const dbUser = await db.get("SELECT id, email, hash, isAdmin, lastLogIn FROM user WHERE email = ?", email)
 
    if (dbUser) {
@@ -82,13 +81,13 @@ const validatePassword = async (email: string, password: string, reply: fastify.
 const passwordHash = async (password: string) => {
    return await bcrypt.hash(password, 10)
 }
-const requestToken = (request: fastify.FastifyRequest<IncomingMessage, fastify.DefaultQuery, fastify.DefaultParams, fastify.DefaultHeaders, any>) => {
+const requestToken = (request: FastifyRequest) => {
    const cookies = cookie.parse(request.headers.cookie || "") || {}
    const tokenJson = cookies.loginCookie ? new ServerToken(tryParse(cookies.loginCookie)) : undefined
 
    return new ServerToken(tokenJson)
 }
-const validateRequest = async (request: fastify.FastifyRequest<IncomingMessage, fastify.DefaultQuery, fastify.DefaultParams, fastify.DefaultHeaders, any>, reply: fastify.FastifyReply<ServerResponse>) => {
+const validateRequest = async (request: FastifyRequest, reply: FastifyReply) => {
    const token = requestToken(request)
 
    if (!token.user.id || !await token.isChecksumValid(db.settings.checksumSecret)) {
@@ -108,7 +107,7 @@ const validateRequest = async (request: fastify.FastifyRequest<IncomingMessage, 
       return token
    }
 }
-const validateAdminRequest = async (request: fastify.FastifyRequest<IncomingMessage, fastify.DefaultQuery, fastify.DefaultParams, fastify.DefaultHeaders, any>, reply: fastify.FastifyReply<ServerResponse>) => {
+const validateAdminRequest = async (request: FastifyRequest, reply: FastifyReply) => {
    const resp = await validateRequest(request, reply)
 
    if (resp instanceof ServerToken && !resp.user.isAdmin) {
@@ -141,7 +140,7 @@ server.register(fastifyStatic, {
    prefix: "/unused/",
 })
 
-server.post("/auth", async (request, reply) => {
+server.post<{ Body: User }>("/auth", async (request, reply) => {
    const user = new User(request.body)
 
    if (!user.password) {
@@ -182,7 +181,7 @@ server.post("/settings", { preHandler: validateAdminRequest }, (request, reply) 
    reply.send(new SettingsRequired({ type: ApiMessageType.SettingsRequired, settings: db.settings, message: "" }))
 })
 
-server.post("/updateSettings", { preHandler: validateAdminRequest }, (request, reply) => {
+server.post<{ Body: SettingsUpdate }>("/updateSettings", { preHandler: validateAdminRequest }, (request, reply) => {
    const settingsUpdate = new SettingsUpdate(request.body)
 
    db.settings.inviteEmail = settingsUpdate.settings.inviteEmail
@@ -208,7 +207,7 @@ server.post("/users", { preHandler: validateAdminRequest }, async (request, repl
    return await getAllUsers()
 })
 
-server.post("/addUser", { preHandler: validateAdminRequest }, async (request, reply) => {
+server.post<{ Body: AddUserRequest }>("/addUser", { preHandler: validateAdminRequest }, async (request, reply) => {
    const userRequest = new AddUserRequest(request.body)
    let message = `${userRequest.user.email} has been invited`
 
@@ -224,7 +223,7 @@ server.post("/addUser", { preHandler: validateAdminRequest }, async (request, re
 
          await db.run("INSERT INTO User (id, email, isAdmin) VALUES(?, ?, ?)", userId, userRequest.user.email, userRequest.user.isAdmin)
 
-         const link = url.resolve(request.headers.referer, `/invite/${userId}`)
+         const link = url.resolve(request.headers.referer!, `/invite/${userId}`)
 
          db.settings.mailer.sendMail({
             from: db.settings.inviteEmail,
@@ -241,7 +240,7 @@ server.post("/addUser", { preHandler: validateAdminRequest }, async (request, re
    return await getAllUsers(message)
 })
 
-server.post("/deleteUser", { preHandler: validateAdminRequest }, async (request, reply) => {
+server.post<{ Body: DeleteUserRequest }>("/deleteUser", { preHandler: validateAdminRequest }, async (request, reply) => {
    const userRequest = new DeleteUserRequest(request.body)
 
    await db.run("DELETE FROM User WHERE id = ?", userRequest.userId)
@@ -249,7 +248,7 @@ server.post("/deleteUser", { preHandler: validateAdminRequest }, async (request,
    return await getAllUsers("User deleted")
 })
 
-server.post("/user", async (request, reply) => {
+server.post<{ Body: UserRequest }>("/user", async (request, reply) => {
    const userRequest = new UserRequest(request.body)
 
    const dbUser = await db.get("SELECT id, email, hash, isAdmin, lastLogin FROM User WHERE id = ?", userRequest.userId)
@@ -264,7 +263,7 @@ server.post("/user", async (request, reply) => {
    }
 })
 
-server.post("/changePassword", async (request, reply) => {
+server.post<{ Body: ChangePasswordRequest }>("/changePassword", async (request, reply) => {
    const changeRequest = new ChangePasswordRequest(request.body)
 
    if (changeRequest.token.authorization) {
@@ -293,7 +292,7 @@ server.post("/changePassword", async (request, reply) => {
    return await validatePassword(changeRequest.token.user.email, changeRequest.newPassword, reply)
 })
 
-server.post("/changeBookStatus", { preHandler: validateRequest }, async (request, reply) => {
+server.post<{ Body: ChangeBookStatusRequest }>("/changeBookStatus", { preHandler: validateRequest }, async (request, reply) => {
    const statusRequest = new ChangeBookStatusRequest(request.body)
    const release = await changeBookStatusMutex.acquire()
    let statuses: BookStatuses
@@ -351,7 +350,7 @@ server.post("/upload", { preHandler: validateRequest }, (request, reply) => {
    }
 })
 
-server.post("/conversionUpdate", { preHandler: validateRequest }, async (request, reply) => {
+server.post<{ Body: ConversionUpdateRequest }>("/conversionUpdate", { preHandler: validateRequest }, async (request, reply) => {
    const updateRequest = new ConversionUpdateRequest(request.body)
    const conversion = conversions.get(updateRequest.conversionId)
    let response = { conversionPercent: 100, errorMessage: "", converterStatus: ConverterStatus.Complete }
@@ -367,7 +366,7 @@ server.post("/conversionUpdate", { preHandler: validateRequest }, async (request
    return new ConversionUpdateResponse({ ...response, type: ApiMessageType.ConversionUpdateResponse })
 })
 
-server.get("/files/*", { preHandler: validateRequest }, (request, reply) => {
+server.get<{ Params: Record<string, string> }>("/files/*", { preHandler: validateRequest }, (request, reply) => {
    const filePath = request.params["*"] as string
 
    if (filePath.endsWith(".jpg")) {
@@ -385,7 +384,7 @@ server.get("/files/*", { preHandler: validateRequest }, (request, reply) => {
 })
 
 // This handles requests to the root of the site in production
-server.get("/*", (request, reply) => {
+server.get<{ Params: Record<string, string> }>("/*", (request, reply) => {
    let filePath = request.params["*"] as string || "index.html"
 
    if (filePath.startsWith("invite/")) {
