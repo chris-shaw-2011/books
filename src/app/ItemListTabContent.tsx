@@ -4,13 +4,17 @@ import Directory from "../shared/Directory"
 import Books from "../shared/api/Books"
 import SortOrder from "../shared/SortOrder"
 import { DropdownButton, Dropdown } from "react-bootstrap"
-import ItemList from "./ItemList"
+import Styles from "./ItemListTabContent.module.scss"
+import classNames from "classnames"
+import VirtualList from "./VirtualList"
+import ItemLink from "./ItemLink"
 
 interface BookTabProps {
    dir: Directory,
    status?: Status,
    searchWords: string[],
    statusChanged: (books: Books) => void,
+   hidden: boolean,
 }
 
 export default (props: BookTabProps) => {
@@ -19,7 +23,7 @@ export default (props: BookTabProps) => {
 
    return (
       <>
-         <div className="sortDropDown">
+         <div className={classNames(Styles.sortDropDown, { [Styles.hidden]: props.hidden })}>
             <DropdownButton title={`Sorted: ${sort}`} id={`${props.status || "All"}-sortButton`} variant="secondary">
                {Object.values(SortOrder).map(s => (
                   <Dropdown.Item key={s} onClick={() => setSort(s)}>{s}</Dropdown.Item>
@@ -27,7 +31,9 @@ export default (props: BookTabProps) => {
             </DropdownButton>
          </div>
 
-         <ItemList items={items.items} className="rootItemList" searchWords={props.searchWords} statusChanged={props.statusChanged} rootItemList={true} />
+         <VirtualList estimatedChildHeight={195} className={classNames({ [Styles.hidden]: props.hidden })}>
+            {items.items.map(i => <ItemLink key={i.id} item={i} {...props} />)}
+         </VirtualList>
       </>
    )
 }

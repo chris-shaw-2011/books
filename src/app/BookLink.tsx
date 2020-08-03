@@ -1,5 +1,5 @@
 import classnames from "classnames"
-import React, { useContext, useState } from "react"
+import React, { useContext, useState, forwardRef } from "react"
 import { Dropdown, DropdownButton } from "react-bootstrap"
 import Highlighter from "react-highlight-words"
 import AccessDenied from "../shared/api/AccessDenied"
@@ -10,18 +10,16 @@ import Api from "./api/LoggedInApi"
 import Loading from "./Loading"
 import LoggedInAppContext from "./LoggedInAppContext"
 import moment from "dayjs"
-import { CellMeasurerChildProps } from "react-virtualized/dist/es/CellMeasurer"
 
 interface BookProps {
    book: Book,
    className?: string,
    searchWords: string[],
    statusChanged: (books: Books) => void,
-   cellMeasurerChildProps?: CellMeasurerChildProps,
    style?: React.CSSProperties,
 }
 
-export default (props: BookProps) => {
+export default forwardRef<HTMLDivElement, BookProps>((props, ref) => {
    const context = useContext(LoggedInAppContext)
    const [changingStatus, setChangingStatus] = useState(false)
    const changeBookStatus = async (status: Status) => {
@@ -41,7 +39,7 @@ export default (props: BookProps) => {
    }
 
    return (
-      <div className={classnames("book", "item", props.className)} onLoad={props.cellMeasurerChildProps?.measure} ref={e => e && props.cellMeasurerChildProps?.registerChild ? props.cellMeasurerChildProps.registerChild(e) : null} style={props.style}>
+      <div className={classnames("book", "item", props.className)} style={props.style} ref={ref}>
          <a className="inner" href={props.book.download} onClick={e => e.stopPropagation()}>
             <img src={props.book.cover} alt="cover" />
             <div>
@@ -71,7 +69,7 @@ export default (props: BookProps) => {
          }
       </div>
    )
-}
+})
 
 function readableDuration(secNum: number) {
    const hours = Math.floor(secNum / 3600)

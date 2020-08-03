@@ -32,14 +32,14 @@ export default () => {
       if (inviteUserId) {
          window.history.replaceState({}, document.title, "/")
       }
-      setCookies("loginCookie", "", { maxAge: 0 })
+      setCookies("loginCookie", "", { maxAge: 0, sameSite: "strict" })
       setLoginMessage(message || "")
    }, [setCookies, setLoginMessage, inviteUserId])
    const onLogIn = useCallback((t: Token) => {
       if (inviteUserId) {
          window.history.replaceState({}, document.title, "/")
       }
-      setCookies("loginCookie", JSON.stringify(t), { maxAge: 12 * 30 * 24 * 60 * 60, path: "/" })
+      setCookies("loginCookie", JSON.stringify(t), { maxAge: 12 * 30 * 24 * 60 * 60, path: "/", sameSite: "strict" })
       setLoginMessage("")
    }, [setCookies, setLoginMessage, inviteUserId])
    const searchChanged = (e: React.ChangeEvent<HTMLInputElement>) => {

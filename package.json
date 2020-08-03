@@ -32,12 +32,12 @@
       "react-dom": "^16.13.1",
       "react-highlight-words": "^0.16.0",
       "react-scripts": "3.4.1",
-      "react-virtualized": "^9.21.2",
       "sanitize-filename": "^1.6.3",
       "sqlite": "^4.0.12",
       "sqlite3": "^5.0.0",
       "string-strip-html": "^4.5.0",
       "unzipper": "^0.10.11",
+      "use-resize-observer": "^6.1.0",
       "uuid": "^8.3.0"
    },
    "scripts": {
@@ -90,7 +90,6 @@
       "@types/react-dom": "16.9.8",
       "@types/react-highlight-words": "^0.16.1",
       "@types/react-lazyload": "^2.6.0",
-      "@types/react-virtualized": "^9.21.10",
       "@types/readable-stream": "^2.3.9",
       "@types/string-strip-html": "^4.3.0",
       "@types/unzipper": "^0.10.3",
