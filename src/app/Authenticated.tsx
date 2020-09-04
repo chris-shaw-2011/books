@@ -1,4 +1,4 @@
-import React, { Fragment, useCallback, useContext, useEffect, useState } from "react"
+import React, { useCallback, useContext, useEffect, useState } from "react"
 import AccessDenied from "../shared/api/AccessDenied"
 import Books from "../shared/api/Books"
 import SettingsRequired from "../shared/api/SettingsRequired"
@@ -20,6 +20,10 @@ import classNames from "classnames"
 interface Props {
    searchWords: { words: string[] },
    onPasswordChanged: (token: Token) => void,
+   logOut: (message?: string | undefined) => void,
+   token: Token,
+   visibleComponent: VisibleComponent,
+   setVisibleComponent: React.Dispatch<React.SetStateAction<VisibleComponent>>,
 }
 
 interface TabState {
@@ -38,11 +42,13 @@ function filter(dir: Directory, status?: Status, searchWords?: string[]) {
 
    dir.items.forEach(i => {
       if (i instanceof Book && (!status || i.status === status)) {
-         const lAuthor = i.author.toLowerCase()
-         const lName = i.name.toLowerCase()
-         const lComment = i.comment.toLowerCase()
+         const lAuthor = i.author.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+         const lName = i.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+         const lComment = i.comment.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+         const lNarrator = i.narrator.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+         const lGenre = i.genre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
 
-         if (!searchWords || isMatch(searchWords, lAuthor, lName, lComment)) {
+         if (!searchWords || isMatch(searchWords, lAuthor, lName, lComment, lNarrator, lGenre)) {
             ret.items.push(i)
          }
       }
@@ -66,13 +72,13 @@ function filter(dir: Directory, status?: Status, searchWords?: string[]) {
 }
 
 export default (props: Props) => {
+   const logOut = props.logOut
    const [state, setState] = useState<Directory | undefined>()
    const [tabsState, setTabsState] = useState<TabState>({ selectedTab: Status.Unread, mountedTabs: [Status.Unread] })
    const context = useContext(AppContext)
-   const unAuthorized = context.logOut
-   const visibleComponent = context.visibleComponent
-   const setVisibleComponent = context.setVisibleComponent
-   const token = context.token
+   const visibleComponent = props.visibleComponent
+   const setVisibleComponent = props.setVisibleComponent
+   const token = props.token
    const statusChanged = useCallback((books: Books) => {
       setState(books.directory)
    }, [])
@@ -97,17 +103,17 @@ export default (props: Props) => {
             setVisibleComponent(VisibleComponent.Settings)
          }
          else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
-            unAuthorized(ret.message)
+            logOut(ret.message)
          }
          else {
-            unAuthorized("Something unexpected happened")
+            logOut("Something unexpected happened")
          }
       }
 
       if (visibleComponent === VisibleComponent.Books) {
          getBooks()
       }
-   }, [token, unAuthorized, visibleComponent, setVisibleComponent])
+   }, [token, logOut, visibleComponent, setVisibleComponent])
 
    if (!state) {
       return <Loading />
@@ -118,7 +124,7 @@ export default (props: Props) => {
    })
 
    return (
-      <Fragment>
+      <AppContext.Provider value={{ logOut, token, visibleComponent, setVisibleComponent, updateBooks: setState }}>
          {props.searchWords.words.length ?
             <ItemListTabContent dir={filter(state, undefined, props.searchWords.words)} searchWords={props.searchWords.words} statusChanged={statusChanged} hidden={false} /> :
             <div className={Styles.tabsContainer}>
@@ -148,6 +154,6 @@ export default (props: Props) => {
                }
             })()
          }
-      </Fragment >
+      </AppContext.Provider>
    )
 }

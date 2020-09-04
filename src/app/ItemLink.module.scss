@@ -1,0 +1,27 @@
+.item {
+   padding: 10px 0px 10px 10px;
+   margin-left: 30px;
+   display: flex;
+   flex-direction: column;
+   border-top: 1px solid black;
+}
+
+.inner {
+   display: flex;
+   align-items: center;
+   color: black !important;
+   text-decoration: none !important;
+   flex-direction: row;
+   width: 100%;
+   min-height: 144px;
+
+   > div {
+      flex-grow: 1;
+   }
+
+   > svg, > img {
+      height: 144px;
+      padding-right: 10px;
+      align-self: flex-start;
+   }
+}

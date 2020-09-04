@@ -74,7 +74,7 @@ class BookList {
             // tslint:disable-next-line: no-console
             console.log(`file removed: ${delPath}`)
 
-            this.books.deleteBook(path.parse(delPath))
+            this.deleteBook(delPath)
          })
    }
 
@@ -88,6 +88,10 @@ class BookList {
       setTimeout(this.checkForFileAddedPendingUpdates, 60000)
    }
 
+   deleteBook(delPath: string) {
+      this.books.deleteBook(path.parse(delPath))
+   }
+
    async fileAdded(addPath: string) {
       // tslint:disable-next-line: no-console
       console.log(`file added: ${addPath}`)
@@ -97,6 +101,12 @@ class BookList {
       await dir?.loadBooks(path.parse(addPath))
 
       dir?.sortItems(true)
+   }
+
+   findBookByPath(bookPath: string) {
+      const dir = this.books.findClosestDirectory(bookPath)
+
+      return dir?.items.find(i => i.fullPath === bookPath)
    }
 
    async allBooks() {

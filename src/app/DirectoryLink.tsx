@@ -6,6 +6,7 @@ import FolderClosed from "./svg/FolderClosed"
 import FolderOpen from "./svg/FolderOpen"
 import Highlighter from "react-highlight-words"
 import ItemLink from "./ItemLink"
+import itemStyles from "./ItemLink.module.scss"
 
 interface DirectoryProps {
    directory: Directory,
@@ -28,7 +29,7 @@ export default forwardRef<HTMLDivElement, DirectoryProps>((props, ref) => {
 
    return (
       <div className={classnames("directory", "item", props.className)} onClick={onClick} style={props.style} ref={ref}>
-         <div className="inner">
+         <div className={classnames("inner", itemStyles.inner)}>
             {displayOpen ? <FolderOpen /> : <FolderClosed />}
             <Highlighter searchWords={props.searchWords} textToHighlight={props.directory.name} />
          </div>

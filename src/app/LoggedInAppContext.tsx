@@ -1,5 +1,6 @@
 import React from "react"
 import Token from "../shared/api/Token"
+import Directory from "../shared/Directory"
 
 export enum VisibleComponent {
    Books,
@@ -14,6 +15,7 @@ interface LoggedInAppContextType {
    token: Token,
    visibleComponent: VisibleComponent,
    setVisibleComponent: (component: VisibleComponent) => void,
+   updateBooks: (directory: Directory) => void,
 }
 
 export default React.createContext<LoggedInAppContextType>({
@@ -21,4 +23,5 @@ export default React.createContext<LoggedInAppContextType>({
    token: new Token(),
    visibleComponent: VisibleComponent.Books,
    setVisibleComponent: (component: VisibleComponent) => { return },
+   updateBooks: (directory: Directory | undefined) => { return },
 })

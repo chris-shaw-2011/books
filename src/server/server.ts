@@ -27,7 +27,7 @@ import UploadResponse from "../shared/api/UploadResponse"
 import UserListResponse from "../shared/api/UserListResponse"
 import UserRequest from "../shared/api/UserRequest"
 import UserResponse from "../shared/api/UserResponse"
-import { Status } from "../shared/Book"
+import Book, { Status } from "../shared/Book"
 import BookStatuses from "../shared/BookStatuses"
 import BookWithStatus from "../shared/BookWithStatus"
 import { ConverterStatus } from "../shared/ConverterStatus"
@@ -36,6 +36,10 @@ import bookList from "./BookList"
 import Converter from "./Converter"
 import db from "./Database"
 import ServerToken from "./ServerToken"
+import UpdateBookRequest from "../shared/api/UpdateBookRequest"
+import NodeID3 from "node-id3"
+import UpdateBookResponse from "../shared/api/UpdateBookResponse"
+import sanitize from "sanitize-filename"
 
 const authorizationExpiration = new Map<string, moment.Moment>()
 let rootDir = __dirname
@@ -364,6 +368,56 @@ server.post<{ Body: ConversionUpdateRequest }>("/conversionUpdate", { preHandler
    }
 
    return new ConversionUpdateResponse({ ...response, type: ApiMessageType.ConversionUpdateResponse })
+})
+
+server.post<{ Body: UpdateBookRequest }>("/updateBook", { preHandler: validateAdminRequest }, async request => {
+   const updateBookRequest = new UpdateBookRequest(request.body)
+   const book = (await bookList.allBooks()).findById(updateBookRequest.newBook.id)
+
+   if (book instanceof Book) {
+      const newPath = path.join(path.dirname(book.fullPath), `${sanitize(updateBookRequest.newBook.name.replace(/:/gi, " - "))}.mp3`)
+
+      // Check to see if the file needs renamed
+      if (book.fullPath !== newPath) {
+         if (fs.existsSync(newPath)) {
+            return new UpdateBookResponse({ type: ApiMessageType.UpdateBookResponse, message: `File ${newPath} already exists` })
+         }
+
+         // tslint:disable-next-line: no-console
+         console.log(`Renaming ${book.fullPath} to ${newPath}`)
+
+         await fs.promises.rename(book.fullPath, newPath)
+
+         if (fs.existsSync(book.photoPath)) {
+            await fs.promises.unlink(book.photoPath)
+         }
+
+         bookList.deleteBook(book.fullPath)
+      }
+
+      NodeID3.update({ title: updateBookRequest.newBook.name, artist: updateBookRequest.newBook.author, year: updateBookRequest.newBook.year, comment: { language: "eng", text: updateBookRequest.newBook.comment }, composer: updateBookRequest.newBook.narrator, genre: updateBookRequest.newBook.genre }, newPath)
+
+      if (book.fullPath !== newPath) {
+         await bookList.fileAdded(newPath)
+
+         const newBook = bookList.findBookByPath(newPath)
+
+         if (newBook) {
+            await db.run("UPDATE user SET bookStatuses = REPLACE(bookStatuses, ?, ?) WHERE bookStatuses LIKE ?", `${JSON.stringify(book.id)}`, `${JSON.stringify(newBook.id)}`, `%${JSON.stringify(book.id)}%`)
+         }
+      }
+      else {
+         await book.updateMetadata()
+      }
+   }
+   else {
+      return new UpdateBookResponse({ type: ApiMessageType.UpdateBookResponse, message: `Couldn't find existing book with ID ${updateBookRequest.newBook.id}` })
+   }
+
+   const books = await bookList.allBooks()
+   const statuses = await statusesForUser(updateBookRequest.token.user.id)
+
+   return new UpdateBookResponse({ type: ApiMessageType.UpdateBookResponse, message: "", books: new Books({ type: ApiMessageType.Books, bookStatuses: statuses, directory: books }) })
 })
 
 server.get<{ Params: Record<string, string> }>("/files/*", { preHandler: validateRequest }, (request, reply) => {

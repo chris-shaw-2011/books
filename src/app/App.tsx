@@ -3,10 +3,10 @@ import React, { useCallback, useMemo, useState, Suspense } from "react"
 import { CookiesProvider, useCookies } from "react-cookie"
 import Token from "../shared/api/Token"
 import ChangePassword from "./ChangePassword"
-import AppContext, { VisibleComponent } from "./LoggedInAppContext"
+import { VisibleComponent } from "./LoggedInAppContext"
 import LogIn from "./LogIn"
 import styles from "./App.module.scss"
-import "./styles.css"
+import "./styles.scss"
 import Loading from "./Loading"
 import Textbox from "./components/Textbox"
 
@@ -71,11 +71,9 @@ export default () => {
             </div>
             <div className={styles.mainContent}>
                {token ?
-                  <AppContext.Provider value={{ logOut, token, visibleComponent, setVisibleComponent }}>
-                     <Suspense fallback={<Loading />}>
-                        <Authenticated searchWords={searchWords} onPasswordChanged={onLogIn} />
-                     </Suspense>
-                  </AppContext.Provider> :
+                  <Suspense fallback={<Loading />}>
+                     <Authenticated searchWords={searchWords} onPasswordChanged={onLogIn} logOut={logOut} token={token} visibleComponent={visibleComponent} setVisibleComponent={setVisibleComponent} />
+                  </Suspense> :
                   inviteUserId ?
                      <ChangePassword userId={inviteUserId} onPasswordChanged={onLogIn} logOut={logOut} /> :
                      <LogIn onAuthenticated={onLogIn} message={loginMessage} />

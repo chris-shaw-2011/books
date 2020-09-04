@@ -17,6 +17,8 @@ export enum ApiMessageType {
    ConversionUpdateRequest,
    ConversionUpdateResponse,
    UploadResponse,
+   UpdateBookRequest,
+   UpdateBookResponse,
 }
 
 export default class ApiMessage {

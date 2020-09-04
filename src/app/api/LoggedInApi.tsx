@@ -13,10 +13,12 @@ import Token from "../../shared/api/Token"
 import Unauthorized from "../../shared/api/Unauthorized"
 import UploadResponse from "../../shared/api/UploadResponse"
 import UserListResponse from "../../shared/api/UserListResponse"
-import { Status } from "../../shared/Book"
+import Book, { Status } from "../../shared/Book"
 import { ConverterStatus } from "../../shared/ConverterStatus"
 import Settings from "../../shared/Settings"
 import User from "../../shared/User"
+import UpdateBookRequest from "../../shared/api/UpdateBookRequest"
+import UpdateBookResponse from "../../shared/api/UpdateBookResponse"
 
 class ApiClass {
    books = async (token: Token) => {
@@ -49,6 +51,10 @@ class ApiClass {
 
    conversionUpdate = async (conversionId: string, knownPercent: number, knownConverterStatus: ConverterStatus) => {
       return await this.fetch("/conversionUpdate", new ConversionUpdateRequest({ type: ApiMessageType.ConversionUpdateRequest, conversionId, knownPercent, knownConverterStatus }))
+   }
+
+   updateBook = async (token: Token, newBook: Book, prevBook: Book) => {
+      return await this.fetch("/updateBook", new UpdateBookRequest({ type: ApiMessageType.UpdateBookRequest, newBook, prevBook, token }))
    }
 
    fetch = async (url: string, jsonSend?: any) => {
@@ -94,6 +100,9 @@ class ApiClass {
       }
       else if (json.type === ApiMessageType.UploadResponse) {
          return new UploadResponse(json as UploadResponse)
+      }
+      else if (json.type === ApiMessageType.UpdateBookResponse) {
+         return new UpdateBookResponse(json as UpdateBookResponse)
       }
       else {
          throw Error(`Unknown ApiMessageType: ${json.type}`)

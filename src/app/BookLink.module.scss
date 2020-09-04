@@ -1,0 +1,82 @@
+.editing {
+   > form > .inner {
+      cursor: default !important;
+
+      .description {
+         display: flex;
+      }
+
+      > div > .editable {
+         padding: 5px;
+      }
+   }
+
+   input, textarea, label {
+      width: 100%;
+   }
+
+   .author {
+      white-space: nowrap;
+      display: flex;
+      flex-direction: row;
+      align-items: flex-end;
+      clear: both;
+   }
+}
+
+.inner {
+   margin-bottom: 10px;
+   display: block !important;
+
+   > img {
+      float: left;
+   }
+
+   label {
+      margin: 0;
+      > span:first-of-type {
+         width: 70px;
+         text-align: right;
+         margin-right: .5rem;
+         display: inline-block;
+         font-weight: bolder;
+      }
+   }
+}
+
+.title {
+   font-weight: bold;
+   display: flex;
+   flex-direction: row;
+   align-items: center;
+
+   > input {
+      font-weight: bold;
+   }
+
+   > span, > svg {
+      white-space: nowrap;
+      display: flex;
+   }
+
+   > svg {
+      height: 18px;
+      padding-left: 5px;
+   }
+}
+
+.year {
+   width: auto !important;
+}
+
+.author, .size, .uploadTime, .narrator, .genre {
+   color: gray;
+}
+
+.size {
+   font-size: 85%;
+}
+
+.uploadTime {
+   font-size: 80%;
+}

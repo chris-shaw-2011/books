@@ -1,8 +1,6 @@
 import fs from "fs"
-import * as mm from "music-metadata"
 import path from "path"
-import stripHtml from "string-strip-html"
-import Book from "../shared/Book"
+import ServerBook from "./ServerBook"
 import Directory from "../shared/Directory"
 import db from "./Database"
 
@@ -18,9 +16,25 @@ export default class ServerDirectory extends Directory {
    }
 
    fullPath: string
-   items: (ServerDirectory | Book)[] = []
+   items: (ServerDirectory | ServerBook)[] = []
    parent?: ServerDirectory
    pathTree: string[] = []
+
+   findById(id: string, searchDir?: ServerDirectory): ServerDirectory | ServerBook | undefined {
+      const items = searchDir?.items ?? this.items
+      for (const item of items) {
+         if (item.id === id) {
+            return item
+         }
+         else if (item instanceof ServerDirectory) {
+            if (id.startsWith(item.id)) {
+               return this.findById(id, item)
+            }
+         }
+      }
+
+      return undefined
+   }
 
    findClosestDirectory(dirPath: string): ServerDirectory | undefined {
       for (const item of this.items) {
@@ -92,55 +106,33 @@ export default class ServerDirectory extends Directory {
             }
          }
          else if (p.isFile() && (p.name.endsWith(".m4b") || p.name.endsWith(".mp3")) && (!updatePathFullPath || fullPath === updatePathFullPath)) {
-            const book = new Book()
-            const photoPath = fullPath + ".jpg"
-            const bookUri = newPathTree.concat(p.name).join("/")
+            if (!this.items.find(i => i.fullPath === fullPath)) {
+               const book = new ServerBook()
+               book.parent = this
 
-            // tslint:disable-next-line: no-console
-            console.log(`${fullPath} - reading tags`)
+               await book.updateMetadata(fullPath)
 
-            const metadata = (await mm.parseFile(fullPath, { skipPostHeaders: true, skipCovers: fs.existsSync(photoPath), includeChapters: false }))
-            const tags = metadata.common
-            const stats = (await fs.promises.stat(fullPath))
+               this.items.push(book)
 
-            if (tags) {
-               book.name = p.name
-               book.author = tags.artist || ""
-               book.year = tags.year
-               book.comment = tags.comment && tags.comment.length ? stripHtml(tags.comment[0]) : ""
-               book.duration = metadata.format.duration
+               if (updatePathFullPath) {
+                  this.items.sort((a, b) => {
+                     const nameA = a.name.toUpperCase()
+                     const nameB = b.name.toUpperCase()
 
-               if (tags.picture && tags.picture.length && !fs.existsSync(photoPath)) {
-                  fs.writeFileSync(photoPath, new Uint8Array(tags.picture[0].data))
+                     if (nameA > nameB) {
+                        return 1
+                     }
+                     else if (nameA < nameB) {
+                        return -1
+                     }
+
+                     return 0
+                  })
                }
             }
             else {
-               book.name = p.name
-            }
-
-            book.id = bookUri
-            book.download = `/files/${bookUri}`
-            book.cover = book.download + ".jpg"
-            book.numBytes = stats.size
-            book.fullPath = fullPath
-            book.uploadTime = stats.birthtime
-
-            this.items.push(book)
-
-            if (updatePathFullPath) {
-               this.items.sort((a, b) => {
-                  const nameA = a.name.toUpperCase()
-                  const nameB = b.name.toUpperCase()
-
-                  if (nameA > nameB) {
-                     return 1
-                  }
-                  else if (nameA < nameB) {
-                     return -1
-                  }
-
-                  return 0
-               })
+               // tslint:disable-next-line: no-console
+               console.log(`${fullPath} - already in array, not added`)
             }
          }
       }
