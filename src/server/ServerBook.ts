@@ -45,7 +45,7 @@ export default class ServerBook extends Book {
          this.name = tags.title || fileName
          this.author = tags.artist || ""
          this.year = tags.year
-         this.comment = tags.comment && tags.comment.length ? stripHtml(tags.comment[0]) : ""
+         this.comment = tags.comment && tags.comment.length ? stripHtml(tags.comment[0]).result : ""
          this.duration = metadata.format.duration
          this.narrator = tags.composer?.length ? tags.composer[0] : ""
          this.genre = tags.genre?.length ? tags.genre[0] : ""

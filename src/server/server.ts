@@ -7,7 +7,8 @@ import fastifyStatic from "fastify-static"
 import fs from "fs"
 import moment from "moment"
 import path from "path"
-import pump from "pump"
+import util from "util"
+import { pipeline } from "stream"
 import url from "url"
 import { v4 as uuid } from "uuid"
 import AccessDenied from "../shared/api/AccessDenied"
@@ -41,6 +42,7 @@ import NodeID3 from "node-id3"
 import UpdateBookResponse from "../shared/api/UpdateBookResponse"
 import sanitize from "sanitize-filename"
 
+const pump = util.promisify(pipeline)
 const authorizationExpiration = new Map<string, moment.Moment>()
 let rootDir = __dirname
 const tryParse = (text: string, reviver?: (this: any, key: string, value: any) => any) => {
@@ -322,36 +324,23 @@ server.post<{ Body: ChangeBookStatusRequest }>("/changeBookStatus", { preHandler
    return new Books({ type: ApiMessageType.Books, directory: books, bookStatuses: statuses })
 })
 
-server.post("/upload", { preHandler: validateRequest }, (request, reply) => {
+server.post("/upload", { preHandler: validateRequest }, async (request, reply) => {
    const id = uuid()
-   const mp = request.multipart(handler, onEnd)
-   let fileName = ""
-   let filePath = ""
+   const file = await request.file()
+   const fileName = `${id}${path.extname(file.filename)}`
+   const filePath = path.join(db.settings.uploadLocation, fileName)
+   const conversion = new Converter()
 
-   mp.on("field", (key: any, value: any) => {
-      if (key === "fileName") {
-         const parts = (value as string).split(".")
+   await pump(file.file, fs.createWriteStream(filePath))
 
-         fileName = `${id}.${parts[parts.length - 1]}`
-         filePath = path.join(db.settings.uploadLocation, fileName)
-      }
+   conversions.set(id, conversion)
+
+   // Start the conversion in the background
+   conversion.convert(fileName, db.settings.uploadLocation, conversionMutex, rootDir).then(() => {
+      setTimeout(() => conversions.delete(id), 60000)
    })
 
-   function onEnd(err: Error) {
-      const conversion = new Converter()
-
-      conversions.set(id, conversion)
-
-      conversion.convert(fileName, db.settings.uploadLocation, conversionMutex, rootDir).then(() => {
-         setTimeout(() => conversions.delete(id), 60000)
-      })
-
-      reply.code(200).send(new UploadResponse({ type: ApiMessageType.UploadResponse, conversionId: id }))
-   }
-
-   function handler(field: string, file: any, filename: string, encoding: string, mimetype: string) {
-      pump(file, fs.createWriteStream(filePath))
-   }
+   reply.code(200).send(new UploadResponse({ type: ApiMessageType.UploadResponse, conversionId: id }))
 })
 
 server.post<{ Body: ConversionUpdateRequest }>("/conversionUpdate", { preHandler: validateRequest }, async (request, reply) => {
