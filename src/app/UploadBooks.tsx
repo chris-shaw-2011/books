@@ -1,5 +1,5 @@
 import { Line } from "rc-progress"
-import React, { Fragment, useContext, useEffect, useState } from "react"
+import React, { useContext, useEffect, useState } from "react"
 import { ListGroup, Modal } from "react-bootstrap"
 import { v4 as uuid } from "uuid"
 import AccessDenied from "../shared/api/AccessDenied"
@@ -11,6 +11,9 @@ import Api from "./api/LoggedInApi"
 import LoggedInAppContext from "./LoggedInAppContext"
 import OverlayComponent from "./OverlayComponent"
 import CancelButton from "./components/CancelButton"
+import styles from "./UploadBooks.module.scss"
+import Book from "../shared/Book"
+import BookLink from "./BookLink"
 
 enum UploadStatus {
    Pending = "Pending",
@@ -90,6 +93,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
    const forceConversionUpdate = uploadState.forceUpdate
    const converterStatus = uploadState.converterStatus
    const fileName = uploadState.fileName
+   const [editingBook, setEditingBook] = useState<Book>()
 
    const uploadFile = (files: FileList | null) => {
       if (!files || !files.length || !(files[0].name.endsWith(".aax") || files[0].name.endsWith(".zip"))) {
@@ -143,7 +147,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
             setUploadState({ percent: ret.conversionPercent, status: newStatus, conversionId, errorMessage: ret.errorMessage, forceUpdate: {}, converterStatus: ret.converterStatus, fileName })
 
             if (newStatus === UploadStatus.Complete) {
-               setTimeout(onComplete, 1000)
+               setEditingBook(ret.book)
             }
          }
          else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
@@ -160,35 +164,33 @@ const FileUploadRow = (props: FileUploadRowProps) => {
    }, [status, percent, setUploadState, conversionId, onUnauthorized, onComplete, forceConversionUpdate, converterStatus, fileName])
 
    return (
-      <form>
-         <div>
-            {status === UploadStatus.Pending ?
-               <Fragment>
+      <div>
+         {status === UploadStatus.Pending ?
+            <form>
+               <div>
+                  <input type="file" required={true} placeholder="Specify File" accept=".aax,.zip" onChange={e => uploadFile(e.currentTarget.files)} />
+               </div>
+            </form>
+            : editingBook ?
+               <BookLink book={editingBook} searchWords={[]} statusChanged={() => { return }} editOnly={true} onEditComplete={onComplete} /> :
+               <div>
                   <div>
-                     <input type="file" required={true} placeholder="Specify File" accept=".aax,.zip" onChange={(e: React.ChangeEvent<HTMLInputElement>) => uploadFile(e.currentTarget.files)} />
+                     {fileName}
                   </div>
-               </Fragment> :
-               <Fragment>
                   <div>
-                     <div>
-                        {fileName}
-                     </div>
-                     <div>
-                        <Line percent={percent} strokeWidth={1} strokeColor={status === UploadStatus.Error ? "#FF0000" : status === UploadStatus.Converting || status === UploadStatus.Complete ? "#0000FF" : "#00FF00"} />
-                     </div>
-                     <div>
-                        {Math.round(percent)}% {status !== UploadStatus.Converting ? status : converterStatus}...
-                     </div>
-                     {status === UploadStatus.Error &&
-                        <div style={{ maxHeight: "75px", overflow: "auto", maxWidth: "90%", color: "white", backgroundColor: "black" }}>
-                           <div style={{ whiteSpace: "pre-wrap" }}>
-                              {uploadState.errorMessage}
-                           </div>
-                        </div>}
+                     <Line percent={percent} strokeWidth={1} strokeColor={status === UploadStatus.Error ? "#FF0000" : status === UploadStatus.Converting || status === UploadStatus.Complete ? "#0000FF" : "#00FF00"} />
                   </div>
-               </Fragment>
-            }
-         </div>
-      </form>
+                  <div>
+                     {Math.round(percent)}% {status !== UploadStatus.Converting ? status : converterStatus}...
+                  </div>
+                  {status === UploadStatus.Error &&
+                     <div className={styles.error} >
+                        <div>
+                           {uploadState.errorMessage}
+                        </div>
+                     </div>}
+               </div>
+         }
+      </div>
    )
 }

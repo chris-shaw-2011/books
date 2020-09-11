@@ -41,6 +41,7 @@ import UpdateBookRequest from "../shared/api/UpdateBookRequest"
 import NodeID3 from "node-id3"
 import UpdateBookResponse from "../shared/api/UpdateBookResponse"
 import sanitize from "sanitize-filename"
+import ServerBook from "./ServerBook"
 
 const pump = util.promisify(pipeline)
 const authorizationExpiration = new Map<string, moment.Moment>()
@@ -346,6 +347,7 @@ server.post("/upload", { preHandler: validateRequest }, async (request, reply) =
 server.post<{ Body: ConversionUpdateRequest }>("/conversionUpdate", { preHandler: validateRequest }, async (request, reply) => {
    const updateRequest = new ConversionUpdateRequest(request.body)
    const conversion = conversions.get(updateRequest.conversionId)
+   let book: ServerBook | undefined
    let response = { conversionPercent: 100, errorMessage: "", converterStatus: ConverterStatus.Complete }
 
    if (conversion) {
@@ -354,9 +356,13 @@ server.post<{ Body: ConversionUpdateRequest }>("/conversionUpdate", { preHandler
       }
 
       response = { conversionPercent: conversion.percentComplete, errorMessage: conversion.errorMessage, converterStatus: conversion.status }
+
+      if (conversion.status === ConverterStatus.Complete) {
+         book = bookList.findBookByPath(conversion.convertedFilePath) as ServerBook
+      }
    }
 
-   return new ConversionUpdateResponse({ ...response, type: ApiMessageType.ConversionUpdateResponse })
+   return new ConversionUpdateResponse({ ...response, type: ApiMessageType.ConversionUpdateResponse, book })
 })
 
 server.post<{ Body: UpdateBookRequest }>("/updateBook", { preHandler: validateAdminRequest }, async request => {

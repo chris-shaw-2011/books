@@ -34,12 +34,14 @@ interface BookProps {
    searchWords: string[],
    statusChanged: (books: Books) => void,
    style?: React.CSSProperties,
+   editOnly?: boolean,
+   onEditComplete?: () => void,
 }
 
 export default forwardRef<HTMLDivElement, BookProps>((props, ref) => {
    const context = useContext(AppContext)
    const [changingStatus, setChangingStatus] = useState(false)
-   const [editingState, setEditingState] = useState<{ status: EditStatus, alertMessage?: string }>({ status: EditStatus.ReadOnly })
+   const [editingState, setEditingState] = useState<{ status: EditStatus, alertMessage?: string }>({ status: props.editOnly ? EditStatus.Editing : EditStatus.ReadOnly })
    const [newTitle, setNewTitle] = useState(props.book.name)
    const [newDescription, setNewDescription] = useState(props.book.comment)
    const [newAuthor, setNewAuthor] = useState(props.book.author)
@@ -94,6 +96,10 @@ export default forwardRef<HTMLDivElement, BookProps>((props, ref) => {
                context.updateBooks(ret.books.directory)
 
                setEditingState({ status: EditStatus.ReadOnly })
+
+               if (props.onEditComplete) {
+                  props.onEditComplete()
+               }
             }
             else {
                setEditingState({ status: EditStatus.Editing, alertMessage: ret.message })
@@ -106,6 +112,13 @@ export default forwardRef<HTMLDivElement, BookProps>((props, ref) => {
             context.logOut("Something unexpected happened")
          }
       }
+   }
+   const onCancel = () => {
+      if (props.onEditComplete) {
+         props.onEditComplete()
+      }
+
+      setEditingState({ status: EditStatus.ReadOnly })
    }
 
    const editing = editingState.status === EditStatus.Editing || editingState.status === EditStatus.Saving
@@ -147,7 +160,7 @@ export default forwardRef<HTMLDivElement, BookProps>((props, ref) => {
                   </div>
                   {editingState.status === EditStatus.Editing ?
                      <>
-                        <CancelButton value="Cancel" onClick={() => setEditingState({ status: EditStatus.ReadOnly })} />
+                        <CancelButton value="Cancel" onClick={onCancel} />
                         <OkButton value="Save" />
                      </> : editingState.status === EditStatus.Saving ?
                         <Loading text="Saving..." /> : null}

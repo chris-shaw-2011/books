@@ -10,12 +10,14 @@ import sanitize from "sanitize-filename"
 import unzipper from "unzipper"
 import { v4 as uuid } from "uuid"
 import { ConverterStatus } from "../shared/ConverterStatus"
+import bookList from "./BookList"
 
 export default class Converter {
    totalDuration = 0
    _percentComplete = 0
    eventEmitter = new EventEmitter()
    errorMessage = ""
+   _convertedFilePath = ""
    private _status = ConverterStatus.Waiting
    get percentComplete() {
       return this._percentComplete
@@ -30,6 +32,9 @@ export default class Converter {
    set status(value: ConverterStatus) {
       this._status = value
       this.eventEmitter.emit("update")
+   }
+   get convertedFilePath() {
+      return this._convertedFilePath
    }
 
    waitForUpdate = async (knownPercent: number, knownStatus: ConverterStatus) => {
@@ -76,6 +81,10 @@ export default class Converter {
          else if (fileName.endsWith(".zip")) {
             await this.convertMp3(fileName, baseFilePath)
          }
+
+         await bookList.fileAdded(this.convertedFilePath)
+
+         this.status = ConverterStatus.Complete
       })
    }
 
@@ -116,7 +125,6 @@ export default class Converter {
 
       if (await this.combineMp3s(unzipPath, baseFilePath)) {
          await fs.promises.rmdir(unzipPath, { recursive: true })
-         this.status = ConverterStatus.Complete
       }
    }
 
@@ -222,6 +230,8 @@ export default class Converter {
 
          await fs.promises.rename(outputFilePath, finalFilePath)
 
+         this._convertedFilePath = finalFilePath
+
          return true
       }
 
@@ -259,9 +269,9 @@ export default class Converter {
          }
 
          await fs.promises.rename(outputFilePath, desiredFilePath)
-      }
 
-      this.status = ConverterStatus.Complete
+         this._convertedFilePath = desiredFilePath
+      }
    }
 
    private crack = async (inputFilePath: string, rootDir: string) => {
