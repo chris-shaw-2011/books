@@ -32,7 +32,7 @@ export default class ServerBook extends Book {
       const fileName = path.win32.basename(fullPath)
       const bookUri = ServerBook.calculateBookId(this.parent, fullPath)
 
-      this.photoPath = fullPath + ".jpg"
+      this.photoPath = `${fullPath}.jpg`
 
       // tslint:disable-next-line: no-console
       console.log(`${fullPath} - reading tags`)
@@ -60,9 +60,10 @@ export default class ServerBook extends Book {
 
       this.id = bookUri
       this.download = `/files/${bookUri}`
-      this.cover = this.download + ".jpg"
+      this.cover = `${this.download}.jpg`
       this.numBytes = stats.size
       this.fullPath = fullPath
       this.uploadTime = stats.birthtime
+      this.folderPath = path.parse(`/${bookUri}`).dir
    }
 }

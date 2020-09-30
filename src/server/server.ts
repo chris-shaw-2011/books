@@ -42,6 +42,7 @@ import NodeID3 from "node-id3"
 import UpdateBookResponse from "../shared/api/UpdateBookResponse"
 import sanitize from "sanitize-filename"
 import ServerBook from "./ServerBook"
+import aacWriter from "write-aac-metadata"
 
 const pump = util.promisify(pipeline)
 const authorizationExpiration = new Map<string, moment.Moment>()
@@ -370,27 +371,40 @@ server.post<{ Body: UpdateBookRequest }>("/updateBook", { preHandler: validateAd
    const book = (await bookList.allBooks()).findById(updateBookRequest.newBook.id)
 
    if (book instanceof Book) {
-      const newPath = path.join(path.dirname(book.fullPath), `${sanitize(updateBookRequest.newBook.name.replace(/:/gi, " - "))}.mp3`)
+      const extension = path.extname(book.fullPath).toLowerCase()
+      const newPath = path.join(path.dirname(book.fullPath), `${sanitize(updateBookRequest.newBook.name.replace(/:/gi, " - "))}${extension}`)
 
-      // Check to see if the file needs renamed
-      if (book.fullPath !== newPath) {
-         if (fs.existsSync(newPath)) {
-            return new UpdateBookResponse({ type: ApiMessageType.UpdateBookResponse, message: `File ${newPath} already exists` })
+      bookList.pauseUpdates()
+
+      try {
+         // Check to see if the file needs renamed
+         if (book.fullPath.toLowerCase() !== newPath.toLowerCase()) {
+            if (fs.existsSync(newPath)) {
+               return new UpdateBookResponse({ type: ApiMessageType.UpdateBookResponse, message: `File ${newPath} already exists` })
+            }
+
+            // tslint:disable-next-line: no-console
+            console.log(`Renaming ${book.fullPath} to ${newPath}`)
+
+            await fs.promises.rename(book.fullPath, newPath)
+
+            if (fs.existsSync(book.photoPath)) {
+               await fs.promises.unlink(book.photoPath)
+            }
+
+            bookList.deleteBook(book.fullPath)
          }
 
-         // tslint:disable-next-line: no-console
-         console.log(`Renaming ${book.fullPath} to ${newPath}`)
-
-         await fs.promises.rename(book.fullPath, newPath)
-
-         if (fs.existsSync(book.photoPath)) {
-            await fs.promises.unlink(book.photoPath)
+         if (extension === ".mp3") {
+            NodeID3.update({ title: updateBookRequest.newBook.name, artist: updateBookRequest.newBook.author, year: updateBookRequest.newBook.year, comment: { language: "eng", text: updateBookRequest.newBook.comment }, composer: updateBookRequest.newBook.narrator, genre: updateBookRequest.newBook.genre }, newPath)
          }
-
-         bookList.deleteBook(book.fullPath)
+         else {
+            await aacWriter(newPath, { title: updateBookRequest.newBook.name, artist: updateBookRequest.newBook.author, year: updateBookRequest.newBook.year, comment: updateBookRequest.newBook.comment, composer: updateBookRequest.newBook.narrator, genre: updateBookRequest.newBook.genre })
+         }
       }
-
-      NodeID3.update({ title: updateBookRequest.newBook.name, artist: updateBookRequest.newBook.author, year: updateBookRequest.newBook.year, comment: { language: "eng", text: updateBookRequest.newBook.comment }, composer: updateBookRequest.newBook.narrator, genre: updateBookRequest.newBook.genre }, newPath)
+      finally {
+         bookList.resumeUpdates()
+      }
 
       if (book.fullPath !== newPath) {
          await bookList.fileAdded(newPath)

@@ -9,6 +9,7 @@ class BookList {
    private loadingPromise?: Promise<boolean>
    private watcher?: chokidar.FSWatcher
    private fileAddedPendingUpdates: (() => Promise<void>)[] = []
+   private pauses = 0
 
    constructor() {
       setTimeout(this.checkForFileAddedPendingUpdates, 60000)
@@ -79,10 +80,12 @@ class BookList {
    }
 
    checkForFileAddedPendingUpdates = async () => {
-      while (this.fileAddedPendingUpdates.length) {
-         const fileAddedPendingUpdate = this.fileAddedPendingUpdates.shift()!
+      if (this.pauses === 0) {
+         while (this.fileAddedPendingUpdates.length) {
+            const fileAddedPendingUpdate = this.fileAddedPendingUpdates.shift()!
 
-         await fileAddedPendingUpdate()
+            await fileAddedPendingUpdate()
+         }
       }
 
       setTimeout(this.checkForFileAddedPendingUpdates, 60000)
@@ -115,6 +118,14 @@ class BookList {
       }
 
       return this.books
+   }
+
+   pauseUpdates() {
+      this.pauses += 1
+   }
+
+   resumeUpdates() {
+      this.pauses -= 1
    }
 }
 

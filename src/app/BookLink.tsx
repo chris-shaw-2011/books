@@ -133,7 +133,7 @@ export default forwardRef<HTMLDivElement, BookProps>((props, ref) => {
                   {alertMessage ? <Alert variant="danger">{alertMessage}</Alert> : null}
                   <div className={classnames(styles.title, styles.editable)}>
                      <EditableTextbox editing={editing} defaultValue={props.book.name} placeholder="Title" onChange={e => setNewTitle(e.target.value)} searchWords={props.searchWords} />
-                     {!editing && context.token.user.isAdmin && props.book.download.toLowerCase().endsWith(".mp3") ? <Edit onClick={e => { e.stopPropagation(); e.preventDefault(); setEditingState({ status: EditStatus.Editing }) }} /> : null}
+                     {!editing && context.token.user.isAdmin ? <Edit onClick={e => { e.stopPropagation(); e.preventDefault(); setEditingState({ status: EditStatus.Editing }) }} /> : null}
                   </div>
                   <div className={classnames(styles.description, styles.editable)}>
                      {editing ? <TextareaAutosize defaultValue={props.book.comment} minRows={3} placeholder="Description" required={true} onChange={e => setNewDescription(e.target.value)} /> : <Highlighter searchWords={props.searchWords} textToHighlight={props.book.comment} sanitize={sanitize} />}

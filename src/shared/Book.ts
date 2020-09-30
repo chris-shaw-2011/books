@@ -20,6 +20,7 @@ export default class Book {
    uploadTime = new Date(0)
    narrator = ""
    genre = ""
+   folderPath = ""
 
    readonly type = ItemType.book
 
@@ -38,6 +39,7 @@ export default class Book {
          this.uploadTime = new Date(json.uploadTime)
          this.narrator = json.narrator
          this.genre = json.genre
+         this.folderPath = json.folderPath
       }
 
       if (status) {
