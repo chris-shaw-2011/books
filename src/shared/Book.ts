@@ -26,19 +26,19 @@ export default class Book {
 
    constructor(json?: Book, status?: Status) {
       if (json) {
-         this.name = json.name
-         this.author = json.author
+         this.name = json.name.trim()
+         this.author = json.author.trim()
          this.numBytes = json.numBytes
          this.cover = json.cover
          this.download = json.download
          this.status = json.status
          this.year = json.year
-         this.comment = json.comment
+         this.comment = json.comment.trim()
          this.duration = json.duration
          this.id = json.id
          this.uploadTime = new Date(json.uploadTime)
-         this.narrator = json.narrator
-         this.genre = json.genre
+         this.narrator = json.narrator.trim()
+         this.genre = json.genre.trim()
          this.folderPath = json.folderPath
       }
 
