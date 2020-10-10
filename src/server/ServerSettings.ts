@@ -108,6 +108,7 @@ export default class ServerSettings implements Settings {
    }
 
    private updateDbSetting(name: string, value: string) {
+      // tslint:disable-next-line: no-floating-promises
       this._db.run(`REPLACE INTO setting (key, value) VALUES('${name}', ?)`, value)
    }
 

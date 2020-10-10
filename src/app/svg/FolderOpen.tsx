@@ -1,7 +1,7 @@
 import React from "react"
 
-export default () => (
-   <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" viewBox="0 0 80 80" style={{ fill: "#000000" }}>
+export default (props: React.SVGAttributes<SVGSVGElement>) => (
+   <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" viewBox="0 0 80 80" style={{ fill: "#000000" }} {...props}>
       <path fill="#dbb065" d="M2.5 71.5L2.5 8.5 23.793 8.5 29.793 14.5 73.5 14.5 73.5 71.5z" />
       <path fill="#967a44" d="M23.586,9l5.707,5.707L29.586,15H30h43v56H3V9H23.586 M24,8H2v64h72V14H30L24,8L24,8z" />
       <g>

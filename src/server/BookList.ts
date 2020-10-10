@@ -17,7 +17,7 @@ class BookList {
 
    async loadBooks() {
       if (this.watcher) {
-         this.watcher.close()
+         await this.watcher.close()
          this.watcher = undefined
       }
 
@@ -69,6 +69,9 @@ class BookList {
          binaryInterval: 60000,
       })
          .on("add", addPath => {
+            this.fileAddedPendingUpdates.push(() => this.fileAdded(addPath))
+         })
+         .on("addDir", addPath => {
             this.fileAddedPendingUpdates.push(() => this.fileAdded(addPath))
          })
          .on("unlink", delPath => {

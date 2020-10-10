@@ -65,7 +65,8 @@
       "no-multi-spaces": true,
       "ter-no-mixed-spaces-and-tabs": {
          "type": "spaces"
-      }
+      },
+      "no-floating-promises": true
    },
    "jsRules": {
       "max-line-length": false

@@ -12,7 +12,7 @@ export default class ServerDirectory extends Directory {
     * @param pathToCheck The current path to check for a partial match
     */
    static isPartialPathMatch(searchingPath: string, pathToCheck: string) {
-      return searchingPath.indexOf(pathToCheck) === 0
+      return !path.relative(pathToCheck, searchingPath).startsWith("..")
    }
 
    fullPath: string
@@ -36,18 +36,16 @@ export default class ServerDirectory extends Directory {
       return undefined
    }
 
-   findClosestDirectory(dirPath: string): ServerDirectory | undefined {
+   findClosestDirectory(dirPath: string): ServerDirectory {
       for (const item of this.items) {
          if (item instanceof ServerDirectory) {
             if (ServerDirectory.isPartialPathMatch(dirPath, item.fullPath)) {
-               return item.findClosestDirectory(dirPath) || item
+               return item.findClosestDirectory(dirPath)
             }
          }
       }
 
-      if (dirPath.indexOf(this.fullPath) !== -1) {
-         return this
-      }
+      return this
    }
 
    deleteBook(fullPath: path.ParsedPath) {
@@ -88,21 +86,21 @@ export default class ServerDirectory extends Directory {
 
       this.id = newPathTree.join("/")
       this.fullPath = currPath
+      this.folderPath = `/${newPathTree.join("/")}`
 
       for (const p of paths) {
          const fullPath = path.join(currPath, p.name)
 
          if (p.isDirectory()) {
-            if (!updatePathFullPath || ServerDirectory.isPartialPathMatch(updatePathFullPath, fullPath)) {
+            if (!updatePathFullPath || ServerDirectory.isPartialPathMatch(fullPath, updatePathFullPath)) {
                const dir = new ServerDirectory()
 
                dir.name = p.name
                dir.pathTree = newPathTree
 
-               if (await dir.loadBooks(updatePath)) {
-                  dir.parent = this
-                  this.items.push(dir)
-               }
+               dir.hasBooks = await dir.loadBooks(updatePath)
+               dir.parent = this
+               this.items.push(dir)
             }
          }
          else if (p.isFile() && (p.name.endsWith(".m4b") || p.name.endsWith(".mp3")) && (!updatePathFullPath || fullPath === updatePathFullPath)) {

@@ -111,6 +111,7 @@ export default (props: Props) => {
       }
 
       if (visibleComponent === VisibleComponent.Books) {
+         // tslint:disable-next-line: no-floating-promises
          getBooks()
       }
    }, [token, logOut, visibleComponent, setVisibleComponent])
@@ -124,7 +125,7 @@ export default (props: Props) => {
    })
 
    return (
-      <AppContext.Provider value={{ logOut, token, visibleComponent, setVisibleComponent, updateBooks: setState }}>
+      <AppContext.Provider value={{ logOut, token, visibleComponent, setVisibleComponent, updateBooks: setState, rootDirectory: state }}>
          {props.searchWords.words.length ?
             <ItemListTabContent dir={filter(state, undefined, props.searchWords.words)} searchWords={props.searchWords.words} statusChanged={statusChanged} hidden={false} /> :
             <div className={Styles.tabsContainer}>

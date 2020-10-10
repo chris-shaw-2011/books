@@ -11,7 +11,7 @@
       }
    }
 
-   input, textarea, label {
+   input, textarea, label, .pathSelection {
       width: 100%;
    }
 
@@ -32,7 +32,7 @@
       float: left;
    }
 
-   label {
+   label, .pathSelection {
       margin: 0;
       > span:first-of-type {
          width: 70px;
@@ -69,7 +69,7 @@
    width: auto !important;
 }
 
-.author, .size, .uploadTime, .narrator, .genre {
+.author, .size, .uploadTime, .narrator, .genre, .path {
    color: gray;
 }
 
@@ -79,4 +79,70 @@
 
 .uploadTime {
    font-size: 80%;
+}
+
+.folder {
+   height: 15px;
+}
+
+.path {
+   > label, > .pathSelection {
+      display: flex;
+
+      > span:nth-child(2) {
+         cursor: pointer;
+         display: flex;
+         align-items: center;
+         width: 100%;
+
+      }
+
+      .folderList {
+         height: 100px;
+         overflow: auto;
+      }
+
+      svg {
+         margin: 0px 10px 0px 5px;
+      }
+   }
+
+   div {
+      width: 100%;
+      align-items: center;
+
+      &.buttons {
+         display: flex
+      }
+   }
+}
+
+.selectableFolder {
+   &:hover {
+      border: solid black 1px;
+   }
+
+   &.selected {
+      background-color: blue;
+      color: white;
+   }
+
+   cursor: pointer;
+   display: flex;
+   align-items: center;
+}
+
+.subFolderList {
+   padding-left: 10px;
+
+   .newFolder {
+      display: flex;
+      flex-direction: row;
+   }
+}
+
+.newFolderButton {
+   display: flex;
+   align-items: center;
+   font-size: 75%;
 }

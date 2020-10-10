@@ -16,6 +16,7 @@ interface LoggedInAppContextType {
    visibleComponent: VisibleComponent,
    setVisibleComponent: (component: VisibleComponent) => void,
    updateBooks: (directory: Directory) => void,
+   rootDirectory: Directory,
 }
 
 export default React.createContext<LoggedInAppContextType>({
@@ -24,4 +25,5 @@ export default React.createContext<LoggedInAppContextType>({
    visibleComponent: VisibleComponent.Books,
    setVisibleComponent: (component: VisibleComponent) => { return },
    updateBooks: (directory: Directory | undefined) => { return },
+   rootDirectory: new Directory(),
 })

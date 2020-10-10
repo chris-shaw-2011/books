@@ -19,6 +19,7 @@ export enum ApiMessageType {
    UploadResponse,
    UpdateBookRequest,
    UpdateBookResponse,
+   AddFolderRequest,
 }
 
 export default class ApiMessage {

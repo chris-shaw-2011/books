@@ -83,6 +83,7 @@ export default (props: Props) => {
       }
 
       if (userId) {
+         // tslint:disable-next-line: no-floating-promises
          getUser()
       }
    }, [logOut, userId])

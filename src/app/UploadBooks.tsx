@@ -159,6 +159,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
       }
 
       if (status === UploadStatus.Converting) {
+         // tslint:disable-next-line: no-floating-promises
          getConversionUpdate()
       }
    }, [status, percent, setUploadState, conversionId, onUnauthorized, onComplete, forceConversionUpdate, converterStatus, fileName])

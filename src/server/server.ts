@@ -43,6 +43,7 @@ import UpdateBookResponse from "../shared/api/UpdateBookResponse"
 import sanitize from "sanitize-filename"
 import ServerBook from "./ServerBook"
 import aacWriter from "write-aac-metadata"
+import AddFolderRequest from "../shared/api/AddFolderRequest"
 
 const pump = util.promisify(pipeline)
 const authorizationExpiration = new Map<string, moment.Moment>()
@@ -189,7 +190,7 @@ server.post("/settings", { preHandler: validateAdminRequest }, (request, reply) 
    reply.send(new SettingsRequired({ type: ApiMessageType.SettingsRequired, settings: db.settings, message: "" }))
 })
 
-server.post<{ Body: SettingsUpdate }>("/updateSettings", { preHandler: validateAdminRequest }, (request, reply) => {
+server.post<{ Body: SettingsUpdate }>("/updateSettings", { preHandler: validateAdminRequest }, async (request, reply) => {
    const settingsUpdate = new SettingsUpdate(request.body)
 
    db.settings.inviteEmail = settingsUpdate.settings.inviteEmail
@@ -205,7 +206,7 @@ server.post<{ Body: SettingsUpdate }>("/updateSettings", { preHandler: validateA
 
       // tslint:disable-next-line: no-console
       console.log("Loading all books into memory because of a settings change")
-      bookList.loadBooks()
+      await bookList.loadBooks()
    }
 
    reply.send(new SettingsUpdateResponse({ type: ApiMessageType.SettingsUpdateResponse, message: "", successful: true }))
@@ -233,7 +234,7 @@ server.post<{ Body: AddUserRequest }>("/addUser", { preHandler: validateAdminReq
 
          const link = url.resolve(request.headers.referer!, `/invite/${userId}`)
 
-         db.settings.mailer.sendMail({
+         await db.settings.mailer.sendMail({
             from: db.settings.inviteEmail,
             to: userRequest.user.email,
             subject: "Invite to Audio Books Website",
@@ -338,6 +339,7 @@ server.post("/upload", { preHandler: validateRequest }, async (request, reply) =
    conversions.set(id, conversion)
 
    // Start the conversion in the background
+   // tslint:disable-next-line: no-floating-promises
    conversion.convert(fileName, db.settings.uploadLocation, conversionMutex, rootDir).then(() => {
       setTimeout(() => conversions.delete(id), 60000)
    })
@@ -366,13 +368,29 @@ server.post<{ Body: ConversionUpdateRequest }>("/conversionUpdate", { preHandler
    return new ConversionUpdateResponse({ ...response, type: ApiMessageType.ConversionUpdateResponse, book })
 })
 
+server.post<{ Body: AddFolderRequest }>("/addFolder", { preHandler: validateAdminRequest }, async request => {
+   const addFolderRequest = new AddFolderRequest(request.body)
+   const fullPath = path.join(db.settings.baseBooksPath, addFolderRequest.path, addFolderRequest.folderName)
+
+   await fs.promises.mkdir(fullPath)
+
+   await bookList.fileAdded(fullPath)
+
+   const books = await bookList.allBooks()
+   const statuses = await statusesForUser(addFolderRequest.token.user.id)
+
+   return new Books({ type: ApiMessageType.Books, directory: books, bookStatuses: statuses })
+})
+
 server.post<{ Body: UpdateBookRequest }>("/updateBook", { preHandler: validateAdminRequest }, async request => {
    const updateBookRequest = new UpdateBookRequest(request.body)
    const book = (await bookList.allBooks()).findById(updateBookRequest.newBook.id)
+   const newBook = updateBookRequest.newBook
 
    if (book instanceof Book) {
+      const newDir = path.join(db.settings.baseBooksPath, updateBookRequest.newBook.folderPath)
       const extension = path.extname(book.fullPath).toLowerCase()
-      const newPath = path.join(path.dirname(book.fullPath), `${sanitize(updateBookRequest.newBook.name.replace(/:/gi, " - "))}${extension}`)
+      const newPath = path.join(newDir, `${sanitize(updateBookRequest.newBook.name.replace(/:/gi, " - "))}${extension}`)
 
       bookList.pauseUpdates()
 
@@ -396,10 +414,10 @@ server.post<{ Body: UpdateBookRequest }>("/updateBook", { preHandler: validateAd
          }
 
          if (extension === ".mp3") {
-            NodeID3.update({ title: updateBookRequest.newBook.name, artist: updateBookRequest.newBook.author, year: updateBookRequest.newBook.year, comment: { language: "eng", text: updateBookRequest.newBook.comment }, composer: updateBookRequest.newBook.narrator, genre: updateBookRequest.newBook.genre }, newPath)
+            NodeID3.update({ title: newBook.name, artist: newBook.author, year: newBook.year, comment: { language: "eng", text: newBook.comment }, composer: newBook.narrator, genre: newBook.genre }, newPath)
          }
-         else {
-            await aacWriter(newPath, { title: updateBookRequest.newBook.name, artist: updateBookRequest.newBook.author, year: updateBookRequest.newBook.year, comment: updateBookRequest.newBook.comment, composer: updateBookRequest.newBook.narrator, genre: updateBookRequest.newBook.genre })
+         else if (book.name !== newBook.name || book.author !== newBook.author || book.year !== newBook.year || book.comment !== newBook.comment || book.narrator !== newBook.narrator || book.genre !== newBook.genre) {
+            await aacWriter(newPath, { title: newBook.name, artist: newBook.author, year: newBook.year, comment: newBook.comment, composer: newBook.narrator, genre: newBook.genre })
          }
       }
       finally {
@@ -409,10 +427,10 @@ server.post<{ Body: UpdateBookRequest }>("/updateBook", { preHandler: validateAd
       if (book.fullPath !== newPath) {
          await bookList.fileAdded(newPath)
 
-         const newBook = bookList.findBookByPath(newPath)
+         const foundBook = bookList.findBookByPath(newPath)
 
-         if (newBook) {
-            await db.run("UPDATE user SET bookStatuses = REPLACE(bookStatuses, ?, ?) WHERE bookStatuses LIKE ?", `${JSON.stringify(book.id)}`, `${JSON.stringify(newBook.id)}`, `%${JSON.stringify(book.id)}%`)
+         if (foundBook) {
+            await db.run("UPDATE user SET bookStatuses = REPLACE(bookStatuses, ?, ?) WHERE bookStatuses LIKE ?", `${JSON.stringify(book.id)}`, `${JSON.stringify(foundBook.id)}`, `%${JSON.stringify(book.id)}%`)
          }
       }
       else {

@@ -1,5 +1,5 @@
 import classnames from "classnames"
-import React, { useContext, useState, forwardRef } from "react"
+import React, { useContext, useState, forwardRef, useEffect } from "react"
 import AppContext from "./LoggedInAppContext"
 import { Dropdown, DropdownButton } from "react-bootstrap"
 import Highlighter from "react-highlight-words"
@@ -21,6 +21,11 @@ import TextboxField, { LabelLocation, TextboxFieldProps } from "./components/Tex
 import LoggedInApi from "./api/LoggedInApi"
 import UpdateBookResponse from "../shared/api/UpdateBookResponse"
 import Alert from "./components/Alert"
+import FolderOpen from "./svg/FolderOpen"
+import FolderClosed from "./svg/FolderClosed"
+import Directory from "../shared/Directory"
+import { ItemType } from "../shared/ItemType"
+import Button from "./components/Button"
 
 enum EditStatus {
    ReadOnly,
@@ -48,6 +53,8 @@ export default forwardRef<HTMLDivElement, BookProps>((props, ref) => {
    const [newYear, setNewYear] = useState(props.book.year)
    const [newNarrator, setNewNarrator] = useState(props.book.narrator)
    const [newGenre, setNewGenre] = useState(props.book.genre)
+   const [showPathOptions, setShowPathOptions] = useState(false)
+   const [newPath, setNewPath] = useState<undefined | string>()
    const changeBookStatus = async (status: Status) => {
       setChangingStatus(true)
 
@@ -70,7 +77,6 @@ export default forwardRef<HTMLDivElement, BookProps>((props, ref) => {
          e.preventDefault()
       }
    }
-
    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
       const form = event.currentTarget
 
@@ -86,6 +92,7 @@ export default forwardRef<HTMLDivElement, BookProps>((props, ref) => {
          newBook.comment = newDescription
          newBook.author = newAuthor
          newBook.narrator = newNarrator
+         newBook.folderPath = newPath || props.book.folderPath
 
          setEditingState({ status: EditStatus.Saving })
 
@@ -120,9 +127,27 @@ export default forwardRef<HTMLDivElement, BookProps>((props, ref) => {
 
       setEditingState({ status: EditStatus.ReadOnly })
    }
-
    const editing = editingState.status === EditStatus.Editing || editingState.status === EditStatus.Saving
    const alertMessage = editingState.alertMessage
+   const addNewFolder = async (path: string, folderName: string) => {
+      const ret = await Api.addFolder(context.token, path, folderName)
+
+      if (ret instanceof Books) {
+         context.updateBooks(ret.directory)
+      }
+      else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
+         context.logOut(ret.message)
+      }
+      else {
+         context.logOut("Something unexpected happened")
+      }
+   }
+
+   useEffect(() => {
+      if (showPathOptions) {
+         document.getElementsByClassName(styles.folderList)[0].getElementsByClassName(styles.selected)[0].scrollIntoView({ behavior: "auto", block: "nearest" })
+      }
+   }, [showPathOptions])
 
    return (
       <div className={classnames({ [styles.editing]: editing }, props.className)} style={props.style} ref={ref} onClick={e => e.stopPropagation()}>
@@ -148,6 +173,19 @@ export default forwardRef<HTMLDivElement, BookProps>((props, ref) => {
                   <div className={classnames(styles.genre, styles.editable)}>
                      <EditableTextboxField editing={editing} label="Genre" defaultValue={props.book.genre} placeholder="Genre" onChange={e => setNewGenre(e.target.value)} searchWords={props.searchWords} />
                   </div>
+                  {editing && <div className={classnames(styles.path, styles.editable)}>
+                     <label onClick={() => setShowPathOptions(p => !p)}>
+                        <span>Path</span>
+                        <span>
+                           {!showPathOptions ? <FolderClosed className={styles.folder} /> : <FolderOpen className={styles.folder} />}
+                           <span>{newPath || props.book.folderPath}</span>
+                        </span>
+                     </label>
+                     {showPathOptions && <div className={styles.pathSelection}>
+                        <span>&nbsp;</span>
+                        <FolderSelection directory={context.rootDirectory} selectedFolder={newPath || props.book.folderPath} folderClicked={setNewPath} addNewFolder={addNewFolder} />
+                     </div>}
+                  </div>}
                   <div className={styles.size}>
                      <label>
                         <span>Length</span> <span>{props.book.duration ? `${readableDuration(props.book.duration)}, ` : ""}{Math.round(props.book.numBytes / 1024 / 1024).toLocaleString()} MB</span>
@@ -172,7 +210,8 @@ export default forwardRef<HTMLDivElement, BookProps>((props, ref) => {
                {
                   Object.values(Status).map(i => {
                      if (i !== props.book.status) {
-                        return <Dropdown.Item key={i} onClick={(e: any) => { const evt = e as Event; evt.preventDefault(); evt.stopPropagation(); changeBookStatus(i) }}>Mark {i}</Dropdown.Item>
+                        // tslint:disable-next-line: no-floating-promises
+                        return <Dropdown.Item key={i} onClick={e => { e.preventDefault(); e.stopPropagation(); changeBookStatus(i) }}>Mark {i}</Dropdown.Item>
                      }
 
                      return undefined
@@ -235,3 +274,64 @@ function readableDuration(secNum: number) {
 }
 
 const sanitize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+
+type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>
+
+interface FolderListProps {
+   directory: Directory,
+   selectedFolder: string,
+   folderClicked: (folderPath: string) => void,
+   className?: string,
+   newFolderName: string | undefined,
+   setNewFolderName: (name: string) => void,
+}
+
+interface FolderSelectionProps extends Omit<FolderListProps, "newFolderName" | "setNewFolderName"> {
+   addNewFolder: (path: string, folderName: string) => void,
+}
+
+// tslint:disable-next-line: variable-name
+const FolderSelection = (props: FolderSelectionProps) => {
+   const [newFolderName, setNewFolderName] = useState<string | undefined>(undefined)
+   const addNewFolder = async () => {
+      await props.addNewFolder(props.selectedFolder, newFolderName!)
+      props.folderClicked(`${props.selectedFolder}${!props.selectedFolder.endsWith("/") ? "/" : ""}${newFolderName}`)
+      setNewFolderName(undefined)
+   }
+
+   return (
+      <div>
+         <FolderList {...props} className={styles.folderList} newFolderName={newFolderName} setNewFolderName={setNewFolderName} />
+         {newFolderName !== undefined ?
+            <div className={styles.buttons}>
+               <CancelButton className={styles.newFolderButton} onClick={() => setNewFolderName(undefined)} />
+               <OkButton className={styles.newFolderButton} value="Create Folder" disabled={!newFolderName} onClick={addNewFolder} type="button" />
+            </div> :
+            <Button type="button" className={styles.newFolderButton} onClick={() => setNewFolderName("")}><FolderOpen className={styles.folder} /> New Folder</Button>}
+      </div>
+   )
+}
+
+// tslint:disable-next-line: variable-name
+const FolderList = ({ directory, selectedFolder, folderClicked, className, newFolderName, setNewFolderName }: FolderListProps) => {
+   const open = selectedFolder.indexOf(directory.folderPath) === 0
+   const subDirs = directory.items.filter(i => i.type === ItemType.directory)
+   const addingFolder = open && newFolderName !== undefined && directory.folderPath === selectedFolder
+
+   return (
+      <div className={className}>
+         <div className={classnames({ [styles.selected]: selectedFolder === directory.folderPath }, styles.selectableFolder)} onClick={e => { e.stopPropagation(); folderClicked(directory.folderPath) }}>
+            {open ? <FolderOpen className={styles.folder} /> : <FolderClosed className={styles.folder} />}
+            {directory.name || directory.folderPath}
+         </div>
+         {open && (subDirs.length || addingFolder) && <div className={styles.subFolderList}>
+            {addingFolder &&
+               <div className={styles.newFolder}>
+                  <FolderClosed className={styles.folder} />
+                  <Textbox autoFocus={true} placeholder="New Folder Name" onChange={e => setNewFolderName(e.target.value)} value={newFolderName} />
+               </div>}
+            {subDirs.map(i => <FolderList key={i.id} directory={i as Directory} selectedFolder={selectedFolder} folderClicked={folderClicked} newFolderName={newFolderName} setNewFolderName={setNewFolderName} />)}
+         </div>}
+      </div>
+   )
+}

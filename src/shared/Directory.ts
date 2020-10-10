@@ -8,12 +8,16 @@ export default class Directory {
    name = ""
    id = ""
    uploadTime = new Date()
+   hasBooks = true
+   folderPath = ""
    readonly type = ItemType.directory
 
    constructor(json?: Directory, bookStatuses?: BookStatuses, sortOrder?: SortOrder) {
       if (json) {
          this.name = json.name
          this.id = json.id
+         this.hasBooks = json.hasBooks
+         this.folderPath = json.folderPath
          let uploadSet = false
 
          json.items.forEach(i => {

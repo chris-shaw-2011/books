@@ -19,6 +19,7 @@ import Settings from "../../shared/Settings"
 import User from "../../shared/User"
 import UpdateBookRequest from "../../shared/api/UpdateBookRequest"
 import UpdateBookResponse from "../../shared/api/UpdateBookResponse"
+import AddFolderRequest from "../../shared/api/AddFolderRequest"
 
 class ApiClass {
    books = async (token: Token) => {
@@ -55,6 +56,10 @@ class ApiClass {
 
    updateBook = async (token: Token, newBook: Book, prevBook: Book) => {
       return await this.fetch("/updateBook", new UpdateBookRequest({ type: ApiMessageType.UpdateBookRequest, newBook, prevBook, token }))
+   }
+
+   addFolder = async (token: Token, path: string, folderName: string) => {
+      return await this.fetch("/addFolder", new AddFolderRequest({ type: ApiMessageType.AddFolderRequest, token, path, folderName }))
    }
 
    fetch = async (url: string, jsonSend?: any) => {
