@@ -32,6 +32,10 @@
       float: left;
    }
 
+   .description {
+      white-space: pre-wrap;
+   }
+
    label, .pathSelection {
       margin: 0;
       > span:first-of-type {
