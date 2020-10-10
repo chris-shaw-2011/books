@@ -2,7 +2,6 @@ import Book, { Status } from "../shared/Book"
 import * as mm from "music-metadata"
 import fs from "fs"
 import ServerDirectory from "./ServerDirectory"
-import stripHtml from "string-strip-html"
 import path from "path"
 
 export default class ServerBook extends Book {
@@ -45,7 +44,7 @@ export default class ServerBook extends Book {
          this.name = tags.title || fileName
          this.author = tags.artist || ""
          this.year = tags.year
-         this.comment = tags.comment && tags.comment.length ? stripHtml(tags.comment[0]).result : ""
+         this.comment = tags.comment && tags.comment.length ? tags.comment[0] : ""
          this.duration = metadata.format.duration
          this.narrator = tags.composer?.length ? tags.composer[0] : ""
          this.genre = tags.genre?.length ? tags.genre[0] : ""
