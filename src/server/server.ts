@@ -341,7 +341,11 @@ server.post("/upload", { preHandler: validateRequest }, async (request, reply) =
    // Start the conversion in the background
    // tslint:disable-next-line: no-floating-promises
    conversion.convert(fileName, db.settings.uploadLocation, conversionMutex, rootDir).then(() => {
-      setTimeout(() => conversions.delete(id), 60000)
+      setTimeout(() => {
+         // tslint:disable-next-line: no-console
+         console.log(`Removing conversion ${id}`)
+         conversions.delete(id)
+      }, 60000)
    })
 
    reply.code(200).send(new UploadResponse({ type: ApiMessageType.UploadResponse, conversionId: id }))
@@ -362,7 +366,14 @@ server.post<{ Body: ConversionUpdateRequest }>("/conversionUpdate", { preHandler
 
       if (conversion.status === ConverterStatus.Complete) {
          book = bookList.findBookByPath(conversion.convertedFilePath) as ServerBook
+
+         if (!book) {
+            response.errorMessage = `Couldn't find book at path ${conversion.convertedFilePath}`
+         }
       }
+   }
+   else {
+      response.errorMessage = `No conversion found for id: ${updateRequest.conversionId}`
    }
 
    return new ConversionUpdateResponse({ ...response, type: ApiMessageType.ConversionUpdateResponse, book })
