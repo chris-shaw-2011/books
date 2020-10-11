@@ -8,7 +8,7 @@ import User from "../shared/User"
 import Api from "./api/LoggedInApi"
 import Loading from "./Loading"
 import LoggedInAppContext from "./LoggedInAppContext"
-import OverlayComponent from "./OverlayComponent"
+import OverlayComponent from "./components/OverlayComponent"
 import TextboxField from "./components/TextboxField"
 import CheckboxField from "./components/CheckboxField"
 import CancelButton from "./components/CancelButton"
@@ -64,6 +64,12 @@ export default (props: Props) => {
       }
    }
    const cancelAddUser = () => setAddingUserState(s => ({ ...s, addingUser: false }))
+   const deleteClick = (userId: string) => {
+      setUsers(s => ({ ...s, deletingUser: userId }))
+
+      // tslint:disable-next-line: no-floating-promises
+      Api.deleteUser(token, userId).then(ret => handleUserListResponse(ret))
+   }
    useEffect(() => {
       async function getUsers() {
          const ret = await Api.users(token)
@@ -71,6 +77,7 @@ export default (props: Props) => {
          handleUserListResponse(ret)
       }
 
+      // tslint:disable-next-line: no-floating-promises
       getUsers()
    }, [token, onUnauthorized, setUsers, handleUserListResponse])
 
@@ -79,10 +86,10 @@ export default (props: Props) => {
    }
 
    return (
-      <OverlayComponent onClose={props.onClose}>
+      <OverlayComponent onClick={props.onClose}>
          <Fragment>
             {addingUserState.addingUser &&
-               <OverlayComponent onClose={cancelAddUser}>
+               <OverlayComponent onClick={cancelAddUser}>
                   <form className="addUser" onSubmit={handleSubmit} onClick={(e: { target: any, currentTarget: any }) => { if (e.target === e.currentTarget) { cancelAddUser() } }}>
                      <Modal.Dialog>
                         <Modal.Header>
@@ -130,7 +137,7 @@ export default (props: Props) => {
                                        u.id === users.confirmDeleteUser ?
                                           <Fragment>
                                              <CancelButton onClick={() => { setUsers(s => ({ ...s, confirmDeleteUser: "" })) }} />&nbsp;
-                                             <DeleteButton onClick={() => { setUsers(s => ({ ...s, deletingUser: u.id })); Api.deleteUser(token, u.id).then(ret => handleUserListResponse(ret)) }} value="Confirm Delete" />
+                                             <DeleteButton onClick={() => deleteClick(u.id)} value="Confirm Delete" />
                                           </Fragment> :
                                           <DeleteButton onClick={() => { setUsers(s => ({ ...s, confirmDeleteUser: u.id })) }} />
                                     }

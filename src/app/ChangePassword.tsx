@@ -8,7 +8,7 @@ import UserResponse from "../shared/api/UserResponse"
 import User from "../shared/User"
 import Api from "./api/Api"
 import Loading from "./Loading"
-import OverlayComponent from "./OverlayComponent"
+import OverlayComponent from "./components/OverlayComponent"
 import styles from "./ChangePassword.module.scss"
 import TextboxField from "./components/TextboxField"
 import CancelButton from "./components/CancelButton"
@@ -93,7 +93,7 @@ export default (props: Props) => {
    }
    else {
       return (
-         <OverlayComponent onClose={props.onClose}>
+         <OverlayComponent onClick={props.onClose}>
             <form className={styles.changePassword} onSubmit={handleSubmit}>
                <div>
                   <div className={styles.header}>Change Password</div>

@@ -1,5 +1,5 @@
 import { Line } from "rc-progress"
-import React, { useContext, useEffect, useState } from "react"
+import React, { useContext, useEffect, useState, useCallback } from "react"
 import { ListGroup, Modal } from "react-bootstrap"
 import { v4 as uuid } from "uuid"
 import AccessDenied from "../shared/api/AccessDenied"
@@ -9,16 +9,18 @@ import UploadResponse from "../shared/api/UploadResponse"
 import { ConverterStatus } from "../shared/ConverterStatus"
 import Api from "./api/LoggedInApi"
 import LoggedInAppContext from "./LoggedInAppContext"
-import OverlayComponent from "./OverlayComponent"
+import OverlayComponent from "./components/OverlayComponent"
 import CancelButton from "./components/CancelButton"
 import styles from "./UploadBooks.module.scss"
 import Book from "../shared/Book"
 import BookLink from "./BookLink"
+import classnames from "classnames"
 
 enum UploadStatus {
    Pending = "Pending",
    Uploading = "Uploading",
    Converting = "Converting",
+   Editing = "Editing",
    Complete = "Complete",
    Error = "Error",
 }
@@ -28,22 +30,27 @@ interface Props {
 }
 
 export default (props: Props) => {
-   const [fileUploadRowKeys, setFileUploadRowKeys] = useState([uuid()])
-   const onUploadStarted = () => {
-      // Add a new row
-      setFileUploadRowKeys(prev => {
-         return [...prev, uuid()]
+   const [fileUploadRows, setFileUploadRows] = useState<Map<string, UploadStatus>>(new Map([[uuid(), UploadStatus.Pending]]))
+   const onStatusChanged = useCallback((id: string, status: UploadStatus) => {
+      setFileUploadRows(prev => {
+         const prevStatus = prev.get(id)!
+
+         prev.set(id, status)
+
+         if (prevStatus === UploadStatus.Pending && status !== UploadStatus.Pending) {
+            prev.set(uuid(), UploadStatus.Pending)
+         }
+         else if (status === UploadStatus.Complete && prevStatus !== UploadStatus.Complete) {
+            prev.delete(id)
+         }
+
+         return new Map<string, UploadStatus>(prev)
       })
-   }
-   const onComplete = (key: string) => {
-      // Remove the row
-      setFileUploadRowKeys(prev => {
-         return prev.filter(i => i !== key)
-      })
-   }
+   }, [])
+   const arr = Array.from(fileUploadRows.entries())
 
    return (
-      <OverlayComponent onClose={props.onClose}>
+      <OverlayComponent onClick={props.onClose} className={classnames({ [styles.editingBook]: arr.some(v => v[1] === UploadStatus.Editing) })}>
          <Modal.Dialog className="upload">
             <Modal.Header>
                <Modal.Title>Upload Files</Modal.Title>
@@ -55,7 +62,7 @@ export default (props: Props) => {
                   <li>Zip file containing mp3s of a book</li>
                </ul>
                <ListGroup>
-                  {fileUploadRowKeys.map(k => <ListGroup.Item key={k}><FileUploadRow onUploadStarted={onUploadStarted} onComplete={() => onComplete(k)} /></ListGroup.Item>)}
+                  {arr.map(v => <ListGroup.Item key={v[0]}><FileUploadRow onStatusChanged={onStatusChanged} id={v[0]} /></ListGroup.Item>)}
                </ListGroup>
             </Modal.Body>
             <Modal.Footer>
@@ -67,8 +74,8 @@ export default (props: Props) => {
 }
 
 interface FileUploadRowProps {
-   onUploadStarted: () => void,
-   onComplete: () => void,
+   onStatusChanged: (id: string, status: UploadStatus) => void,
+   id: string,
 }
 
 interface FileUploadRowState {
@@ -76,24 +83,25 @@ interface FileUploadRowState {
    percent: number,
    conversionId: string,
    errorMessage: string,
-   forceUpdate: {},
+   forceUpdate?: object | undefined,
    converterStatus: ConverterStatus,
    fileName: string,
 }
 
 // tslint:disable-next-line: variable-name
 const FileUploadRow = (props: FileUploadRowProps) => {
-   const [uploadState, setUploadState] = useState<FileUploadRowState>({ status: UploadStatus.Pending, percent: 0, conversionId: "", errorMessage: "", forceUpdate: {}, converterStatus: ConverterStatus.Waiting, fileName: "" })
+   const [uploadState, setUploadState] = useState<FileUploadRowState>({ status: UploadStatus.Pending, percent: 0, conversionId: "", errorMessage: "", converterStatus: ConverterStatus.Waiting, fileName: "" })
    const status = uploadState.status
    const percent = uploadState.percent
    const conversionId = uploadState.conversionId
    const context = useContext(LoggedInAppContext)
    const onUnauthorized = context.logOut
-   const onComplete = props.onComplete
    const forceConversionUpdate = uploadState.forceUpdate
    const converterStatus = uploadState.converterStatus
    const fileName = uploadState.fileName
    const [editingBook, setEditingBook] = useState<Book>()
+   const onStatusChanged = props.onStatusChanged
+   const id = props.id
 
    const uploadFile = (files: FileList | null) => {
       if (!files || !files.length || !(files[0].name.endsWith(".aax") || files[0].name.endsWith(".zip"))) {
@@ -105,8 +113,8 @@ const FileUploadRow = (props: FileUploadRowProps) => {
       const request = new XMLHttpRequest()
       const data = new FormData()
 
-      setUploadState(prev => ({ ...prev, uploadState, percent: 0, status: UploadStatus.Uploading, fileName: file.name }))
-      props.onUploadStarted()
+      onStatusChanged(id, UploadStatus.Uploading)
+      setUploadState(prev => ({ ...prev, percent: 0, status: UploadStatus.Uploading, fileName: file.name }))
 
       data.append("fileName", file.name)
       data.append("file", file)
@@ -121,6 +129,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
                const ret = Api.parseJson(JSON.parse(request.response))
 
                if (ret instanceof UploadResponse) {
+                  onStatusChanged(id, UploadStatus.Converting)
                   setUploadState(prev => ({ ...prev, conversionId: ret.conversionId, percent: 0, status: UploadStatus.Converting }))
                }
                else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
@@ -143,10 +152,13 @@ const FileUploadRow = (props: FileUploadRowProps) => {
          const ret = await Api.conversionUpdate(conversionId, percent, converterStatus)
 
          if (ret instanceof ConversionUpdateResponse) {
-            const newStatus = ret.converterStatus === ConverterStatus.Error ? UploadStatus.Error : ret.converterStatus === ConverterStatus.Complete ? UploadStatus.Complete : UploadStatus.Converting
+            const newStatus = ret.converterStatus === ConverterStatus.Error ? UploadStatus.Error : ret.converterStatus === ConverterStatus.Complete ? UploadStatus.Editing : UploadStatus.Converting
+
+            onStatusChanged(id, newStatus)
+
             setUploadState({ percent: ret.conversionPercent, status: newStatus, conversionId, errorMessage: ret.errorMessage, forceUpdate: {}, converterStatus: ret.converterStatus, fileName })
 
-            if (newStatus === UploadStatus.Complete) {
+            if (newStatus === UploadStatus.Editing) {
                setEditingBook(ret.book)
             }
          }
@@ -162,7 +174,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
          // tslint:disable-next-line: no-floating-promises
          getConversionUpdate()
       }
-   }, [status, percent, setUploadState, conversionId, onUnauthorized, onComplete, forceConversionUpdate, converterStatus, fileName])
+   }, [status, percent, setUploadState, conversionId, onUnauthorized, forceConversionUpdate, converterStatus, fileName, onStatusChanged, id])
 
    return (
       <div>
@@ -173,7 +185,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
                </div>
             </form>
             : editingBook ?
-               <BookLink book={editingBook} searchWords={[]} statusChanged={() => { return }} editOnly={true} onEditComplete={onComplete} /> :
+               <BookLink book={editingBook} searchWords={[]} statusChanged={() => { return }} editOnly={true} onEditComplete={() => onStatusChanged(id, UploadStatus.Complete)} /> :
                <div>
                   <div>
                      {fileName}

@@ -9,7 +9,7 @@ import Settings from "../shared/Settings"
 import Api from "./api/LoggedInApi"
 import Loading from "./Loading"
 import AppContext from "./LoggedInAppContext"
-import OverlayComponent from "./OverlayComponent"
+import OverlayComponent from "./components/OverlayComponent"
 import TextboxField from "./components/TextboxField"
 import CancelButton from "./components/CancelButton"
 import OkButton from "./components/OkButton"
@@ -52,6 +52,7 @@ export default (props: Props) => {
          }
       }
 
+      // tslint:disable-next-line: no-floating-promises
       getSettings()
    }, [onUnauthorized, token])
 
@@ -89,7 +90,7 @@ export default (props: Props) => {
 
    if (settings) {
       return (
-         <OverlayComponent onClose={props.onClose}>
+         <OverlayComponent onClick={props.onClose}>
             <form className="settings" onSubmit={handleSubmit}>
                <Modal.Dialog>
                   <Modal.Header>
