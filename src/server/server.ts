@@ -425,7 +425,13 @@ server.post<{ Body: UpdateBookRequest }>("/updateBook", { preHandler: validateAd
          }
 
          if (extension === ".mp3") {
-            NodeID3.update({ title: newBook.name, artist: newBook.author, year: newBook.year?.toString(), comment: { language: "eng", text: newBook.comment }, composer: newBook.narrator, genre: newBook.genre }, newPath)
+            const ret = NodeID3.update({ title: newBook.name, artist: newBook.author, year: newBook.year?.toString(), comment: { language: "eng", text: newBook.comment }, composer: newBook.narrator, genre: newBook.genre }, newPath)
+
+            if (ret !== true) {
+               // tslint:disable-next-line: no-console
+               console.log(ret)
+               return new UpdateBookResponse({ type: ApiMessageType.UpdateBookResponse, message: ret.message })
+            }
          }
          else if (book.name !== newBook.name || book.author !== newBook.author || book.year !== newBook.year || book.comment !== newBook.comment || book.narrator !== newBook.narrator || book.genre !== newBook.genre) {
             await aacWriter(newPath, { title: newBook.name, artist: newBook.author, year: newBook.year, comment: newBook.comment, composer: newBook.narrator, genre: newBook.genre })
