@@ -13,7 +13,7 @@ export default class ServerToken extends Token {
    }
 
    async isChecksumValid(secret: string) {
-      return await bcrypt.compare(this.valueForChecksum(secret), this.checksum)
+      return bcrypt.compare(this.valueForChecksum(secret), this.checksum)
    }
 
    private valueForChecksum(secret: string) {

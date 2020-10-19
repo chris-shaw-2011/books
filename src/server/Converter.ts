@@ -43,8 +43,11 @@ export default class Converter {
             this.eventEmitter.once("update", resolve)
          })
 
-         return await Promise.race([promise, new Promise<number>((resolve, reject) => {
-            setTimeout(() => { this.eventEmitter.removeListener("update", resolve); resolve() }, 10000)
+         return Promise.race([promise, new Promise<number>((resolve, reject) => {
+            setTimeout(() => {
+               this.eventEmitter.removeListener("update", resolve)
+               resolve()
+            }, 10000)
          })])
       }
    }
@@ -74,7 +77,7 @@ export default class Converter {
    }
 
    convert = async (fileName: string, baseFilePath: string, mutex: Mutex, rootDir: string) => {
-      return await mutex.runExclusive(async () => {
+      return mutex.runExclusive(async () => {
          if (fileName.endsWith(".aax")) {
             await this.convertAax(fileName, baseFilePath, rootDir)
          }
@@ -135,7 +138,7 @@ export default class Converter {
       const paths = await fs.promises.readdir(currPath, { withFileTypes: true })
 
       if (paths.length === 1 && paths[0].isDirectory()) {
-         return await this.combineMp3s(path.join(currPath, paths[0].name), baseFilePath)
+         return this.combineMp3s(path.join(currPath, paths[0].name), baseFilePath)
       }
 
       const mp3s = []
@@ -384,7 +387,8 @@ function onExit(childProcess: ChildProcess): Promise<void> {
       childProcess.once("exit", (code: number, signal: string) => {
          if (code === 0) {
             resolve(undefined)
-         } else {
+         }
+         else {
             reject(new Error("Exit with error code: " + code))
          }
       })

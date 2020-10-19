@@ -75,8 +75,9 @@ export default class Directory {
       this.items.forEach(i => {
          if (i.type === ItemType.book) {
             count += 1
-         } else {
-            count += (i as Directory).bookCount()
+         }
+         else {
+            count += i.bookCount()
          }
       })
 

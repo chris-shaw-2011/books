@@ -2,7 +2,8 @@
    "extends": [
       "tslint:recommended",
       "tslint-react",
-      "tslint-eslint-rules"
+      "tslint-eslint-rules",
+      "tslint-config-standard"
    ],
    "rules": {
       "max-line-length": false,
@@ -66,7 +67,17 @@
       "ter-no-mixed-spaces-and-tabs": {
          "type": "spaces"
       },
-      "no-floating-promises": true
+      "no-floating-promises": true,
+      "ter-indent": [
+         true,
+         3,
+         {
+            "SwitchCase": 1
+         }
+      ],
+      "space-before-function-paren": false,
+      "eofline": false,
+      "brace-style": "stroustrup"
    },
    "jsRules": {
       "max-line-length": false

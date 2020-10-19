@@ -88,7 +88,7 @@ const validatePassword = async (email: string, password: string, reply: FastifyR
    return new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Invalid Email or Password" })
 }
 const passwordHash = async (password: string) => {
-   return await bcrypt.hash(password, 10)
+   return bcrypt.hash(password, 10)
 }
 const requestToken = (request: FastifyRequest) => {
    const cookies = cookie.parse(request.headers.cookie || "") || {}
@@ -165,7 +165,7 @@ server.post<{ Body: User }>("/auth", async (request, reply) => {
       await db.run("INSERT INTO user (id, email, hash, isAdmin) VALUES(?, ?, ?, ?)", uuid(), user.email, hash, 1)
    }
 
-   return await validatePassword(user.email, user.password, reply)
+   return validatePassword(user.email, user.password, reply)
 })
 
 server.post("/books", { preHandler: validateRequest }, async (request, reply) => {
@@ -213,7 +213,7 @@ server.post<{ Body: SettingsUpdate }>("/updateSettings", { preHandler: validateA
 })
 
 server.post("/users", { preHandler: validateAdminRequest }, async (request, reply) => {
-   return await getAllUsers()
+   return getAllUsers()
 })
 
 server.post<{ Body: AddUserRequest }>("/addUser", { preHandler: validateAdminRequest }, async (request, reply) => {
@@ -246,7 +246,7 @@ server.post<{ Body: AddUserRequest }>("/addUser", { preHandler: validateAdminReq
       }
    }
 
-   return await getAllUsers(message)
+   return getAllUsers(message)
 })
 
 server.post<{ Body: DeleteUserRequest }>("/deleteUser", { preHandler: validateAdminRequest }, async (request, reply) => {
@@ -254,7 +254,7 @@ server.post<{ Body: DeleteUserRequest }>("/deleteUser", { preHandler: validateAd
 
    await db.run("DELETE FROM User WHERE id = ?", userRequest.userId)
 
-   return await getAllUsers("User deleted")
+   return getAllUsers("User deleted")
 })
 
 server.post<{ Body: UserRequest }>("/user", async (request, reply) => {
@@ -298,7 +298,7 @@ server.post<{ Body: ChangePasswordRequest }>("/changePassword", async (request, 
 
    await db.run("UPDATE User SET hash = ? WHERE id = ?", hash, changeRequest.token.user.id)
 
-   return await validatePassword(changeRequest.token.user.email, changeRequest.newPassword, reply)
+   return validatePassword(changeRequest.token.user.email, changeRequest.newPassword, reply)
 })
 
 server.post<{ Body: ChangeBookStatusRequest }>("/changeBookStatus", { preHandler: validateRequest }, async (request, reply) => {
@@ -459,7 +459,7 @@ server.post<{ Body: UpdateBookRequest }>("/updateBook", { preHandler: validateAd
 })
 
 server.get<{ Params: Record<string, string> }>("/files/*", { preHandler: validateRequest }, (request, reply) => {
-   const filePath = request.params["*"] as string
+   const filePath = request.params["*"]
 
    if (filePath.endsWith(".jpg")) {
       reply.sendFile(filePath, db.settings.baseBooksPath)
@@ -477,7 +477,7 @@ server.get<{ Params: Record<string, string> }>("/files/*", { preHandler: validat
 
 // This handles requests to the root of the site in production
 server.get<{ Params: Record<string, string> }>("/*", (request, reply) => {
-   let filePath = request.params["*"] as string || "index.html"
+   let filePath = request.params["*"] || "index.html"
 
    if (filePath.startsWith("invite/")) {
       filePath = "index.html"
