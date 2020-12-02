@@ -43,7 +43,7 @@ export default class Converter {
             this.eventEmitter.once("update", resolve)
          })
 
-         return Promise.race([promise, new Promise<number>((resolve, reject) => {
+         return Promise.race([promise, new Promise<number | void>((resolve, reject) => {
             setTimeout(() => {
                this.eventEmitter.removeListener("update", resolve)
                resolve()
