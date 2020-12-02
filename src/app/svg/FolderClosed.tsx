@@ -1,5 +1,3 @@
-import React from "react"
-
 export default (props: React.SVGAttributes<SVGSVGElement>) => (
    <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" viewBox="0 0 80 80" style={{ fill: "#000000" }} {...props}>
       <path fill="#dbb065" d="M2.5 71.5L2.5 8.5 23.793 8.5 29.793 14.5 77.5 14.5 77.5 71.5z" />

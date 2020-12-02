@@ -14,15 +14,15 @@ class ApiClass {
       user.email = email
       user.password = password
 
-      return await this.fetch("/auth", user)
+      return this.fetch("/auth", user)
    }
 
    changePassword = async (token: Token, newPassword: string) => {
-      return await this.fetch("/changePassword", new ChangePasswordRequest({ type: ApiMessageType.ChangePasswordRequest, token, newPassword }))
+      return this.fetch("/changePassword", new ChangePasswordRequest({ type: ApiMessageType.ChangePasswordRequest, token, newPassword }))
    }
 
    user = async (userId: string) => {
-      return await this.fetch("/user", new UserRequest({ type: ApiMessageType.UserRequest, userId }))
+      return this.fetch("/user", new UserRequest({ type: ApiMessageType.UserRequest, userId }))
    }
 
    fetch = async (url: string, jsonSend?: any) => {
@@ -39,7 +39,7 @@ class ApiClass {
    }
 
    parseJson(json?: ApiMessage) {
-      if (!json || json.type === undefined) {
+      if (!json) {
          return undefined
       }
       else if (json.type === ApiMessageType.AccessDenied) {

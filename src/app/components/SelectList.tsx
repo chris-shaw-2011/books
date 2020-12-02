@@ -1,4 +1,4 @@
-import React, { ReactNodeArray, ReactNode, useState } from "react"
+import { ReactNodeArray, ReactNode, useState } from "react"
 import styles from "./SelectList.module.scss"
 import classnames from "classnames"
 import AnimateHeight from "react-animate-height"

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react"
+import { cloneElement, useState, useRef, useEffect, useCallback } from "react"
 import useResizeObserver from "use-resize-observer/polyfilled"
 import Styles from "./VirtualList.module.scss"
 import classNames from "classnames"
@@ -30,7 +30,7 @@ export default function VirtualList<T>({ children, estimatedChildHeight, classNa
    const elm = useRef<HTMLDivElement>(null)
    const childRefs = useRef(new Array<HTMLDivElement | null>(children.length))
    const lastUpdateOffset = useRef(estimatedChildHeight * -1)
-   const updateRenderedComponents = React.useCallback(() => {
+   const updateRenderedComponents = useCallback(() => {
       const newMinimum = (currentMin: number): number => {
          if (currentMin < 0) {
             return 0
@@ -120,7 +120,7 @@ export default function VirtualList<T>({ children, estimatedChildHeight, classNa
    return (
       <div className={classNames(Styles.virtualList, className)} ref={elm}>
          <div style={{ height: estimatedChildHeight * renderedRange.min + "px" }} />
-         {children.length > 0 && iterate(renderedRange, i => children[i] ? React.cloneElement(children[i], { ref: (el: any) => { childRefs.current[i] = el } }) : undefined)}
+         {children.length > 0 && iterate(renderedRange, i => children[i] ? cloneElement(children[i], { ref: (el: any) => childRefs.current[i] = el }) : undefined)}
          <div style={{ height: estimatedChildHeight * (children.length - 1 - renderedRange.max) + "px" }} />
       </div>
    )

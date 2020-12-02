@@ -1,5 +1,5 @@
 import classnames from "classnames"
-import React, { useContext, useState, forwardRef, useEffect } from "react"
+import { useContext, useState, forwardRef, useEffect } from "react"
 import AppContext from "./LoggedInAppContext"
 import { Dropdown, DropdownButton } from "react-bootstrap"
 import Highlighter from "react-highlight-words"
@@ -18,7 +18,6 @@ import OkButton from "./components/OkButton"
 import itemStyles from "./ItemLink.module.scss"
 import styles from "./BookLink.module.scss"
 import TextboxField, { LabelLocation, TextboxFieldProps } from "./components/TextboxField"
-import LoggedInApi from "./api/LoggedInApi"
 import UpdateBookResponse from "../shared/api/UpdateBookResponse"
 import Alert from "./components/Alert"
 import FolderOpen from "./svg/FolderOpen"
@@ -96,7 +95,7 @@ export default forwardRef<HTMLDivElement, BookProps>((props, ref) => {
 
          setEditingState({ status: EditStatus.Saving })
 
-         const ret = await LoggedInApi.updateBook(context.token, newBook, props.book)
+         const ret = await Api.updateBook(context.token, newBook, props.book)
 
          if (ret instanceof UpdateBookResponse) {
             if (ret.books) {
@@ -158,7 +157,11 @@ export default forwardRef<HTMLDivElement, BookProps>((props, ref) => {
                   {alertMessage ? <Alert variant="danger">{alertMessage}</Alert> : null}
                   <div className={classnames(styles.title, styles.editable)}>
                      <EditableTextbox editing={editing} defaultValue={props.book.name} placeholder="Title" onChange={e => setNewTitle(e.target.value)} searchWords={props.searchWords} />
-                     {!editing && context.token.user.isAdmin ? <Edit onClick={e => { e.stopPropagation(); e.preventDefault(); setEditingState({ status: EditStatus.Editing }) }} /> : null}
+                     {!editing && context.token.user.isAdmin ? <Edit onClick={e => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        setEditingState({ status: EditStatus.Editing })
+                     }} /> : null}
                   </div>
                   <div className={classnames(styles.description, styles.editable)}>
                      {editing ? <TextareaAutosize defaultValue={props.book.comment} minRows={3} placeholder="Description" required={true} onChange={e => setNewDescription(e.target.value)} /> : <Highlighter searchWords={props.searchWords} textToHighlight={props.book.comment} sanitize={sanitize} />}
@@ -206,12 +209,17 @@ export default forwardRef<HTMLDivElement, BookProps>((props, ref) => {
             </Inner>
          </form>
          {!changingStatus && !editing ?
-            <DropdownButton title={props.book.status} id={props.book.id} onClick={(e: any) => { (e as Event).stopPropagation() }}>
+            <DropdownButton title={props.book.status} id={props.book.id} onClick={e => e.stopPropagation()}>
                {
                   Object.values(Status).map(i => {
                      if (i !== props.book.status) {
                         // tslint:disable-next-line: no-floating-promises
-                        return <Dropdown.Item key={i} onClick={e => { e.preventDefault(); e.stopPropagation(); changeBookStatus(i) }}>Mark {i}</Dropdown.Item>
+                        return <Dropdown.Item key={i} onClick={e => {
+                           e.preventDefault()
+                           e.stopPropagation()
+                           // tslint:disable-next-line: no-floating-promises
+                           changeBookStatus(i)
+                        }}>Mark {i}</Dropdown.Item>
                      }
 
                      return undefined
@@ -287,7 +295,7 @@ interface FolderListProps {
 }
 
 interface FolderSelectionProps extends Omit<FolderListProps, "newFolderName" | "setNewFolderName"> {
-   addNewFolder: (path: string, folderName: string) => void,
+   addNewFolder: (path: string, folderName: string) => Promise<void>,
 }
 
 // tslint:disable-next-line: variable-name
@@ -320,7 +328,10 @@ const FolderList = ({ directory, selectedFolder, folderClicked, className, newFo
 
    return (
       <div className={className}>
-         <div className={classnames({ [styles.selected]: selectedFolder === directory.folderPath }, styles.selectableFolder)} onClick={e => { e.stopPropagation(); folderClicked(directory.folderPath) }}>
+         <div className={classnames({ [styles.selected]: selectedFolder === directory.folderPath }, styles.selectableFolder)} onClick={e => {
+            e.stopPropagation()
+            folderClicked(directory.folderPath)
+         }}>
             {open ? <FolderOpen className={styles.folder} /> : <FolderClosed className={styles.folder} />}
             {directory.name || directory.folderPath}
          </div>

@@ -1,4 +1,4 @@
-import React from "react"
+import { forwardRef } from "react"
 import Directory from "../shared/Directory"
 import Book from "../shared/Book"
 import BookLink from "./BookLink"
@@ -16,7 +16,7 @@ interface ItemLinkProps {
    statusChanged: (books: Books) => void,
 }
 
-export default React.forwardRef<HTMLDivElement, ItemLinkProps>(({ item, className, searchWords, statusChanged, style }, ref) => (
+export default forwardRef<HTMLDivElement, ItemLinkProps>(({ item, className, searchWords, statusChanged, style }, ref) => (
    item.type === ItemType.book ?
       <BookLink book={item} className={classNames(className, styles.item)} searchWords={searchWords} statusChanged={statusChanged} style={style} ref={ref} /> :
       <DirectoryLink directory={item} className={classNames(className, styles.item)} searchWords={searchWords} statusChanged={statusChanged} style={style} ref={ref} />

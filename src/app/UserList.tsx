@@ -1,5 +1,5 @@
 import moment from "dayjs"
-import React, { Fragment, useCallback, useContext, useEffect, useState } from "react"
+import { useCallback, useContext, useEffect, useState } from "react"
 import { Modal, Table } from "react-bootstrap"
 import AccessDenied from "../shared/api/AccessDenied"
 import Unauthorized from "../shared/api/Unauthorized"
@@ -87,10 +87,10 @@ export default (props: Props) => {
 
    return (
       <OverlayComponent onClick={props.onClose}>
-         <Fragment>
+         <>
             {addingUserState.addingUser &&
                <OverlayComponent onClick={cancelAddUser}>
-                  <form className="addUser" onSubmit={handleSubmit} onClick={(e: { target: any, currentTarget: any }) => { if (e.target === e.currentTarget) { cancelAddUser() } }}>
+                  <form className="addUser" onSubmit={handleSubmit} onClick={e => e.target === e.currentTarget && cancelAddUser()}>
                      <Modal.Dialog>
                         <Modal.Header>
                            <Modal.Title>Add User</Modal.Title>
@@ -103,10 +103,10 @@ export default (props: Props) => {
                         </Modal.Body>
                         <Modal.Footer>
                            {!addingUserState.saving ?
-                              <Fragment>
+                              <>
                                  <CancelButton onClick={cancelAddUser} />
                                  <OkButton value="Add User" />
-                              </Fragment> :
+                              </> :
                               <Loading text="Adding User..." />}
                         </Modal.Footer>
                      </Modal.Dialog>
@@ -131,17 +131,17 @@ export default (props: Props) => {
                            <td>{u.lastLogin ? moment(u.lastLoginDate).format("MM/D/YYYY, h:mm:ss a") : "Never"}</td>
                            <td>
                               {u.id !== token.user.id ?
-                                 <Fragment>
+                                 <>
                                     {u.id === users.confirmDeleteUser && users.deletingUser === u.id ?
                                        <Loading text="Deleting..." /> :
                                        u.id === users.confirmDeleteUser ?
-                                          <Fragment>
-                                             <CancelButton onClick={() => { setUsers(s => ({ ...s, confirmDeleteUser: "" })) }} />&nbsp;
+                                          <>
+                                             <CancelButton onClick={() => setUsers(s => ({ ...s, confirmDeleteUser: "" }))} />&nbsp;
                                              <DeleteButton onClick={() => deleteClick(u.id)} value="Confirm Delete" />
-                                          </Fragment> :
-                                          <DeleteButton onClick={() => { setUsers(s => ({ ...s, confirmDeleteUser: u.id })) }} />
+                                          </> :
+                                          <DeleteButton onClick={() => setUsers(s => ({ ...s, confirmDeleteUser: u.id }))} />
                                     }
-                                 </Fragment> :
+                                 </> :
                                  "Cannot delete logged in user"}
                            </td>
                         </tr>
@@ -154,13 +154,16 @@ export default (props: Props) => {
                         {users.message && <Alert variant="primary">{users.message}</Alert>}
                         <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-around" }}>
                            <CancelButton onClick={props.onClose} />
-                           <OkButton onClick={() => { setUsers(u => ({ ...u, message: "" })); setAddingUserState({ addingUser: true, email: "", isAdmin: false, saving: false }) }} value="Add User" />
+                           <OkButton onClick={() => {
+                              setUsers(u => ({ ...u, message: "" }))
+                              setAddingUserState({ addingUser: true, email: "", isAdmin: false, saving: false })
+                           }} value="Add User" />
                         </div>
                      </td>
                   </tr>
                </tfoot>
             </Table>
-         </Fragment>
+         </>
       </OverlayComponent >
    )
 }

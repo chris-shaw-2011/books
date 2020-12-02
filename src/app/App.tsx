@@ -1,5 +1,5 @@
 import "bootstrap/dist/css/bootstrap.min.css"
-import React, { useCallback, useMemo, useState, Suspense } from "react"
+import { lazy, useCallback, useMemo, useState, Suspense } from "react"
 import { CookiesProvider, useCookies } from "react-cookie"
 import Token from "../shared/api/Token"
 import ChangePassword from "./ChangePassword"
@@ -11,12 +11,12 @@ import Loading from "./Loading"
 import Textbox from "./components/Textbox"
 
 // tslint:disable-next-line: variable-name
-const Navigation = React.lazy(() => import(/*
+const Navigation = lazy(() => import(/*
    webpackChunkName: "authenticated" */
    "./Navigation"))
 
 // tslint:disable-next-line: variable-name
-const Authenticated = React.lazy(() => import(/*
+const Authenticated = lazy(() => import(/*
    webpackChunkName: "authenticated" */
    "./Authenticated"))
 

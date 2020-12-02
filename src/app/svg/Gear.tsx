@@ -1,5 +1,3 @@
-import React from "react"
-
 export default () => (
    <svg x="0px" y="0px" viewBox="0 0 172 172" style={{ fill: "#000000" }}>
       <g transform="translate(4.73,4.73) scale(0.945,0.945)">

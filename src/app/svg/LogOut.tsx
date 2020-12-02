@@ -1,5 +1,3 @@
-import React from "react"
-
 export default () => (
    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
       <path fill="#ffffff" d="M6 1H34V39H6z" />

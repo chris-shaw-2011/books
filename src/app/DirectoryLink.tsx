@@ -1,5 +1,5 @@
 import classnames from "classnames"
-import React, { useState, forwardRef } from "react"
+import { useState, forwardRef } from "react"
 import Books from "../shared/api/Books"
 import Directory from "../shared/Directory"
 import FolderClosed from "./svg/FolderClosed"

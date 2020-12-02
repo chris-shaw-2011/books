@@ -1,4 +1,4 @@
-import React, { Fragment, useContext, useEffect, useState } from "react"
+import { useContext, useEffect, useState } from "react"
 import { Modal } from "react-bootstrap"
 import Alert from "./components/Alert"
 import AccessDenied from "../shared/api/AccessDenied"
@@ -113,10 +113,10 @@ export default (props: Props) => {
                   </Modal.Body>
                   <Modal.Footer>
                      {!saving ?
-                        <Fragment>
+                        <>
                            {props.onClose && <CancelButton onClick={props.onClose} />}
                            <OkButton type="submit" value="Save" />
-                        </Fragment> : <Loading text="Saving..." />}
+                        </> : <Loading text="Saving..." />}
                   </Modal.Footer>
                </Modal.Dialog>
             </form >

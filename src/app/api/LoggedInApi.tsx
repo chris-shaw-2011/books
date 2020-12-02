@@ -23,43 +23,43 @@ import AddFolderRequest from "../../shared/api/AddFolderRequest"
 
 class ApiClass {
    books = async (token: Token) => {
-      return await this.fetch("/books", token)
+      return this.fetch("/books", token)
    }
 
    updateSettings = async (token: Token, settings: Settings) => {
-      return await this.fetch("/updateSettings", new SettingsUpdate({ type: ApiMessageType.SettingsUpdate, settings, token }))
+      return this.fetch("/updateSettings", new SettingsUpdate({ type: ApiMessageType.SettingsUpdate, settings, token }))
    }
 
    settings = async (token: Token) => {
-      return await this.fetch("/settings", token)
+      return this.fetch("/settings", token)
    }
 
    users = async (token: Token) => {
-      return await this.fetch("/users", token)
+      return this.fetch("/users", token)
    }
 
    addUser = async (token: Token, user: User) => {
-      return await this.fetch("/addUser", new AddUserRequest({ type: ApiMessageType.AddUserRequest, user, token }))
+      return this.fetch("/addUser", new AddUserRequest({ type: ApiMessageType.AddUserRequest, user, token }))
    }
 
    deleteUser = async (token: Token, userId: string) => {
-      return await this.fetch("/deleteUser", new DeleteUserRequest({ type: ApiMessageType.DeleteUserRequest, userId, token }))
+      return this.fetch("/deleteUser", new DeleteUserRequest({ type: ApiMessageType.DeleteUserRequest, userId, token }))
    }
 
    changeBookStatus = async (bookId: string, status: Status, token: Token) => {
-      return await this.fetch("/changeBookStatus", new ChangeBookStatusRequest({ bookId, status, token, type: ApiMessageType.ChangeBookStatusRequest }))
+      return this.fetch("/changeBookStatus", new ChangeBookStatusRequest({ bookId, status, token, type: ApiMessageType.ChangeBookStatusRequest }))
    }
 
    conversionUpdate = async (conversionId: string, knownPercent: number, knownConverterStatus: ConverterStatus) => {
-      return await this.fetch("/conversionUpdate", new ConversionUpdateRequest({ type: ApiMessageType.ConversionUpdateRequest, conversionId, knownPercent, knownConverterStatus }))
+      return this.fetch("/conversionUpdate", new ConversionUpdateRequest({ type: ApiMessageType.ConversionUpdateRequest, conversionId, knownPercent, knownConverterStatus }))
    }
 
    updateBook = async (token: Token, newBook: Book, prevBook: Book) => {
-      return await this.fetch("/updateBook", new UpdateBookRequest({ type: ApiMessageType.UpdateBookRequest, newBook, prevBook, token }))
+      return this.fetch("/updateBook", new UpdateBookRequest({ type: ApiMessageType.UpdateBookRequest, newBook, prevBook, token }))
    }
 
    addFolder = async (token: Token, path: string, folderName: string) => {
-      return await this.fetch("/addFolder", new AddFolderRequest({ type: ApiMessageType.AddFolderRequest, token, path, folderName }))
+      return this.fetch("/addFolder", new AddFolderRequest({ type: ApiMessageType.AddFolderRequest, token, path, folderName }))
    }
 
    fetch = async (url: string, jsonSend?: any) => {
@@ -76,7 +76,7 @@ class ApiClass {
    }
 
    parseJson(json?: ApiMessage) {
-      if (!json || json.type === undefined) {
+      if (!json) {
          return undefined
       }
       else if (json.type === ApiMessageType.AccessDenied) {

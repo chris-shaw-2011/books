@@ -1,4 +1,4 @@
-import React from "react"
+import { createContext } from "react"
 import Token from "../shared/api/Token"
 import Directory from "../shared/Directory"
 
@@ -19,11 +19,14 @@ interface LoggedInAppContextType {
    rootDirectory: Directory,
 }
 
-export default React.createContext<LoggedInAppContextType>({
+export default createContext<LoggedInAppContextType>({
+   // tslint:disable-next-line: brace-style
    logOut: (message?: string) => { return },
    token: new Token(),
    visibleComponent: VisibleComponent.Books,
+   // tslint:disable-next-line: brace-style
    setVisibleComponent: (component: VisibleComponent) => { return },
+   // tslint:disable-next-line: brace-style
    updateBooks: (directory: Directory | undefined) => { return },
    rootDirectory: new Directory(),
 })

@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import Alert from "./components/Alert"
 import AccessDenied from "../shared/api/AccessDenied"
 import { ApiMessageType } from "../shared/api/ApiMessage"
@@ -105,10 +105,10 @@ export default (props: Props) => {
                   </div>
                   <div className={styles.footer}>
                      {!state.changingPasswords ?
-                        <Fragment>
+                        <>
                            {props.token && <CancelButton onClick={props.onClose} />}
                            <OkButton value="Change Password" />
-                        </Fragment> :
+                        </> :
                         <Loading text="Changing Password..." />}
                   </div>
                </div>

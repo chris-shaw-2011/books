@@ -1,5 +1,5 @@
 import { Line } from "rc-progress"
-import React, { useContext, useEffect, useState, useCallback } from "react"
+import { useContext, useEffect, useState, useCallback } from "react"
 import { ListGroup, Modal } from "react-bootstrap"
 import { v4 as uuid } from "uuid"
 import AccessDenied from "../shared/api/AccessDenied"
@@ -185,6 +185,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
                </div>
             </form>
             : editingBook ?
+               // tslint:disable-next-line: brace-style
                <BookLink book={editingBook} searchWords={[]} statusChanged={() => { return }} editOnly={true} onEditComplete={() => onStatusChanged(id, UploadStatus.Complete)} /> :
                <div>
                   <div>

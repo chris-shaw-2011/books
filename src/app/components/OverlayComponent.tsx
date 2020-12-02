@@ -1,4 +1,3 @@
-import React from "react"
 import styles from "./OverlayComponent.module.scss"
 import classnames from "classnames"
 

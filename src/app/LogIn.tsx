@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import { useState } from "react"
 import Alert from "./components/Alert"
 import AccessDenied from "../shared/api/AccessDenied"
 import Token from "../shared/api/Token"

@@ -1,5 +1,3 @@
-import React from "react"
-
 export default () => (
    <svg viewBox="0 0 172 172" style={{ fill: "#000000" }} version="1.1">
       <path d="M 0,172 V 0 h 172 v 172 z" style={{ fill: "none" }} />

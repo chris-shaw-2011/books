@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useState } from "react"
+import { useCallback, useContext, useEffect, useState } from "react"
 import AccessDenied from "../shared/api/AccessDenied"
 import Books from "../shared/api/Books"
 import SettingsRequired from "../shared/api/SettingsRequired"
@@ -143,7 +143,10 @@ export default (props: Props) => {
             (() => {
                switch (visibleComponent) {
                   case VisibleComponent.ChangePassword:
-                     return <ChangePassword onPasswordChanged={(t: Token) => { props.onPasswordChanged(t); viewBooks() }} onClose={viewBooks} {...context} />
+                     return <ChangePassword onPasswordChanged={(t: Token) => {
+                        props.onPasswordChanged(t)
+                        viewBooks()
+                     }} onClose={viewBooks} {...context} />
                   case VisibleComponent.Settings:
                      return <EditSettings onSettingsSaved={viewBooks} onClose={state ? viewBooks : undefined} />
                   case VisibleComponent.Users:

@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import { useState } from "react"
 import DownArrow from "./svg/DownArrow"
 import SelectList, { SelectListItem } from "./components/SelectList"
 import styles from "./Navigation.module.scss"

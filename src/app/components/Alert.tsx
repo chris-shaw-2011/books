@@ -1,4 +1,3 @@
-import React from "react"
 import styles from "./Alert.module.scss"
 import classnames from "classnames"
 

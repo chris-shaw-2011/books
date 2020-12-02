@@ -1,6 +1,6 @@
 {
    "compilerOptions": {
-      "target": "es5",
+      "target": "ES2018",
       "lib": [
          "dom",
          "dom.iterable",
@@ -17,7 +17,7 @@
       "resolveJsonModule": true,
       "isolatedModules": true,
       "noEmit": true,
-      "jsx": "react",
+      "jsx": "react-jsx",
       "outDir": "dist",
       "strictNullChecks": true,
       "plugins": [
@@ -25,14 +25,15 @@
             "name": "typescript-tslint-plugin",
             "alwaysShowRuleFailuresAsWarnings": false,
             "ignoreDefinitionFiles": true,
-            "configFile": "../tslint.json",
+            "configFile": "./tslint.json",
             "suppressWhileTypeErrorsPresent": false
          }
-      ]
+      ],
+      "noFallthroughCasesInSwitch": true
    },
    "include": [
       "src/shared",
       "src/index.tsx",
-      "src/app",
+      "src/app"
    ]
 }
