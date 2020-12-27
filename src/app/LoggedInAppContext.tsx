@@ -19,7 +19,7 @@ interface LoggedInAppContextType {
    rootDirectory: Directory,
 }
 
-export default createContext<LoggedInAppContextType>({
+const LoggedInAppContext = createContext<LoggedInAppContextType>({
    // tslint:disable-next-line: brace-style
    logOut: (message?: string) => { return },
    token: new Token(),
@@ -30,3 +30,5 @@ export default createContext<LoggedInAppContextType>({
    updateBooks: (directory: Directory | undefined) => { return },
    rootDirectory: new Directory(),
 })
+
+export default LoggedInAppContext

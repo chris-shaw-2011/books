@@ -1,7 +1,7 @@
 import styles from "./OverlayComponent.module.scss"
 import classnames from "classnames"
 
-export default (props: React.HTMLAttributes<HTMLDivElement>) => {
+const OverlayComponent = (props: React.HTMLAttributes<HTMLDivElement>) => {
    return (
       <div {...props} className={classnames(styles.overlay, props.className)} onClick={e => props.onClick && e.target === e.currentTarget && props.onClick(e)}>
          <div>
@@ -10,3 +10,5 @@ export default (props: React.HTMLAttributes<HTMLDivElement>) => {
       </div>
    )
 }
+
+export default OverlayComponent

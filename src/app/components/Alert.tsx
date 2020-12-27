@@ -6,6 +6,8 @@ interface Props {
    variant: string,
 }
 
-export default (props: Props) => (
+const Alert = (props: Props) => (
    <div className={classnames(styles.alert, styles[props.variant])}>{props.children}</div>
 )
+
+export default Alert

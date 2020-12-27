@@ -71,7 +71,7 @@ function filter(dir: Directory, status?: Status, searchWords?: string[]) {
    return ret
 }
 
-export default (props: Props) => {
+const Authenticated = (props: Props) => {
    const logOut = props.logOut
    const [state, setState] = useState<Directory | undefined>()
    const [tabsState, setTabsState] = useState<TabState>({ selectedTab: Status.Unread, mountedTabs: [Status.Unread] })
@@ -161,3 +161,5 @@ export default (props: Props) => {
       </AppContext.Provider>
    )
 }
+
+export default Authenticated

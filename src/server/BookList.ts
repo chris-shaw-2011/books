@@ -132,4 +132,6 @@ class BookList {
    }
 }
 
-export default new BookList()
+const bookList = new BookList()
+
+export default bookList

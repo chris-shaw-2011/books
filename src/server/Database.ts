@@ -2,7 +2,7 @@ import sqlite, { open } from "sqlite"
 import sqlite3 from "sqlite3"
 import ServerSettings from "./ServerSettings"
 
-class Database implements sqlite.Database<sqlite3.Database, sqlite3.Statement> {
+class DatabaseClass implements sqlite.Database<sqlite3.Database, sqlite3.Statement> {
    config: sqlite.ISqlite.Config
    db: sqlite3.Database
    noUsers: boolean
@@ -76,6 +76,6 @@ class Database implements sqlite.Database<sqlite3.Database, sqlite3.Statement> {
    }
 }
 
-const val = new Database()
+const Database = new DatabaseClass()
 
-export default val
+export default Database

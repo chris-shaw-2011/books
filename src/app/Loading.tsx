@@ -4,7 +4,7 @@ interface Props {
    text?: string
 }
 
-export default (props: Props) => {
+const Loading = (props: Props) => {
    return (
       <div className="loading">
          <div className="inner">
@@ -13,3 +13,5 @@ export default (props: Props) => {
       </div>
    )
 }
+
+export default Loading

@@ -60,4 +60,6 @@ class ApiClass {
    }
 }
 
-export default new ApiClass()
+const Api = new ApiClass()
+
+export default Api

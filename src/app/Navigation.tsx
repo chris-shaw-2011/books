@@ -18,7 +18,7 @@ interface Props {
    logOut: () => void,
 }
 
-export default (props: Props) => {
+const Navigation = (props: Props) => {
    const [open, setOpen] = useState(false)
    const openClassName: { [key: string]: boolean } = {}
    const ref = useOnclickOutside(() => {
@@ -51,3 +51,5 @@ export default (props: Props) => {
       </div>
    )
 }
+
+export default Navigation

@@ -1,4 +1,4 @@
-export default () => (
+const Gear = () => (
    <svg x="0px" y="0px" viewBox="0 0 172 172" style={{ fill: "#000000" }}>
       <g transform="translate(4.73,4.73) scale(0.945,0.945)">
          <g fill="#ffffff" stroke="#000000" strokeWidth="10" strokeLinejoin="round">
@@ -11,3 +11,5 @@ export default () => (
       </g>
    </svg>
 )
+
+export default Gear

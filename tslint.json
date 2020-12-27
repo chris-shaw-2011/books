@@ -51,7 +51,8 @@
             "ban-keywords",
             "check-format",
             "allow-leading-underscore",
-            "require-const-for-all-caps"
+            "require-const-for-all-caps",
+            "allow-pascal-case"
          ]
       },
       "one-line": false,

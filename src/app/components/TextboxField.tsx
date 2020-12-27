@@ -12,7 +12,7 @@ export interface TextboxFieldProps extends React.InputHTMLAttributes<HTMLInputEl
    labelLocation?: LabelLocation
 }
 
-export default (props: TextboxFieldProps) => {
+const TextboxField = (props: TextboxFieldProps) => {
    const { label, labelLocation, ...passThroughProps } = props
 
    return (
@@ -26,3 +26,5 @@ export default (props: TextboxFieldProps) => {
       </label>
    )
 }
+
+export default TextboxField

@@ -27,7 +27,7 @@ interface AddingUserState {
    saving: boolean,
 }
 
-export default (props: Props) => {
+const UserList = (props: Props) => {
    const context = useContext(LoggedInAppContext)
    const [users, setUsers] = useState({ users: new Array<User>(), message: "", confirmDeleteUser: "", deletingUser: "" })
    const [addingUserState, setAddingUserState] = useState<AddingUserState>({ addingUser: false, email: "", isAdmin: false, saving: false })
@@ -167,3 +167,5 @@ export default (props: Props) => {
       </OverlayComponent >
    )
 }
+
+export default UserList

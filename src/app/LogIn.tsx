@@ -14,7 +14,7 @@ interface Props {
    message?: string,
 }
 
-export default (props: Props) => {
+const LogIn = (props: Props) => {
    const [email, setEmail] = useState("")
    const [password, setPassword] = useState("")
    const [logInState, setLogInState] = useState({ loggingIn: false, failedMessage: "" })
@@ -57,3 +57,5 @@ export default (props: Props) => {
       </form>
    )
 }
+
+export default LogIn

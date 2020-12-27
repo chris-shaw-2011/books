@@ -20,7 +20,7 @@ interface Props {
    onClose?: () => void,
 }
 
-export default (props: Props) => {
+const EditSettings = (props: Props) => {
    const [settings, setSettings] = useState<Settings | undefined>()
    const [saving, setSaving] = useState(false)
    const [message, setMessage] = useState(props.message)
@@ -127,3 +127,5 @@ export default (props: Props) => {
       return <Loading />
    }
 }
+
+export default EditSettings

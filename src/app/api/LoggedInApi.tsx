@@ -21,7 +21,7 @@ import UpdateBookRequest from "../../shared/api/UpdateBookRequest"
 import UpdateBookResponse from "../../shared/api/UpdateBookResponse"
 import AddFolderRequest from "../../shared/api/AddFolderRequest"
 
-class ApiClass {
+class LoggedInApiClass {
    books = async (token: Token) => {
       return this.fetch("/books", token)
    }
@@ -115,4 +115,6 @@ class ApiClass {
    }
 }
 
-export default new ApiClass()
+const LoggedInApi = new LoggedInApiClass()
+
+export default LoggedInApi

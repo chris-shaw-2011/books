@@ -42,7 +42,7 @@ interface BookProps {
    onEditComplete?: () => void,
 }
 
-export default forwardRef<HTMLDivElement, BookProps>((props, ref) => {
+const BookLink = forwardRef<HTMLDivElement, BookProps>((props, ref) => {
    const context = useContext(AppContext)
    const [changingStatus, setChangingStatus] = useState(false)
    const [editingState, setEditingState] = useState<{ status: EditStatus, alertMessage?: string }>({ status: props.editOnly ? EditStatus.Editing : EditStatus.ReadOnly })
@@ -235,7 +235,6 @@ interface InnerProps extends React.DetailedHTMLProps<React.AnchorHTMLAttributes<
    editing: boolean,
 }
 
-// tslint:disable-next-line: variable-name
 const Inner = ({ editing, children, ...passThroughProps }: InnerProps) => {
    if (editing) {
       return (
@@ -258,7 +257,6 @@ interface EditableTextboxProps extends React.InputHTMLAttributes<HTMLInputElemen
    searchWords: string[],
 }
 
-// tslint:disable-next-line: variable-name
 const EditableTextbox = ({ editing, searchWords, ...passThroughProps }: EditableTextboxProps) => (
    editing ? <Textbox required={true} {...passThroughProps} /> : <Highlighter searchWords={searchWords} textToHighlight={passThroughProps.defaultValue?.toString() ?? ""} sanitize={sanitize} />
 )
@@ -268,7 +266,6 @@ interface EditableTextboxFieldProps extends TextboxFieldProps {
    searchWords: string[],
 }
 
-// tslint:disable-next-line: variable-name
 const EditableTextboxField = ({ editing, searchWords, ...passThroughProps }: EditableTextboxFieldProps) => (
    editing ? <TextboxField required={true} {...passThroughProps} labelLocation={LabelLocation.Left} /> : <label><span>{passThroughProps.label}</span> <Highlighter searchWords={searchWords} textToHighlight={passThroughProps.defaultValue?.toString() ?? ""} sanitize={sanitize} /></label>
 )
@@ -298,7 +295,6 @@ interface FolderSelectionProps extends Omit<FolderListProps, "newFolderName" | "
    addNewFolder: (path: string, folderName: string) => Promise<void>,
 }
 
-// tslint:disable-next-line: variable-name
 const FolderSelection = (props: FolderSelectionProps) => {
    const [newFolderName, setNewFolderName] = useState<string | undefined>(undefined)
    const addNewFolder = async () => {
@@ -320,7 +316,6 @@ const FolderSelection = (props: FolderSelectionProps) => {
    )
 }
 
-// tslint:disable-next-line: variable-name
 const FolderList = ({ directory, selectedFolder, folderClicked, className, newFolderName, setNewFolderName }: FolderListProps) => {
    const open = selectedFolder.indexOf(directory.folderPath) === 0
    const subDirs = directory.items.filter(i => i.type === ItemType.directory)
@@ -346,3 +341,5 @@ const FolderList = ({ directory, selectedFolder, folderClicked, className, newFo
       </div>
    )
 }
+
+export default BookLink

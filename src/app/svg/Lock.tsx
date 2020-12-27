@@ -1,4 +1,4 @@
-export default () => (
+const Lock = () => (
    <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" viewBox="0 0 172 172">
       <path d="M0,172v-172h172v172z" fill="none" />
       <g fill="#000000">
@@ -6,3 +6,5 @@ export default () => (
       </g>
    </svg>
 )
+
+export default Lock

@@ -29,7 +29,7 @@ interface Props {
    onClose: () => void,
 }
 
-export default (props: Props) => {
+const UploadBooks = (props: Props) => {
    const [fileUploadRows, setFileUploadRows] = useState<Map<string, UploadStatus>>(new Map([[uuid(), UploadStatus.Pending]]))
    const onStatusChanged = useCallback((id: string, status: UploadStatus) => {
       setFileUploadRows(prev => {
@@ -88,7 +88,6 @@ interface FileUploadRowState {
    fileName: string,
 }
 
-// tslint:disable-next-line: variable-name
 const FileUploadRow = (props: FileUploadRowProps) => {
    const [uploadState, setUploadState] = useState<FileUploadRowState>({ status: UploadStatus.Pending, percent: 0, conversionId: "", errorMessage: "", converterStatus: ConverterStatus.Waiting, fileName: "" })
    const status = uploadState.status
@@ -208,3 +207,5 @@ const FileUploadRow = (props: FileUploadRowProps) => {
       </div>
    )
 }
+
+export default UploadBooks

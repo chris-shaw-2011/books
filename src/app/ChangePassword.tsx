@@ -22,7 +22,7 @@ interface Props {
    onClose?: () => void,
 }
 
-export default (props: Props) => {
+const ChangePassword = (props: Props) => {
    const [state, setState] = useState({ password: "", confirmedPassword: "", changingPasswords: false })
    const [user, setUser] = useState(props.token ? props.token.user : undefined)
    const [passwordsMatch, setPasswordsMatch] = useState(true)
@@ -117,3 +117,5 @@ export default (props: Props) => {
       )
    }
 }
+
+export default ChangePassword

@@ -17,7 +17,7 @@ interface BookTabProps {
    hidden: boolean,
 }
 
-export default (props: BookTabProps) => {
+const ItemListTabContent = (props: BookTabProps) => {
    const [sort, setSort] = useState(SortOrder.AlphabeticallyAscending)
    const items = new Directory(props.dir, undefined, sort)
 
@@ -37,3 +37,5 @@ export default (props: BookTabProps) => {
       </>
    )
 }
+
+export default ItemListTabContent

@@ -1,3 +1,5 @@
-export default (props: React.InputHTMLAttributes<HTMLInputElement>) => {
+const Textbox = (props: React.InputHTMLAttributes<HTMLInputElement>) => {
    return <input {...props} />
 }
+
+export default Textbox

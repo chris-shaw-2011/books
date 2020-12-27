@@ -10,17 +10,15 @@ import "./styles.scss"
 import Loading from "./Loading"
 import Textbox from "./components/Textbox"
 
-// tslint:disable-next-line: variable-name
 const Navigation = lazy(() => import(/*
    webpackChunkName: "authenticated" */
    "./Navigation"))
 
-// tslint:disable-next-line: variable-name
 const Authenticated = lazy(() => import(/*
    webpackChunkName: "authenticated" */
    "./Authenticated"))
 
-export default () => {
+const App = () => {
    const [searchWords, setSearchWords] = useState({ words: new Array<string>() })
    const [cookies, setCookies] = useCookies(["loginCookie"])
    const [loginMessage, setLoginMessage] = useState("")
@@ -83,3 +81,5 @@ export default () => {
       </div>
    )
 }
+
+export default App

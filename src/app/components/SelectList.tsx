@@ -9,7 +9,7 @@ interface Props {
    open: boolean,
 }
 
-export default (props: Props) => {
+const SelectList = (props: Props) => {
    const [hidden, setHidden] = useState(!props.open ? styles.hidden : "")
 
    return (
@@ -22,9 +22,10 @@ export default (props: Props) => {
 interface ItemProps extends React.DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement> {
 }
 
-// tslint:disable-next-line: variable-name
 export const SelectListItem = (props: ItemProps) => (
    <div {...props} className={classnames(styles.item, props.className)}>
       {props.children}
    </div>
 )
+
+export default SelectList

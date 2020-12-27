@@ -3,7 +3,7 @@ import useResizeObserver from "use-resize-observer/polyfilled"
 import Styles from "./VirtualList.module.scss"
 import classNames from "classnames"
 
-interface Props<T> {
+interface Props {
    estimatedChildHeight: number,
    children: React.ReactElement[],
    className?: string,
@@ -25,7 +25,7 @@ function iterate<U>(range: Range, callbackfn: (index: number) => U) {
    ))
 }
 
-export default function VirtualList<T>({ children, estimatedChildHeight, className }: Props<T>) {
+const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
    const [renderedRange, setRenderedRange] = useState<Range>({ min: 0, max: 0 })
    const elm = useRef<HTMLDivElement>(null)
    const childRefs = useRef(new Array<HTMLDivElement | null>(children.length))
@@ -125,3 +125,5 @@ export default function VirtualList<T>({ children, estimatedChildHeight, classNa
       </div>
    )
 }
+
+export default VirtualList
