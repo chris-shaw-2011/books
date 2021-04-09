@@ -48,7 +48,7 @@ import AddFolderRequest from "../shared/api/AddFolderRequest"
 const pump = util.promisify(pipeline)
 const authorizationExpiration = new Map<string, moment.Moment>()
 let rootDir = __dirname
-const tryParse = (text: string, reviver?: (this: any, key: string, value: any) => any) => {
+const tryParse = (text: string, reviver?: (this: unknown, key: string, value: unknown) => unknown) => {
    try {
       return JSON.parse(text, reviver)
    }
@@ -83,7 +83,7 @@ const validatePassword = async (email: string, password: string, reply: FastifyR
       }
    }
 
-   reply.code(401)
+   void reply.code(401)
 
    return new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Invalid Email or Password" })
 }
@@ -100,13 +100,13 @@ const validateRequest = async (request: FastifyRequest, reply: FastifyReply) => 
    const token = requestToken(request)
 
    if (!token.user.id || !await token.isChecksumValid(db.settings.checksumSecret)) {
-      reply.code(401).send(new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In" }))
+      void reply.code(401).send(new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In" }))
    }
    else {
       const expires = authorizationExpiration.has(token.authorization) ? authorizationExpiration.get(token.authorization) : undefined
 
       if (!expires || expires < moment()) {
-         reply.code(401).send(new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In again" }))
+         void reply.code(401).send(new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In again" }))
 
          return
       }
@@ -120,7 +120,7 @@ const validateAdminRequest = async (request: FastifyRequest, reply: FastifyReply
    const resp = await validateRequest(request, reply)
 
    if (resp instanceof ServerToken && !resp.user.isAdmin) {
-      reply.code(403).send(new AccessDenied({ type: ApiMessageType.AccessDenied, message: "Access Denied" }))
+      void reply.code(403).send(new AccessDenied({ type: ApiMessageType.AccessDenied, message: "Access Denied" }))
    }
 }
 const statusesForUser = async (userId: string) => {
@@ -133,7 +133,7 @@ while (!fs.existsSync(path.join(rootDir, "package.json"))) {
    rootDir = path.join(rootDir, "../")
 }
 
-server.register(fastifyMultipart, {
+void server.register(fastifyMultipart, {
    limits: {
       fieldNameSize: 100, // Max field name size in bytes
       fieldSize: 10_000_000_000, // Max field value size in bytes
@@ -144,7 +144,7 @@ server.register(fastifyMultipart, {
    },
 })
 
-server.register(fastifyStatic, {
+void server.register(fastifyStatic, {
    root: rootDir,
    prefix: "/unused/",
 })
@@ -158,6 +158,7 @@ server.post<{ Body: User }>("/auth", async (request, reply) => {
 
    if (db.noUsers) {
       db.noUsers = false
+      // eslint-disable-next-line no-console
       console.warn(`Adding user ${user.email} to the database since they are the first login attempt`)
 
       const hash = await passwordHash(user.password)
@@ -168,7 +169,7 @@ server.post<{ Body: User }>("/auth", async (request, reply) => {
    return validatePassword(user.email, user.password, reply)
 })
 
-server.post("/books", { preHandler: validateRequest }, async (request, reply) => {
+server.post("/books", { preHandler: validateRequest }, async request => {
    const token = requestToken(request)
 
    if (!db.settings.baseBooksPath || !db.settings.inviteEmail || !db.settings.inviteEmailPassword || !db.settings.uploadLocation) {
@@ -187,7 +188,7 @@ server.post("/books", { preHandler: validateRequest }, async (request, reply) =>
 })
 
 server.post("/settings", { preHandler: validateAdminRequest }, (request, reply) => {
-   reply.send(new SettingsRequired({ type: ApiMessageType.SettingsRequired, settings: db.settings, message: "" }))
+   void reply.send(new SettingsRequired({ type: ApiMessageType.SettingsRequired, settings: db.settings, message: "" }))
 })
 
 server.post<{ Body: SettingsUpdate }>("/updateSettings", { preHandler: validateAdminRequest }, async (request, reply) => {
@@ -199,24 +200,24 @@ server.post<{ Body: SettingsUpdate }>("/updateSettings", { preHandler: validateA
 
    if (settingsUpdate.settings.baseBooksPath !== db.settings.baseBooksPath) {
       if (!fs.existsSync(settingsUpdate.settings.baseBooksPath)) {
-         reply.send(new SettingsUpdateResponse({ type: ApiMessageType.SettingsUpdateResponse, message: `Path "${settingsUpdate.settings.baseBooksPath}" does not exist`, successful: false }))
+         void reply.send(new SettingsUpdateResponse({ type: ApiMessageType.SettingsUpdateResponse, message: `Path "${settingsUpdate.settings.baseBooksPath}" does not exist`, successful: false }))
       }
 
       db.settings.baseBooksPath = settingsUpdate.settings.baseBooksPath
 
-      // tslint:disable-next-line: no-console
+      // eslint-disable-next-line no-console
       console.log("Loading all books into memory because of a settings change")
       await bookList.loadBooks()
    }
 
-   reply.send(new SettingsUpdateResponse({ type: ApiMessageType.SettingsUpdateResponse, message: "", successful: true }))
+   void reply.send(new SettingsUpdateResponse({ type: ApiMessageType.SettingsUpdateResponse, message: "", successful: true }))
 })
 
-server.post("/users", { preHandler: validateAdminRequest }, async (request, reply) => {
+server.post("/users", { preHandler: validateAdminRequest }, async () => {
    return getAllUsers()
 })
 
-server.post<{ Body: AddUserRequest }>("/addUser", { preHandler: validateAdminRequest }, async (request, reply) => {
+server.post<{ Body: AddUserRequest }>("/addUser", { preHandler: validateAdminRequest }, async request => {
    const userRequest = new AddUserRequest(request.body)
    let message = `${userRequest.user.email} has been invited`
 
@@ -232,7 +233,7 @@ server.post<{ Body: AddUserRequest }>("/addUser", { preHandler: validateAdminReq
 
          await db.run("INSERT INTO User (id, email, isAdmin) VALUES(?, ?, ?)", userId, userRequest.user.email, userRequest.user.isAdmin)
 
-         const link = url.resolve(request.headers.referer!, `/invite/${userId}`)
+         const link = url.resolve(request.headers.referer ?? "https://books.christopher-shaw.com", `/invite/${userId}`)
 
          await db.settings.mailer.sendMail({
             from: db.settings.inviteEmail,
@@ -249,7 +250,7 @@ server.post<{ Body: AddUserRequest }>("/addUser", { preHandler: validateAdminReq
    return getAllUsers(message)
 })
 
-server.post<{ Body: DeleteUserRequest }>("/deleteUser", { preHandler: validateAdminRequest }, async (request, reply) => {
+server.post<{ Body: DeleteUserRequest }>("/deleteUser", { preHandler: validateAdminRequest }, async request => {
    const userRequest = new DeleteUserRequest(request.body)
 
    await db.run("DELETE FROM User WHERE id = ?", userRequest.userId)
@@ -263,7 +264,7 @@ server.post<{ Body: UserRequest }>("/user", async (request, reply) => {
    const dbUser = await db.get("SELECT id, email, hash, isAdmin, lastLogin FROM User WHERE id = ?", userRequest.userId)
 
    if (dbUser.lastLogin || dbUser.hash) {
-      reply.code(403)
+      void reply.code(403)
 
       return new AccessDenied({ message: "This user has logged in or has a password already set", type: ApiMessageType.AccessDenied })
    }
@@ -288,7 +289,7 @@ server.post<{ Body: ChangePasswordRequest }>("/changePassword", async (request, 
       const dbUser = await db.get("SELECT hash, lastLogin FROM User WHERE id = ?", changeRequest.token.user.id)
 
       if (dbUser.lastLogin || dbUser.hash) {
-         reply.code(403)
+         void reply.code(403)
 
          return new AccessDenied({ message: "This user has logged in or has a password already set", type: ApiMessageType.AccessDenied })
       }
@@ -301,7 +302,7 @@ server.post<{ Body: ChangePasswordRequest }>("/changePassword", async (request, 
    return validatePassword(changeRequest.token.user.email, changeRequest.newPassword, reply)
 })
 
-server.post<{ Body: ChangeBookStatusRequest }>("/changeBookStatus", { preHandler: validateRequest }, async (request, reply) => {
+server.post<{ Body: ChangeBookStatusRequest }>("/changeBookStatus", { preHandler: validateRequest }, async request => {
    const statusRequest = new ChangeBookStatusRequest(request.body)
    const release = await changeBookStatusMutex.acquire()
    let statuses: BookStatuses
@@ -339,19 +340,18 @@ server.post("/upload", { preHandler: validateRequest }, async (request, reply) =
    conversions.set(id, conversion)
 
    // Start the conversion in the background
-   // tslint:disable-next-line: no-floating-promises
-   conversion.convert(fileName, db.settings.uploadLocation, conversionMutex, rootDir).then(() => {
+   void conversion.convert(fileName, db.settings.uploadLocation, conversionMutex, rootDir).then(() => {
       setTimeout(() => {
-         // tslint:disable-next-line: no-console
+         // eslint-disable-next-line no-console
          console.log(`Removing conversion ${id}`)
          conversions.delete(id)
       }, 60000)
    })
 
-   reply.code(200).send(new UploadResponse({ type: ApiMessageType.UploadResponse, conversionId: id }))
+   void reply.code(200).send(new UploadResponse({ type: ApiMessageType.UploadResponse, conversionId: id }))
 })
 
-server.post<{ Body: ConversionUpdateRequest }>("/conversionUpdate", { preHandler: validateRequest }, async (request, reply) => {
+server.post<{ Body: ConversionUpdateRequest }>("/conversionUpdate", { preHandler: validateRequest }, async request => {
    const updateRequest = new ConversionUpdateRequest(request.body)
    const conversion = conversions.get(updateRequest.conversionId)
    let book: ServerBook | undefined
@@ -412,7 +412,7 @@ server.post<{ Body: UpdateBookRequest }>("/updateBook", { preHandler: validateAd
                return new UpdateBookResponse({ type: ApiMessageType.UpdateBookResponse, message: `File ${newPath} already exists` })
             }
 
-            // tslint:disable-next-line: no-console
+            // eslint-disable-next-line no-console
             console.log(`Renaming ${book.fullPath} to ${newPath}`)
 
             await fs.promises.rename(book.fullPath, newPath)
@@ -428,7 +428,7 @@ server.post<{ Body: UpdateBookRequest }>("/updateBook", { preHandler: validateAd
             const ret = NodeID3.update({ title: newBook.name, artist: newBook.author, year: newBook.year?.toString(), comment: { language: "eng", text: newBook.comment }, composer: newBook.narrator, genre: newBook.genre }, newPath)
 
             if (ret !== true) {
-               // tslint:disable-next-line: no-console
+               // eslint-disable-next-line no-console
                console.log(ret)
                return new UpdateBookResponse({ type: ApiMessageType.UpdateBookResponse, message: ret.message })
             }
@@ -468,16 +468,16 @@ server.get<{ Params: Record<string, string> }>("/files/*", { preHandler: validat
    const filePath = request.params["*"]
 
    if (filePath.endsWith(".jpg")) {
-      reply.sendFile(filePath, db.settings.baseBooksPath)
+      void reply.sendFile(filePath, db.settings.baseBooksPath)
    }
    else if (filePath.endsWith(".m4b") || filePath.endsWith(".mp3")) {
       const splitPath = filePath.split("/")
 
-      reply.header("Content-Disposition", `attachment; filename=\"${splitPath[splitPath.length - 1]}\"`)
-      reply.sendFile(filePath, db.settings.baseBooksPath)
+      void reply.header("Content-Disposition", `attachment; filename="${splitPath[splitPath.length - 1]}"`)
+      void reply.sendFile(filePath, db.settings.baseBooksPath)
    }
    else {
-      reply.code(404).send("Not Found")
+      void reply.code(404).send("Not Found")
    }
 })
 
@@ -489,7 +489,7 @@ server.get<{ Params: Record<string, string> }>("/*", (request, reply) => {
       filePath = "index.html"
    }
 
-   reply.sendFile(filePath, path.join(rootDir, "build"))
+   void reply.sendFile(filePath, path.join(rootDir, "build"))
 })
 
 const start = async () => {

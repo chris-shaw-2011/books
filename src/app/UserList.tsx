@@ -33,10 +33,10 @@ const UserList = (props: Props) => {
    const [addingUserState, setAddingUserState] = useState<AddingUserState>({ addingUser: false, email: "", isAdmin: false, saving: false })
    const token = context.token
    const onUnauthorized = context.logOut
-   const mergeAddingUserState = (obj: any) => {
+   const mergeAddingUserState = (obj: Record<string, unknown>) => {
       setAddingUserState(s => ({ ...s, ...obj }))
    }
-   const handleUserListResponse = useCallback((ret: any) => {
+   const handleUserListResponse = useCallback((ret: unknown) => {
       if (ret instanceof UserListResponse) {
          setUsers({ users: ret.users, message: ret.message, confirmDeleteUser: "", deletingUser: "" })
       }
@@ -67,8 +67,7 @@ const UserList = (props: Props) => {
    const deleteClick = (userId: string) => {
       setUsers(s => ({ ...s, deletingUser: userId }))
 
-      // tslint:disable-next-line: no-floating-promises
-      Api.deleteUser(token, userId).then(ret => handleUserListResponse(ret))
+      void Api.deleteUser(token, userId).then(ret => handleUserListResponse(ret))
    }
    useEffect(() => {
       async function getUsers() {
@@ -77,8 +76,7 @@ const UserList = (props: Props) => {
          handleUserListResponse(ret)
       }
 
-      // tslint:disable-next-line: no-floating-promises
-      getUsers()
+      void getUsers()
    }, [token, onUnauthorized, setUsers, handleUserListResponse])
 
    if (!users.users.length) {

@@ -1,9 +1,9 @@
 export default class User {
-   email: string = ""
+   email = ""
    password?: string
-   id: string = ""
-   isAdmin: boolean = false
-   lastLogin: number = 0
+   id = ""
+   isAdmin = false
+   lastLogin = 0
 
    get lastLoginDate() {
       return new Date(this.lastLogin)

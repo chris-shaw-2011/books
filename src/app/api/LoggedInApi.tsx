@@ -62,7 +62,7 @@ class LoggedInApiClass {
       return this.fetch("/addFolder", new AddFolderRequest({ type: ApiMessageType.AddFolderRequest, token, path, folderName }))
    }
 
-   fetch = async (url: string, jsonSend?: any) => {
+   fetch = async (url: string, jsonSend?: unknown) => {
       const result = await fetch(url, {
          method: "POST",
          headers: {

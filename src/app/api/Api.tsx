@@ -25,7 +25,7 @@ class ApiClass {
       return this.fetch("/user", new UserRequest({ type: ApiMessageType.UserRequest, userId }))
    }
 
-   fetch = async (url: string, jsonSend?: any) => {
+   fetch = async (url: string, jsonSend?: unknown) => {
       const result = await fetch(url, {
          method: "POST",
          headers: {

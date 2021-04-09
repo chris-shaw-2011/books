@@ -20,20 +20,9 @@
       "jsx": "react-jsx",
       "outDir": "dist",
       "strictNullChecks": true,
-      "plugins": [
-         {
-            "name": "typescript-tslint-plugin",
-            "alwaysShowRuleFailuresAsWarnings": false,
-            "ignoreDefinitionFiles": true,
-            "configFile": "./tslint.json",
-            "suppressWhileTypeErrorsPresent": false
-         }
-      ],
       "noFallthroughCasesInSwitch": true
    },
    "include": [
-      "src/shared",
-      "src/index.tsx",
-      "src/app"
-   ]
+      "src"
+   ],
 }

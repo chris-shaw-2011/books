@@ -15,7 +15,7 @@ export default class ServerDirectory extends Directory {
       return !path.relative(pathToCheck, searchingPath).startsWith("..")
    }
 
-   fullPath: string
+   fullPath = ""
    items: (ServerDirectory | ServerBook)[] = []
    parent?: ServerDirectory
    pathTree: string[] = []
@@ -57,7 +57,7 @@ export default class ServerDirectory extends Directory {
             const item = closestDir.items[index]
 
             if (item.fullPath === bookFullPath) {
-               // tslint:disable-next-line: no-console
+               // eslint-disable-next-line no-console
                console.log(`Removing book ${item.fullPath}`)
 
                closestDir.items.splice(index, 1)
@@ -67,7 +67,7 @@ export default class ServerDirectory extends Directory {
          }
 
          while (closestDir && closestDir.parent && closestDir.items.length === 0) {
-            // tslint:disable-next-line: no-console
+            // eslint-disable-next-line no-console
             console.log(`Removing directory ${closestDir.fullPath}`)
 
             closestDir.parent.items.splice(closestDir.parent.items.indexOf(closestDir), 1)
@@ -129,7 +129,7 @@ export default class ServerDirectory extends Directory {
                }
             }
             else {
-               // tslint:disable-next-line: no-console
+               // eslint-disable-next-line no-console
                console.log(`${fullPath} - already in array, not added`)
             }
          }

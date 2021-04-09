@@ -39,11 +39,11 @@ export default class Converter {
 
    waitForUpdate = async (knownPercent: number, knownStatus: ConverterStatus) => {
       if (knownPercent === this.percentComplete && this.status !== ConverterStatus.Complete && this.status !== ConverterStatus.Error && this.status === knownStatus) {
-         const promise = new Promise<number>((resolve, reject) => {
+         const promise = new Promise<number>(resolve => {
             this.eventEmitter.once("update", resolve)
          })
 
-         return Promise.race([promise, new Promise<number | void>((resolve, reject) => {
+         return Promise.race([promise, new Promise<number | void>(resolve => {
             setTimeout(() => {
                this.eventEmitter.removeListener("update", resolve)
                resolve()
@@ -52,6 +52,7 @@ export default class Converter {
       }
    }
 
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
    parseData = (data: any, outputFile: string) => {
       const str: string = data.toString()
 
@@ -70,7 +71,7 @@ export default class Converter {
 
             this.percentComplete = Math.round(completeDuration / this.totalDuration * 100)
 
-            // tslint:disable-next-line: no-console
+            // eslint-disable-next-line no-console
             console.log(`${outputFile} - ${this.percentComplete}% complete`)
          }
       }
@@ -325,7 +326,7 @@ export default class Converter {
          return ""
       }
 
-      const activationBytesMatches = crackerOutput.match(/hex\:(.*)/)
+      const activationBytesMatches = crackerOutput.match(/hex:(.*)/)
 
       if (activationBytesMatches) {
          return activationBytesMatches[1]
@@ -384,7 +385,7 @@ export default class Converter {
 
 function onExit(childProcess: ChildProcess): Promise<void> {
    return new Promise((resolve, reject) => {
-      childProcess.once("exit", (code: number, signal: string) => {
+      childProcess.once("exit", code => {
          if (code === 0) {
             resolve(undefined)
          }

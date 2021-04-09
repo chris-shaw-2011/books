@@ -28,7 +28,7 @@ const ChangePassword = (props: Props) => {
    const [passwordsMatch, setPasswordsMatch] = useState(true)
    const userId = props.userId || ""
    const logOut = props.logOut
-   const mergeState = (obj: any) => {
+   const mergeState = (obj: Record<string, unknown>) => {
       setState(s => {
          return {
             ...s,
@@ -83,8 +83,7 @@ const ChangePassword = (props: Props) => {
       }
 
       if (userId) {
-         // tslint:disable-next-line: no-floating-promises
-         getUser()
+         void getUser()
       }
    }, [logOut, userId])
 

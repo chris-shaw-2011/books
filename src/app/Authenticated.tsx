@@ -111,8 +111,7 @@ const Authenticated = (props: Props) => {
       }
 
       if (visibleComponent === VisibleComponent.Books) {
-         // tslint:disable-next-line: no-floating-promises
-         getBooks()
+         void getBooks()
       }
    }, [token, logOut, visibleComponent, setVisibleComponent])
 

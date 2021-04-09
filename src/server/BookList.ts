@@ -21,7 +21,7 @@ class BookList {
          this.watcher = undefined
       }
 
-      // tslint:disable-next-line: no-console
+      // eslint-disable-next-line no-console
       console.log(`Loading books from ${db.settings.baseBooksPath}`)
       this.books = new ServerDirectory()
       this.loadingPromise = this.books.loadBooks()
@@ -30,7 +30,7 @@ class BookList {
 
       this.loadingPromise = undefined
 
-      // tslint:disable-next-line: no-console
+      // eslint-disable-next-line no-console
       console.log(`${this.books.bookCount()} Books loaded`)
 
       this.watcher = chokidar.watch(db.settings.baseBooksPath, {
@@ -75,7 +75,7 @@ class BookList {
             this.fileAddedPendingUpdates.push(() => this.fileAdded(addPath))
          })
          .on("unlink", delPath => {
-            // tslint:disable-next-line: no-console
+            // eslint-disable-next-line no-console
             console.log(`file removed: ${delPath}`)
 
             this.deleteBook(delPath)
@@ -85,9 +85,11 @@ class BookList {
    checkForFileAddedPendingUpdates = async () => {
       if (this.pauses === 0) {
          while (this.fileAddedPendingUpdates.length) {
-            const fileAddedPendingUpdate = this.fileAddedPendingUpdates.shift()!
+            const fileAddedPendingUpdate = this.fileAddedPendingUpdates.shift()
 
-            await fileAddedPendingUpdate()
+            if (fileAddedPendingUpdate) {
+               await fileAddedPendingUpdate()
+            }
          }
       }
 
@@ -99,7 +101,7 @@ class BookList {
    }
 
    async fileAdded(addPath: string) {
-      // tslint:disable-next-line: no-console
+      // eslint-disable-next-line no-console
       console.log(`file added: ${addPath}`)
 
       const dir = this.books.findClosestDirectory(addPath)

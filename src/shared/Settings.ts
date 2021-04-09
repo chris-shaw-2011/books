@@ -1,5 +1,5 @@
 export default class Settings {
-   baseBooksPath: string = ""
+   baseBooksPath = ""
    inviteEmail = ""
    inviteEmailPassword = ""
    uploadLocation = ""

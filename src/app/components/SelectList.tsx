@@ -19,10 +19,7 @@ const SelectList = (props: Props) => {
    )
 }
 
-interface ItemProps extends React.DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement> {
-}
-
-export const SelectListItem = (props: ItemProps) => (
+export const SelectListItem = (props: React.DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement>) => (
    <div {...props} className={classnames(styles.item, props.className)}>
       {props.children}
    </div>

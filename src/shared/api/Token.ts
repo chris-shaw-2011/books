@@ -2,9 +2,9 @@ import User from "../User"
 import ApiMessage, { ApiMessageType } from "./ApiMessage"
 
 export default class Token extends ApiMessage {
-   user: User = new User()
-   authorization: string = ""
-   checksum: string = ""
+   user = new User()
+   authorization = ""
+   checksum = ""
 
    constructor(json?: Token) {
       super(ApiMessageType.Token)

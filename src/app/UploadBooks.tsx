@@ -33,7 +33,7 @@ const UploadBooks = (props: Props) => {
    const [fileUploadRows, setFileUploadRows] = useState<Map<string, UploadStatus>>(new Map([[uuid(), UploadStatus.Pending]]))
    const onStatusChanged = useCallback((id: string, status: UploadStatus) => {
       setFileUploadRows(prev => {
-         const prevStatus = prev.get(id)!
+         const prevStatus = prev.get(id) ?? UploadStatus.Pending
 
          prev.set(id, status)
 
@@ -83,7 +83,7 @@ interface FileUploadRowState {
    percent: number,
    conversionId: string,
    errorMessage: string,
-   forceUpdate?: object | undefined,
+   forceUpdate?: unknown | undefined,
    converterStatus: ConverterStatus,
    fileName: string,
 }
@@ -170,8 +170,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
       }
 
       if (status === UploadStatus.Converting) {
-         // tslint:disable-next-line: no-floating-promises
-         getConversionUpdate()
+         void getConversionUpdate()
       }
    }, [status, percent, setUploadState, conversionId, onUnauthorized, forceConversionUpdate, converterStatus, fileName, onStatusChanged, id])
 
@@ -184,7 +183,6 @@ const FileUploadRow = (props: FileUploadRowProps) => {
                </div>
             </form>
             : editingBook ?
-               // tslint:disable-next-line: brace-style
                <BookLink book={editingBook} searchWords={[]} statusChanged={() => { return }} editOnly={true} onEditComplete={() => onStatusChanged(id, UploadStatus.Complete)} /> :
                <div>
                   <div>

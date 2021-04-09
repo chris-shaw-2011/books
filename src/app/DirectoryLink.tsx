@@ -40,4 +40,6 @@ const DirectoryLink = forwardRef<HTMLDivElement, DirectoryProps>((props, ref) =>
    )
 })
 
+DirectoryLink.displayName = "DirectoryLink"
+
 export default DirectoryLink

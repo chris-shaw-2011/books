@@ -20,7 +20,7 @@ interface Range {
 }
 
 function iterate<U>(range: Range, callbackfn: (index: number) => U) {
-   return [...Array<object>(range.max - range.min + 1)].map((_, i) => (
+   return [...Array<unknown>(range.max - range.min + 1)].map((_, i) => (
       callbackfn(i + range.min)
    ))
 }
@@ -40,7 +40,7 @@ const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
          }
 
          const loc = location(currentMin, Direction.Up)
-         const desiredTop = elm.current!.scrollTop - (estimatedChildHeight * 2)
+         const desiredTop = (elm.current?.scrollTop ?? 0) - (estimatedChildHeight * 2)
 
          if (desiredTop <= 0) {
             return 0
@@ -63,7 +63,7 @@ const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
          }
 
          const loc = location(currentMax, Direction.Down)
-         const desiredTop = elm.current!.scrollTop + elm.current!.offsetHeight + (estimatedChildHeight * 2)
+         const desiredTop = (elm.current?.scrollTop ?? 0) + (elm.current?.offsetHeight ?? 0) + (estimatedChildHeight * 2)
 
          if (desiredTop > loc.top + loc.height) {
             return newMaximum(currentMax + 1)
@@ -95,8 +95,8 @@ const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
       })
    }, [children, estimatedChildHeight, elm, setRenderedRange])
    const scrolled = useCallback(() => {
-      if (Math.abs(lastUpdateOffset.current - elm.current!.scrollTop) / 2 >= estimatedChildHeight / 2) {
-         lastUpdateOffset.current = elm.current!.scrollTop
+      if (Math.abs(lastUpdateOffset.current - (elm.current?.scrollTop ?? 0)) / 2 >= estimatedChildHeight / 2) {
+         lastUpdateOffset.current = elm.current?.scrollTop ?? 0
          updateRenderedComponents()
       }
    }, [lastUpdateOffset, elm, estimatedChildHeight, updateRenderedComponents])
@@ -120,7 +120,7 @@ const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
    return (
       <div className={classNames(Styles.virtualList, className)} ref={elm}>
          <div style={{ height: estimatedChildHeight * renderedRange.min + "px" }} />
-         {children.length > 0 && iterate(renderedRange, i => children[i] ? cloneElement(children[i], { ref: (el: any) => childRefs.current[i] = el }) : undefined)}
+         {children.length > 0 && iterate(renderedRange, i => children[i] ? cloneElement(children[i], { ref: (el: HTMLDivElement | null) => childRefs.current[i] = el }) : undefined)}
          <div style={{ height: estimatedChildHeight * (children.length - 1 - renderedRange.max) + "px" }} />
       </div>
    )

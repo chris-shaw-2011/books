@@ -20,14 +20,11 @@ interface LoggedInAppContextType {
 }
 
 const LoggedInAppContext = createContext<LoggedInAppContextType>({
-   // tslint:disable-next-line: brace-style
-   logOut: (message?: string) => { return },
+   logOut: () => { return },
    token: new Token(),
    visibleComponent: VisibleComponent.Books,
-   // tslint:disable-next-line: brace-style
-   setVisibleComponent: (component: VisibleComponent) => { return },
-   // tslint:disable-next-line: brace-style
-   updateBooks: (directory: Directory | undefined) => { return },
+   setVisibleComponent: () => { return },
+   updateBooks: () => { return },
    rootDirectory: new Directory(),
 })
 

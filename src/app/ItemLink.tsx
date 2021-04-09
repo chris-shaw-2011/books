@@ -22,4 +22,6 @@ const ItemLink = forwardRef<HTMLDivElement, ItemLinkProps>(({ item, className, s
       <DirectoryLink directory={item} className={classNames(className, styles.item)} searchWords={searchWords} statusChanged={statusChanged} style={style} ref={ref} />
 ))
 
+ItemLink.displayName = "ItemLink"
+
 export default ItemLink

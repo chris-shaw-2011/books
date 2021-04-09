@@ -96,7 +96,7 @@ export default class ServerSettings implements Settings {
       if (!this.checksumSecret) {
          this.checksumSecret = uuid()
 
-         // tslint:disable-next-line: no-console
+         // eslint-disable-next-line no-console
          console.log("Creating checksum secret")
       }
 
@@ -108,8 +108,7 @@ export default class ServerSettings implements Settings {
    }
 
    private updateDbSetting(name: string, value: string) {
-      // tslint:disable-next-line: no-floating-promises
-      this._db.run(`REPLACE INTO setting (key, value) VALUES('${name}', ?)`, value)
+      void this._db.run(`REPLACE INTO setting (key, value) VALUES('${name}', ?)`, value)
    }
 
    private createMailer() {

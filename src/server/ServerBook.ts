@@ -33,7 +33,7 @@ export default class ServerBook extends Book {
 
       this.photoPath = `${fullPath}.jpg`
 
-      // tslint:disable-next-line: no-console
+      // eslint-disable-next-line no-console
       console.log(`${fullPath} - reading tags`)
 
       const metadata = (await mm.parseFile(fullPath, { skipPostHeaders: true, skipCovers: fs.existsSync(this.photoPath), includeChapters: false }))

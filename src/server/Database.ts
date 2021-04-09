@@ -3,11 +3,11 @@ import sqlite3 from "sqlite3"
 import ServerSettings from "./ServerSettings"
 
 class DatabaseClass implements sqlite.Database<sqlite3.Database, sqlite3.Statement> {
-   config: sqlite.ISqlite.Config
-   db: sqlite3.Database
-   noUsers: boolean
-   settings: ServerSettings
-   private database: sqlite.Database<sqlite3.Database, sqlite3.Statement>
+   config!: sqlite.ISqlite.Config
+   db!: sqlite3.Database
+   noUsers!: boolean
+   settings!: ServerSettings
+   private database!: sqlite.Database<sqlite3.Database, sqlite3.Statement>
 
    async open() {
       if (!this.database) {
@@ -27,11 +27,13 @@ class DatabaseClass implements sqlite.Database<sqlite3.Database, sqlite3.Stateme
          this.noUsers = (await this.database.get("SELECT COUNT(1) as userCount FROM user")).userCount === 0
 
          if (this.noUsers) {
+            // eslint-disable-next-line no-console
             console.warn("Currently there are no users in the database so the first login attempt will create a user")
          }
       }
    }
 
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
    on(event: string, listener: any): void {
       this.database.on(event, listener)
    }
@@ -41,28 +43,35 @@ class DatabaseClass implements sqlite.Database<sqlite3.Database, sqlite3.Stateme
    close(): Promise<void> {
       return this.database.close()
    }
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
    configure(option: sqlite.ISqlite.ConfigureOption, value: any) {
       return this.database.configure(option, value)
    }
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
    run(sql: sqlite.ISqlite.SqlType, ...params: any[]): Promise<sqlite.ISqlite.RunResult<sqlite3.Statement>> {
       return this.database.run(sql, params)
    }
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
    get<T = any>(sql: sqlite.ISqlite.SqlType, ...params: any[]): Promise<T | undefined> {
       return this.database.get(sql, params)
    }
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
    each<T = any>(sql: sqlite.ISqlite.SqlType, ...params: any[]): Promise<number> {
       return this.database.each<T>(sql, params)
    }
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
    all<T = any[]>(sql: sqlite.ISqlite.SqlType, ...params: any[]): Promise<T> {
       return this.database.all<T>(sql, params)
    }
    exec(sql: sqlite.ISqlite.SqlType): Promise<void> {
       return this.database.exec(sql)
    }
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
    prepare(sql: sqlite.ISqlite.SqlType, ...params: any[]): Promise<sqlite.Statement<sqlite3.Statement>> {
       return this.database.prepare(sql, params)
    }
-   loadExtension(path: string): Promise<unknown> {
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   loadExtension(path: string): Promise<any> {
       return this.database.loadExtension(path)
    }
    migrate(config?: sqlite.IMigrate.MigrationParams | undefined): Promise<void> {

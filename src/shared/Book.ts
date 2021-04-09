@@ -48,6 +48,7 @@ export default class Book {
    }
 
    toJSON() {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const json: any = { ...this }
       json.uploadTime = this.uploadTime.getTime()
 

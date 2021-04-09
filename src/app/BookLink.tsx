@@ -213,12 +213,10 @@ const BookLink = forwardRef<HTMLDivElement, BookProps>((props, ref) => {
                {
                   Object.values(Status).map(i => {
                      if (i !== props.book.status) {
-                        // tslint:disable-next-line: no-floating-promises
                         return <Dropdown.Item key={i} onClick={e => {
                            e.preventDefault()
                            e.stopPropagation()
-                           // tslint:disable-next-line: no-floating-promises
-                           changeBookStatus(i)
+                           void changeBookStatus(i)
                         }}>Mark {i}</Dropdown.Item>
                      }
 
@@ -298,7 +296,7 @@ interface FolderSelectionProps extends Omit<FolderListProps, "newFolderName" | "
 const FolderSelection = (props: FolderSelectionProps) => {
    const [newFolderName, setNewFolderName] = useState<string | undefined>(undefined)
    const addNewFolder = async () => {
-      await props.addNewFolder(props.selectedFolder, newFolderName!)
+      await props.addNewFolder(props.selectedFolder, newFolderName ?? "")
       props.folderClicked(`${props.selectedFolder}${!props.selectedFolder.endsWith("/") ? "/" : ""}${newFolderName}`)
       setNewFolderName(undefined)
    }

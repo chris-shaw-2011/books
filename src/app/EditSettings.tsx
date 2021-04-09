@@ -27,7 +27,7 @@ const EditSettings = (props: Props) => {
    const context = useContext(AppContext)
    const onUnauthorized = context.logOut
    const token = context.token
-   const onChange = (obj: any) => {
+   const onChange = (obj: Record<string, unknown>) => {
       setSettings(s => {
          if (!s) {
             s = new Settings()
@@ -52,11 +52,10 @@ const EditSettings = (props: Props) => {
          }
       }
 
-      // tslint:disable-next-line: no-floating-promises
-      getSettings()
+      void getSettings()
    }, [onUnauthorized, token])
 
-   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>, settings: Settings) => {
       setSaving(true)
       const form = event.currentTarget
 
@@ -64,7 +63,7 @@ const EditSettings = (props: Props) => {
       event.stopPropagation()
 
       if (form.checkValidity()) {
-         const ret = await Api.updateSettings(token, settings!)
+         const ret = await Api.updateSettings(token, settings)
 
          if (ret instanceof SettingsUpdateResponse) {
             if (ret.successful) {
@@ -91,7 +90,7 @@ const EditSettings = (props: Props) => {
    if (settings) {
       return (
          <OverlayComponent onClick={props.onClose}>
-            <form className="settings" onSubmit={handleSubmit}>
+            <form className="settings" onSubmit={e => handleSubmit(e, settings)}>
                <Modal.Dialog>
                   <Modal.Header>
                      <Modal.Title>Settings</Modal.Title>
