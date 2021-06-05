@@ -101,6 +101,7 @@ const Authenticated = (props: Props) => {
          }
          else if (ret instanceof SettingsRequired) {
             setVisibleComponent(VisibleComponent.Settings)
+            setState(new Directory())
          }
          else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
             logOut(ret.message)
