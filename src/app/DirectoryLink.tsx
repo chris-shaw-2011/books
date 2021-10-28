@@ -16,7 +16,7 @@ interface DirectoryProps {
    style?: React.CSSProperties,
 }
 
-const DirectoryLink = forwardRef<HTMLDivElement, DirectoryProps>((props, ref) => {
+const DirectoryLink = forwardRef<HTMLDivElement, DirectoryProps>((props: DirectoryProps, ref) => {
    const [open, setOpen] = useState(false)
    const displayOpen = open || props.searchWords.length
    const onClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {

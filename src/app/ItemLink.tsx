@@ -16,7 +16,7 @@ interface ItemLinkProps {
    statusChanged: (books: Books) => void,
 }
 
-const ItemLink = forwardRef<HTMLDivElement, ItemLinkProps>(({ item, className, searchWords, statusChanged, style }, ref) => (
+const ItemLink = forwardRef<HTMLDivElement, ItemLinkProps>(({ item, className, searchWords, statusChanged, style }: ItemLinkProps, ref) => (
    item.type === ItemType.book ?
       <BookLink book={item} className={classNames(className, styles.item)} searchWords={searchWords} statusChanged={statusChanged} style={style} ref={ref} /> :
       <DirectoryLink directory={item} className={classNames(className, styles.item)} searchWords={searchWords} statusChanged={statusChanged} style={style} ref={ref} />

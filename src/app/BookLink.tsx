@@ -42,7 +42,7 @@ interface BookProps {
    onEditComplete?: () => void,
 }
 
-const BookLink = forwardRef<HTMLDivElement, BookProps>((props, ref) => {
+const BookLink = forwardRef<HTMLDivElement, BookProps>((props: BookProps, ref) => {
    const context = useContext(AppContext)
    const [changingStatus, setChangingStatus] = useState(false)
    const [editingState, setEditingState] = useState<{ status: EditStatus, alertMessage?: string }>({ status: props.editOnly ? EditStatus.Editing : EditStatus.ReadOnly })
