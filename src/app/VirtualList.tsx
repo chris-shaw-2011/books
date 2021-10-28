@@ -3,6 +3,8 @@ import useResizeObserver from "use-resize-observer/polyfilled"
 import Styles from "./VirtualList.module.scss"
 import classNames from "classnames"
 
+const extraRowsToRender = 2
+
 interface Props {
    estimatedChildHeight: number,
    children: React.ReactElement[],
@@ -29,9 +31,10 @@ const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
    const [renderedRange, setRenderedRange] = useState<Range>({ min: 0, max: 0 })
    const elm = useRef<HTMLDivElement>(null)
    const childRefs = useRef(new Array<HTMLDivElement | null>(children.length))
-   const lastUpdateOffset = useRef(estimatedChildHeight * -1)
    const updateRenderedComponents = useCallback(() => {
-      const newMinimum = (currentMin: number): number => {
+      const newMinimum = (minStart: number, change: number): number => {
+         const currentMin = minStart + change
+
          if (currentMin < 0) {
             return 0
          }
@@ -40,21 +43,24 @@ const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
          }
 
          const loc = location(currentMin, Direction.Up)
-         const desiredTop = (elm.current?.scrollTop ?? 0) - (estimatedChildHeight * 2)
+         const renderStartPosition = (elm.current?.scrollTop ?? 0) - (estimatedChildHeight * extraRowsToRender)
 
-         if (desiredTop <= 0) {
+         if (renderStartPosition <= 0) {
             return 0
          }
-         else if (desiredTop > loc.top + loc.height) {
-            return newMinimum(currentMin + 1)
+         else if (renderStartPosition > loc.top + loc.height && change >= 0) {
+            return newMinimum(minStart, ++change)
          }
-         else if (desiredTop < loc.top) {
-            return newMinimum(currentMin - 1)
+         else if (renderStartPosition < loc.top && change <= 0) {
+            return newMinimum(minStart, --change)
          }
 
          return currentMin
       }
-      const newMaximum = (currentMax: number): number => {
+      //We need the change variable to make sure we don't get stuck in a loop flipping between two indexes because the measurements are inprecise, the idea is once the change variable has went positive or negative it can't go the other direction
+      const newMaximum = (maxStart: number, change: number): number => {
+         const currentMax = maxStart + change
+
          if (currentMax >= children.length) {
             return children.length - 1
          }
@@ -63,13 +69,13 @@ const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
          }
 
          const loc = location(currentMax, Direction.Down)
-         const desiredTop = (elm.current?.scrollTop ?? 0) + (elm.current?.offsetHeight ?? 0) + (estimatedChildHeight * 2)
+         const renderStopPosition = (elm.current?.scrollTop ?? 0.0) + (elm.current?.getBoundingClientRect()?.height ?? 0.0) + (estimatedChildHeight * extraRowsToRender)
 
-         if (desiredTop > loc.top + loc.height) {
-            return newMaximum(currentMax + 1)
+         if (renderStopPosition > loc.top + loc.height && change >= 0) {
+            return newMaximum(maxStart, ++change)
          }
-         else if (desiredTop < loc.top) {
-            return newMaximum(currentMax - 1)
+         else if (renderStopPosition < loc.top && change <= 0) {
+            return newMaximum(maxStart, --change)
          }
 
          return currentMax
@@ -78,7 +84,7 @@ const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
          const ref = childRefs.current[index]
 
          if (ref || index === 0) {
-            return { top: ref?.offsetTop ?? 0, height: ref?.offsetHeight ?? estimatedChildHeight }
+            return { top: ref?.offsetTop ?? 0, height: ref?.getBoundingClientRect()?.height ?? estimatedChildHeight }
          }
          else if (direction === Direction.Up) {
             return { top: index * estimatedChildHeight, height: estimatedChildHeight }
@@ -91,15 +97,12 @@ const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
       }
 
       setRenderedRange(prev => {
-         return { min: newMinimum(prev.min), max: newMaximum(prev.max) }
+         return { min: newMinimum(prev.min, 0), max: newMaximum(prev.max, 0) }
       })
    }, [children, estimatedChildHeight, elm, setRenderedRange])
    const scrolled = useCallback(() => {
-      if (Math.abs(lastUpdateOffset.current - (elm.current?.scrollTop ?? 0)) / 2 >= estimatedChildHeight / 2) {
-         lastUpdateOffset.current = elm.current?.scrollTop ?? 0
-         updateRenderedComponents()
-      }
-   }, [lastUpdateOffset, elm, estimatedChildHeight, updateRenderedComponents])
+      updateRenderedComponents()
+   }, [elm, estimatedChildHeight, updateRenderedComponents])
 
    useResizeObserver({
       onResize: updateRenderedComponents,
