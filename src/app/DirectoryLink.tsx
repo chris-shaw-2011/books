@@ -14,6 +14,7 @@ interface DirectoryProps {
    searchWords: string[],
    statusChanged: (books: Books) => void,
    style?: React.CSSProperties,
+   toggleAlwaysRender?:(key:(string | number)) => void
 }
 
 const DirectoryLink = forwardRef<HTMLDivElement, DirectoryProps>((props: DirectoryProps, ref) => {
@@ -23,6 +24,10 @@ const DirectoryLink = forwardRef<HTMLDivElement, DirectoryProps>((props: Directo
       e.stopPropagation()
 
       if (!props.searchWords.length) {
+         if (props.toggleAlwaysRender) {
+            props.toggleAlwaysRender(props.directory.id)
+         }
+
          setOpen(s => !s)
       }
    }

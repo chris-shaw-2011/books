@@ -21,13 +21,8 @@ interface Range {
    max: number
 }
 
-function iterate<U>(range: Range, callbackfn: (index: number) => U) {
-   return [...Array<unknown>(range.max - range.min + 1)].map((_, i) => (
-      callbackfn(i + range.min)
-   ))
-}
-
 const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
+   const alwaysRenderKeys = useRef(new Array<(string | number)>(children.length))
    const [renderedRange, setRenderedRange] = useState<Range>({ min: 0, max: 0 })
    const elm = useRef<HTMLDivElement>(null)
    const childRefs = useRef(new Array<HTMLDivElement | null>(children.length))
@@ -119,12 +114,33 @@ const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
          currentElm?.removeEventListener("scroll", scrolled)
       }
    }, [elm, scrolled])
+   const willBeRendered = (index:number, range:Range) => {
+      return index >= range.min && index <= range.max || alwaysRenderKeys.current.includes(children[index].key ?? "")
+   }
+   const toggleAlwaysRender = (key:(string | number)) => {
+      const index = alwaysRenderKeys.current.indexOf(key)
+
+      index == -1 ? alwaysRenderKeys.current.push(key) : alwaysRenderKeys.current.splice(index, 1)
+   }
+
+   let rowCount = 0
 
    return (
       <div className={classNames(Styles.virtualList, className)} ref={elm}>
-         <div style={{ height: estimatedChildHeight * renderedRange.min + "px" }} />
-         {children.length > 0 && iterate(renderedRange, i => children[i] ? cloneElement(children[i], { ref: (el: HTMLDivElement | null) => childRefs.current[i] = el }) : undefined)}
-         <div style={{ height: estimatedChildHeight * (children.length - 1 - renderedRange.max) + "px" }} />
+         {children.map((child, index, arr) => {
+            if (willBeRendered(index, renderedRange)) {
+               return cloneElement(child, {toggleAlwaysRender: toggleAlwaysRender, ref: (el: HTMLDivElement | null) => childRefs.current[index] = el })
+            }
+            else if (arr.length == index + 1 || willBeRendered(index + 1, renderedRange)) {
+               const height = estimatedChildHeight * (rowCount + 1)
+               rowCount = 0
+               return <div key={index} style={{ height: height + "px" }} />
+            }
+            else {
+               ++rowCount
+               return null
+            }
+         })}
       </div>
    )
 }

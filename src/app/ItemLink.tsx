@@ -14,12 +14,13 @@ interface ItemLinkProps {
    className?: string,
    searchWords: string[],
    statusChanged: (books: Books) => void,
+   toggleAlwaysRender?:(key:(string | number)) => void
 }
 
-const ItemLink = forwardRef<HTMLDivElement, ItemLinkProps>(({ item, className, searchWords, statusChanged, style }: ItemLinkProps, ref) => (
+const ItemLink = forwardRef<HTMLDivElement, ItemLinkProps>(({ item, className, searchWords, statusChanged, style, toggleAlwaysRender }: ItemLinkProps, ref) => (
    item.type === ItemType.book ?
       <BookLink book={item} className={classNames(className, styles.item)} searchWords={searchWords} statusChanged={statusChanged} style={style} ref={ref} /> :
-      <DirectoryLink directory={item} className={classNames(className, styles.item)} searchWords={searchWords} statusChanged={statusChanged} style={style} ref={ref} />
+      <DirectoryLink directory={item} className={classNames(className, styles.item)} searchWords={searchWords} statusChanged={statusChanged} style={style} ref={ref} toggleAlwaysRender={toggleAlwaysRender} />
 ))
 
 ItemLink.displayName = "ItemLink"
