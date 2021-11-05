@@ -42,7 +42,7 @@
    },
    "scripts": {
       "start": "run-p start-react start-server",
-      "start-production": "run-s install-packages build-react build-server start-server-production",
+      "start-production": "run-s install-packages update-browserlist build-react build-server start-server-production",
       "start-react": "react-scripts start",
       "start-server": "ts-node-dev --project ./src/server/tsconfig.json --respawn --transpile-only ./src/server/index.ts",
       "start-server-production": "node dist/server/index.js",
@@ -52,7 +52,8 @@
       "test": "react-scripts test",
       "eject": "react-scripts eject",
       "lint": "tsc --noEmit && eslint src/**/*.ts{,x}",
-      "analyze": "source-map-explorer 'build/static/js/*.js'"
+      "analyze": "source-map-explorer 'build/static/js/*.js'",
+      "update-browserlist": "npx browserslist@latest --update-db"
    },
    "pre-commit": "lint",
    "eslintConfig": {
