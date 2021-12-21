@@ -340,4 +340,6 @@ const FolderList = ({ directory, selectedFolder, folderClicked, className, newFo
    )
 }
 
+BookLink.displayName = "BookLink"
+
 export default BookLink
