@@ -2,10 +2,10 @@ import { Mutex } from "async-mutex"
 import bcrypt from "bcrypt"
 import cookie from "cookie"
 import fastify, { FastifyRequest, FastifyReply } from "fastify"
-import fastifyMultipart from "fastify-multipart"
-import fastifyStatic from "fastify-static"
+import fastifyMultipart from "@fastify/multipart"
+import fastifyStatic from "@fastify/static"
 import fs from "fs"
-import moment from "moment"
+import dayjs from "dayjs"
 import path from "path"
 import util from "util"
 import { pipeline } from "stream"
@@ -46,7 +46,7 @@ import aacWriter from "write-aac-metadata"
 import AddFolderRequest from "../shared/api/AddFolderRequest"
 
 const pump = util.promisify(pipeline)
-const authorizationExpiration = new Map<string, moment.Moment>()
+const authorizationExpiration = new Map<string, dayjs.Dayjs>()
 let rootDir = __dirname
 const tryParse = (text: string, reviver?: (this: unknown, key: string, value: unknown) => unknown) => {
    try {
@@ -56,7 +56,7 @@ const tryParse = (text: string, reviver?: (this: unknown, key: string, value: un
       return undefined
    }
 }
-const getNewExpiration = () => moment().add(24, "hours")
+const getNewExpiration = () => dayjs().add(24, "hours")
 const changeBookStatusMutex = new Mutex()
 const conversions = new Map<string, Converter>()
 const conversionMutex = new Mutex()
@@ -98,6 +98,10 @@ const requestToken = (request: FastifyRequest) => {
 }
 const validateRequest = async (request: FastifyRequest, reply: FastifyReply) => {
    const token = requestToken(request)
+   
+   if (request.url.endsWith(".tar.gz")) {
+     return token
+   }
 
    if (!token.user.id || !await token.isChecksumValid(db.settings.checksumSecret)) {
       void reply.code(401).send(new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In" }))
@@ -105,7 +109,7 @@ const validateRequest = async (request: FastifyRequest, reply: FastifyReply) => 
    else {
       const expires = authorizationExpiration.has(token.authorization) ? authorizationExpiration.get(token.authorization) : undefined
 
-      if (!expires || expires < moment()) {
+      if (!expires || expires < dayjs()) {
          void reply.code(401).send(new Unauthorized({ type: ApiMessageType.Unauthorized, message: "Please Log In again" }))
 
          return
@@ -233,7 +237,7 @@ server.post<{ Body: AddUserRequest }>("/addUser", { preHandler: validateAdminReq
 
          await db.run("INSERT INTO User (id, email, isAdmin) VALUES(?, ?, ?)", userId, userRequest.user.email, userRequest.user.isAdmin)
 
-         const link = url.resolve(request.headers.referer ?? "https://books.christopher-shaw.com", `/invite/${userId}`)
+         const link = new url.URL(request.headers.referer ?? "https://books.christopher-shaw.com", `/invite/${userId}`).href
 
          await db.settings.mailer.sendMail({
             from: db.settings.inviteEmail,
@@ -494,7 +498,7 @@ server.get<{ Params: Record<string, string> }>("/*", (request, reply) => {
 
 const start = async () => {
    try {
-      await server.listen(3001, "::")
+      await server.listen({ port: 3001})
    }
    catch (err) {
       server.log.error(err)

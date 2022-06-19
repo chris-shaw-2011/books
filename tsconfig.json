@@ -20,7 +20,8 @@
       "jsx": "react-jsx",
       "outDir": "dist",
       "strictNullChecks": true,
-      "noFallthroughCasesInSwitch": true
+      "noFallthroughCasesInSwitch": true,
+      "types": ["react/next", "react-dom/next"]
    },
    "include": [
       "src"

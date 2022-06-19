@@ -15,7 +15,8 @@
       }
    },
    "plugins": [
-      "@typescript-eslint"
+      "@typescript-eslint",
+      "deprecation"
    ],
    "extends": [
       "eslint:recommended",
@@ -43,7 +44,8 @@
       "react/react-in-jsx-scope": "off",
       "react/prop-types": "error", //This doesn't work right see: https://github.com/yannickcr/eslint-plugin-react/issues/2353
       "@typescript-eslint/no-floating-promises": "error",
-      "no-console": "error"
+      "no-console": "error",
+      "deprecation/deprecation": "warn"
    }
 }
 //waiting for these rules
