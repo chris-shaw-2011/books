@@ -1,0 +1,18 @@
+{
+	"compilerOptions": {
+		"outDir": "../../bin/server",
+		"resolveJsonModule": true,
+		"paths": {
+			"@books/shared": [
+				"../shared/src/*"
+			],
+			"@books/*": [
+				"../*/src"
+			],
+		}
+	},
+	"extends": "../../tsconfig.base.json",
+	"include": [
+		"src"
+	],
+}

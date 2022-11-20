@@ -1,0 +1,35 @@
+.editingBook {
+	>div {
+		width: 100%;
+	}
+}
+
+.error {
+	max-height: "75px";
+	overflow: "auto";
+	max-width: "90%";
+	color: "white";
+	background-color: "black";
+
+	>div {
+		white-space: "pre-wrap";
+	}
+}
+
+.upload {
+	max-width: 100%;
+
+	.form-row>div {
+		padding: 5px;
+		justify-content: center;
+		display: flex;
+		align-items: center;
+		flex-direction: column;
+		width: 100%;
+
+		>div {
+			width: 100%;
+			text-align: center;
+		}
+	}
+}
