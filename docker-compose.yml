@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  node:
+    image: "node:21"
+    user: "node"
+    working_dir: /home/node/app
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ephemeral_data:/home/node/app
+    ports:
+      # use if it is necessary to expose the container to the host machine
+      - "3001:3001"
+    command: bash -c "wget -qO- https://github.com/chris-shaw-2011/books/releases/latest/download/transpiled.tar.gz | tar xvz && npm install && npm run start-server-production"
+
+volumes:
+  ephemeral_data:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=1500m,uid=1000
