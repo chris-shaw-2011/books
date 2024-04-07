@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  - workflow_dispatch
+  - push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with: 
+          node-version: latest
+      - name: Install Packages
+        run: npm install
+      - name: Build
+        run: npm run build
+      - name: Tar
+        uses: a7ul/tar-action@v1.2.0
+        id: compress
+        with:
+          command: c
+          cwd: ./
+          files: |
+            ./bin
+            package.json
+            ./projects/server/package.json
+          outPath: transpiled.tar.gz
+      - name: Getting Release Version
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+      - name: Package Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            transpiled.tar.gz
+          tag_name: ${{ steps.package-version.outputs.current-version}}
+          make_latest: true

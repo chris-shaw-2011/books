@@ -11,5 +11,21 @@
 	"eslint.validate": [
 		"javascript",
 		"typescript"
-	]
+	],
+	"[yaml]": {
+		"editor.autoIndent": "advanced",
+		"editor.detectIndentation": true
+	},
+	"[yml]": {
+		"editor.autoIndent": "advanced",
+		"editor.detectIndentation": true
+	},
+	"[dockercompose]": {
+		"editor.autoIndent": "advanced",
+		"editor.detectIndentation": true
+	},
+	"[github-actions-workflow]": {
+		"editor.autoIndent": "advanced",
+		"editor.detectIndentation": true
+	},
 }
