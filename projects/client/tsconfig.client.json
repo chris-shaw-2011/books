@@ -20,6 +20,8 @@
 			],
 		},
 		"outDir": "../../bin/client",
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
 	},
 	"extends": "../../tsconfig.base.json",
 	"include": [
