@@ -1,6 +1,6 @@
 {
 	"name": "books-monorepo",
-	"version": "0.1.0",
+	"version": "1.0.0",
 	"dependencies": {
 		"dayjs": "^1.11.13",
 		"uuid": "^10.0.0"
