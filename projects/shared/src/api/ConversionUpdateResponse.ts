@@ -1,7 +1,7 @@
-import Book from "../Book"
-import { ConverterStatus } from "../ConverterStatus"
-import ApiMessage from "./ApiMessage"
-import ApiMessageType from "./ApiMessageType"
+import Book from "../Book.js"
+import { ConverterStatus } from "../ConverterStatus.js"
+import ApiMessage from "./ApiMessage.js"
+import ApiMessageType from "./ApiMessageType.js"
 
 export default class ConversionUpdateResponse extends ApiMessage {
 	conversionPercent = 0

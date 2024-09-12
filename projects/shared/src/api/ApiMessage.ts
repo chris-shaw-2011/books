@@ -1,4 +1,4 @@
-import ApiMessageType from "./ApiMessageType"
+import ApiMessageType from "./ApiMessageType.js"
 
 export default class ApiMessage {
 	type: ApiMessageType

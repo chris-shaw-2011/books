@@ -1,35 +1,33 @@
 import * as sqlite from "sqlite"
 import sqlite3 from "sqlite3"
-import ServerSettings from "./ServerSettings"
+import ServerSettings from "./ServerSettings.js"
 
-class DatabaseClass implements sqlite.Database<sqlite3.Database, sqlite3.Statement> {
+class DatabaseClass implements sqlite.Database {
 	config!: sqlite.ISqlite.Config
 	db!: sqlite3.Database
 	noUsers!: boolean
 	settings!: ServerSettings
-	private database!: sqlite.Database<sqlite3.Database, sqlite3.Statement>
+	private database!: sqlite.Database
 
 	async open() {
-		if (!this.database) {
-			this.database = await sqlite.open({ filename: "db.sqlite", driver: sqlite3.Database })
-			await this.database.exec(`
+		this.database = await sqlite.open({ filename: "db.sqlite", driver: sqlite3.Database })
+		await this.database.exec(`
             CREATE TABLE IF NOT EXISTS setting (key TEXT PRIMARY KEY, value TEXT);
             CREATE TABLE IF NOT EXISTS user (id TEXT PRIMARY KEY, email TEXT, hash TEXT, isAdmin BOOLEAN, lastLogin BIGINT, bookStatuses TEXT);
             CREATE UNIQUE INDEX IF NOT EXISTS IX_user_email ON user (email);
          `)
 
-			await this.database.exec("PRAGMA user_version = 1")
+		await this.database.exec("PRAGMA user_version = 1")
 
-			this.settings = new ServerSettings(this.database)
+		this.settings = new ServerSettings(this.database)
 
-			await this.settings.loadFromDatabase()
+		await this.settings.loadFromDatabase()
 
-			this.noUsers = ((await this.database.get<{ userCount: number }>("SELECT COUNT(1) as userCount FROM user")) ?? { userCount: 0 }).userCount === 0
+		this.noUsers = ((await this.database.get<{ userCount: number }>("SELECT COUNT(1) as userCount FROM user")) ?? { userCount: 0 }).userCount === 0
 
-			if (this.noUsers) {
-				// eslint-disable-next-line no-console
-				console.warn("Currently there are no users in the database so the first login attempt will create a user")
-			}
+		if (this.noUsers) {
+			// eslint-disable-next-line no-console
+			console.warn("Currently there are no users in the database so the first login attempt will create a user")
 		}
 	}
 
@@ -49,7 +47,7 @@ class DatabaseClass implements sqlite.Database<sqlite3.Database, sqlite3.Stateme
 		return this.database.configure(option, value)
 	}
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	run(sql: sqlite.ISqlite.SqlType, ...params: any[]): Promise<sqlite.ISqlite.RunResult<sqlite3.Statement>> {
+	run(sql: sqlite.ISqlite.SqlType, ...params: any[]): Promise<sqlite.ISqlite.RunResult> {
 		return this.database.run(sql, params)
 	}
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -57,8 +55,8 @@ class DatabaseClass implements sqlite.Database<sqlite3.Database, sqlite3.Stateme
 		return this.database.get(sql, params)
 	}
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	each<T = any>(sql: sqlite.ISqlite.SqlType, ...params: any[]): Promise<number> {
-		return this.database.each<T>(sql, params)
+	each(sql: sqlite.ISqlite.SqlType, ...params: any[]): Promise<number> {
+		return this.database.each(sql, params)
 	}
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	all<T = any[]>(sql: sqlite.ISqlite.SqlType, ...params: any[]): Promise<T> {
@@ -68,14 +66,14 @@ class DatabaseClass implements sqlite.Database<sqlite3.Database, sqlite3.Stateme
 		return this.database.exec(sql)
 	}
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	prepare(sql: sqlite.ISqlite.SqlType, ...params: any[]): Promise<sqlite.Statement<sqlite3.Statement>> {
+	prepare(sql: sqlite.ISqlite.SqlType, ...params: any[]): Promise<sqlite.Statement> {
 		return this.database.prepare(sql, params)
 	}
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	loadExtension(path: string): Promise<any> {
 		return this.database.loadExtension(path)
 	}
-	migrate(config?: sqlite.IMigrate.MigrationParams | undefined): Promise<void> {
+	migrate(config?: sqlite.IMigrate.MigrationParams): Promise<void> {
 		return this.migrate(config)
 	}
 	serialize(): void {

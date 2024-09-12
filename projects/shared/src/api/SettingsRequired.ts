@@ -1,6 +1,6 @@
-import Settings from "../Settings"
-import ApiMessage from "./ApiMessage"
-import ApiMessageType from "./ApiMessageType"
+import Settings from "../Settings.js"
+import ApiMessage from "./ApiMessage.js"
+import ApiMessageType from "./ApiMessageType.js"
 
 export default class SettingsRequired extends ApiMessage {
 	message = ""

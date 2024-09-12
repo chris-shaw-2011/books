@@ -4,24 +4,24 @@
 	"dependencies": {
 		"@books/shared": "file:../shared",
 		"bootstrap": "^5.3.3",
-		"browserslist": "^4.23.0",
+		"browserslist": "^4.23.3",
 		"classnames": "^2.5.1",
 		"rc-progress": "^4.0.0",
-		"react": "^18.2.0",
+		"react": "^18.3.1",
 		"react-animate-height": "^3.2.3",
-		"react-bootstrap": "^2.10.2",
-		"react-cookie": "^7.1.4",
+		"react-bootstrap": "^2.10.4",
+		"react-cookie": "^7.2.0",
 		"react-cool-onclickoutside": "^1.7.0",
-		"react-dom": "^18.2.0",
+		"react-dom": "^18.3.1",
 		"react-highlight-words": "^0.20.0",
 		"react-textarea-autosize": "^8.5.3",
-		"sass": "^1.72.0",
+		"sass": "^1.78.0",
 		"use-resize-observer": "^9.1.0"
 	},
 	"scripts": {
 		"start": "vite",
 		"build": "tsc -b && vite build",
-		"lint": "eslint . --ext ts,tsx,js,jsx --max-warnings 0 --report-unused-disable-directives-severity error"
+		"lint": "eslint . --max-warnings 0 --report-unused-disable-directives-severity error"
 	},
 	"pre-commit": "lint",
 	"proxy": "http://localhost:3001",
@@ -44,13 +44,13 @@
 	},
 	"devDependencies": {
 		"@types/classnames": "^2.3.1",
-		"@types/react": "^18.2.73",
-		"@types/react-dom": "^18.2.23",
-		"@types/react-highlight-words": "^0.16.7",
-		"@vitejs/plugin-react": "^4.2.1",
-		"eslint-plugin-react-hooks": "^4.6.0",
-		"eslint-plugin-react-refresh": "^0.4.6",
-		"vite": "^5.2.7"
+		"@types/react": "^18.3.5",
+		"@types/react-dom": "^18.3.0",
+		"@types/react-highlight-words": "^0.20.0",
+		"@vitejs/plugin-react": "^4.3.1",
+		"eslint-plugin-react-hooks": "^4.6.2",
+		"eslint-plugin-react-refresh": "^0.4.11",
+		"vite": "^5.4.4"
 	},
 	"overrides": {
 		"browserslist": "*",

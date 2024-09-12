@@ -25,7 +25,7 @@ const location = (index: number, direction: Direction, estimatedChildHeight: num
 	const ref = childRefs.current[index]
 
 	if (ref || index === 0) {
-		return { top: ref?.offsetTop ?? 0, height: ref?.getBoundingClientRect()?.height ?? estimatedChildHeight }
+		return { top: ref?.offsetTop ?? 0, height: ref?.getBoundingClientRect().height ?? estimatedChildHeight }
 	}
 	else if (direction === Direction.Up) {
 		return { top: index * estimatedChildHeight, height: estimatedChildHeight }
@@ -80,7 +80,7 @@ const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
 			}
 
 			const loc = location(currentMax, Direction.Down, estimatedChildHeight, childRefs)
-			const renderStopPosition = (elm.current?.scrollTop ?? 0.0) + (elm.current?.getBoundingClientRect()?.height ?? 0.0) + (estimatedChildHeight * extraRowsToRender)
+			const renderStopPosition = (elm.current?.scrollTop ?? 0.0) + (elm.current?.getBoundingClientRect().height ?? 0.0) + (estimatedChildHeight * extraRowsToRender)
 
 			if (renderStopPosition > loc.top + loc.height && change >= 0) {
 				return newMaximum(maxStart, ++change)
@@ -98,7 +98,6 @@ const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
 	}, [children, estimatedChildHeight, elm, setRenderedRange])
 	const scrolled = useCallback(() => {
 		updateRenderedComponents()
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [elm, estimatedChildHeight, updateRenderedComponents])
 
 	useResizeObserver({
@@ -122,7 +121,12 @@ const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
 	const toggleAlwaysRender = (key: (string | number)) => {
 		const index = alwaysRenderKeys.current.indexOf(key)
 
-		index === -1 ? alwaysRenderKeys.current.push(key) : alwaysRenderKeys.current.splice(index, 1)
+		if (index === -1) {
+			alwaysRenderKeys.current.push(key)
+		}
+		else {
+			alwaysRenderKeys.current.splice(index, 1)
+		}
 	}
 
 	let rowCount = 0
@@ -136,7 +140,7 @@ const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
 				else if (arr.length === index + 1 || willBeRendered(index + 1, renderedRange)) {
 					const height = estimatedChildHeight * (rowCount + 1)
 					rowCount = 0
-					return <div key={index} style={{ height: height + "px" }} />
+					return <div key={index} style={{ height: `${height}px` }} />
 				}
 				else {
 					++rowCount

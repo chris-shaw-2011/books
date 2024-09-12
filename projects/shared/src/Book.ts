@@ -1,4 +1,4 @@
-import ItemType from "./ItemType"
+import ItemType from "./ItemType.js"
 
 export enum Status {
 	Unread = "Unread",

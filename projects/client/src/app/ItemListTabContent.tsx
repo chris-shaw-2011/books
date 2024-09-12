@@ -21,9 +21,9 @@ const ItemListTabContent = (props: BookTabProps) => {
 	return (
 		<>
 			<div className={classNames(Styles.sortDropDown, { [Styles.hidden]: props.hidden })}>
-				<DropdownButton title={`Sorted: ${sort}`} id={`${props.status || "All"}-sortButton`} variant="secondary">
+				<DropdownButton title={`Sorted: ${sort}`} id={`${props.status ?? "All"}-sortButton`} variant="secondary">
 					{Object.values(SortOrder).map(s => (
-						<Dropdown.Item key={s} onClick={() => setSort(s)}>{s}</Dropdown.Item>
+						<Dropdown.Item key={s} onClick={() => { setSort(s) }}>{s}</Dropdown.Item>
 					))}
 				</DropdownButton>
 			</div>

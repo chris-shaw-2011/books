@@ -55,7 +55,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 	const id = props.id
 
 	const uploadFile = (files: FileList | null) => {
-		if (!files || !files.length || !(files[0].name.endsWith(".aax") || files[0].name.endsWith(".zip"))) {
+		if (!files?.length || !(files[0].name.endsWith(".aax") || files[0].name.endsWith(".zip"))) {
 
 			return
 		}
@@ -131,11 +131,11 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 			{status === UploadStatus.Pending ?
 				<form>
 					<div>
-						<input type="file" required={true} placeholder="Specify File" accept=".aax,.zip" onChange={e => uploadFile(e.currentTarget.files)} />
+						<input type="file" required={true} placeholder="Specify File" accept=".aax,.zip" onChange={e => { uploadFile(e.currentTarget.files) }} />
 					</div>
 				</form>
 				: editingBook ?
-					<BookLink book={editingBook} searchWords={[]} statusChanged={() => { return }} editOnly={true} onEditComplete={() => onStatusChanged(id, UploadStatus.Complete)} /> :
+					<BookLink book={editingBook} searchWords={[]} statusChanged={() => { return }} editOnly={true} onEditComplete={() => { onStatusChanged(id, UploadStatus.Complete) }} /> :
 					<div>
 						<div>
 							{fileName}

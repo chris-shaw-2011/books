@@ -21,7 +21,7 @@ const ChangePassword = (props: Props) => {
 	const [state, setState] = useState({ password: "", confirmedPassword: "", changingPasswords: false })
 	const [user, setUser] = useState(props.token ? props.token.user : undefined)
 	const [passwordsMatch, setPasswordsMatch] = useState(true)
-	const userId = props.userId || ""
+	const userId = props.userId ?? ""
 	const logOut = props.logOut
 	const mergeState = (obj: Record<string, unknown>) => {
 		setState(s => {
@@ -45,7 +45,7 @@ const ChangePassword = (props: Props) => {
 				setPasswordsMatch(true)
 				setState(s => ({ ...s, changingPasswords: true }))
 
-				const ret = await Api.changePassword(props.token || { authorization: "", checksum: "", type: ApiMessageType.Token, user: new User(user) }, state.password)
+				const ret = await Api.changePassword(props.token ?? { authorization: "", checksum: "", type: ApiMessageType.Token, user: new User(user) }, state.password)
 
 				if (ret instanceof Token) {
 					props.onPasswordChanged(ret)
@@ -93,8 +93,8 @@ const ChangePassword = (props: Props) => {
 						<div className={styles.header}>Change Password</div>
 						<div className={styles.body}>
 							<label className={styles.email}>{user.email}</label>
-							<TextboxField label="New Password" type="password" placeholder="New Password" required={true} onChange={e => mergeState({ password: e.currentTarget.value || "" })} />
-							<TextboxField label="Confirm New Password" type="password" placeholder="Confirm New Password" required={true} onChange={e => mergeState({ confirmedPassword: e.currentTarget.value || "" })} />
+							<TextboxField label="New Password" type="password" placeholder="New Password" required={true} onChange={e => { mergeState({ password: e.currentTarget.value || "" }) }} />
+							<TextboxField label="Confirm New Password" type="password" placeholder="Confirm New Password" required={true} onChange={e => { mergeState({ confirmedPassword: e.currentTarget.value || "" }) }} />
 							{!passwordsMatch && <Alert variant="danger">Passwords must match</Alert>}
 						</div>
 						<div className={styles.footer}>

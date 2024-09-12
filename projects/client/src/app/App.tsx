@@ -23,15 +23,15 @@ const App = () => {
 	const [cookies, setCookies] = useCookies(["loginCookie"])
 	const [loginMessage, setLoginMessage] = useState("")
 	const [visibleComponent, setVisibleComponent] = useState(VisibleComponent.Books)
-	const loginCookie = cookies.loginCookie as Token
+	const loginCookie = cookies.loginCookie as Token | undefined
 	const token = useMemo(() => loginCookie ? new Token(loginCookie) : undefined, [loginCookie])
-	const inviteUserId = window.location.pathname.indexOf("/invite/") !== -1 ? window.location.pathname.replace("/invite/", "") : ""
+	const inviteUserId = window.location.pathname.includes("/invite/") ? window.location.pathname.replace("/invite/", "") : ""
 	const logOut = useCallback((message?: string) => {
 		if (inviteUserId) {
 			window.history.replaceState({}, document.title, "/")
 		}
 		setCookies("loginCookie", "", { maxAge: 0, sameSite: "strict" })
-		setLoginMessage(message || "")
+		setLoginMessage(message ?? "")
 	}, [setCookies, setLoginMessage, inviteUserId])
 	const onLogIn = useCallback((t: Token) => {
 		if (inviteUserId) {

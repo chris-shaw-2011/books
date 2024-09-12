@@ -1,152 +1,165 @@
 .editing {
-   > form > .inner {
-      cursor: default !important;
+	>form>.inner {
+		cursor: default !important;
 
-      .description {
-         display: flex;
-      }
+		.description {
+			display: flex;
+		}
 
-      > div > .editable {
-         padding: 5px;
-      }
-   }
+		>div>.editable {
+			padding: 5px;
+		}
+	}
 
-   input, textarea, label, .pathSelection {
-      width: 100%;
-   }
+	input,
+	textarea,
+	label,
+	.pathSelection {
+		width: 100%;
+	}
 
-   .author {
-      white-space: nowrap;
-      display: flex;
-      flex-direction: row;
-      align-items: flex-end;
-      clear: both;
-   }
+	.author {
+		white-space: nowrap;
+		display: flex;
+		flex-direction: row;
+		align-items: flex-end;
+		clear: both;
+	}
 }
 
 .inner {
-   margin-bottom: 10px;
-   display: block !important;
+	margin-bottom: 10px;
+	display: block !important;
 
-   > img {
-      float: left;
-   }
+	>img {
+		float: left;
+	}
 
-   .description {
-      white-space: pre-wrap;
-   }
+	.description {
+		white-space: pre-wrap;
+	}
 
-   label, .pathSelection {
-      margin: 0;
-      > span:first-of-type {
-         width: 70px;
-         text-align: right;
-         margin-right: .5rem;
-         display: inline-block;
-         font-weight: bolder;
-      }
-   }
+	label,
+	.pathSelection {
+		margin: 0;
+
+		>span:first-of-type {
+			width: 70px;
+			text-align: right;
+			margin-right: .5rem;
+			display: inline-block;
+			font-weight: bolder;
+		}
+	}
 }
 
 .title {
-   font-weight: bold;
-   display: flex;
-   flex-direction: row;
-   align-items: center;
+	font-weight: bold;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
 
-   > input {
-      font-weight: bold;
-   }
+	>input {
+		font-weight: bold;
+	}
 
-   > span, > svg {
-      white-space: nowrap;
-      display: flex;
-   }
+	>span,
+	>svg {
+		white-space: nowrap;
+		display: flex;
+	}
 
-   > svg {
-      height: 18px;
-      padding-left: 5px;
-   }
+	>svg {
+		height: 18px;
+		padding-left: 5px;
+	}
 }
 
 .year {
-   width: auto !important;
+	width: auto !important;
 }
 
-.author, .size, .uploadTime, .narrator, .genre, .path {
-   color: gray;
+.author,
+.size,
+.uploadTime,
+.narrator,
+.genre,
+.path {
+	color: gray;
 }
 
 .size {
-   font-size: 85%;
+	font-size: 85%;
 }
 
 .uploadTime {
-   font-size: 80%;
+	font-size: 80%;
 }
 
 .folder {
-   height: 15px;
+	height: 15px;
 }
 
 .path {
-   > label, > .pathSelection {
-      display: flex;
 
-      > span:nth-child(2) {
-         cursor: pointer;
-         display: flex;
-         align-items: center;
-         width: 100%;
+	>label,
+	>.pathSelection {
+		display: flex;
 
-      }
+		>span:nth-child(2) {
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			width: 100%;
 
-      .folderList {
-         height: 100px;
-         overflow: auto;
-      }
+		}
 
-      svg {
-         margin: 0px 10px 0px 5px;
-      }
-   }
+		.folderList {
+			height: 100px;
+			overflow: auto;
+		}
 
-   div {
-      width: 100%;
-      align-items: center;
+		svg {
+			margin: 0px 10px 0px 5px;
+		}
+	}
 
-      &.buttons {
-         display: flex
-      }
-   }
+	div {
+		width: 100%;
+		align-items: center;
+
+		&.buttons {
+			display: flex
+		}
+	}
 }
 
 .selectableFolder {
-   &:hover {
-      border: solid black 1px;
-   }
+	cursor: pointer;
+	display: flex;
+	align-items: center;
 
-   &.selected {
-      background-color: blue;
-      color: white;
-   }
+	&:hover {
+		border: solid black 1px;
+	}
 
-   cursor: pointer;
-   display: flex;
-   align-items: center;
+	&.selected {
+		background-color: blue;
+		color: white;
+	}
 }
 
 .subFolderList {
-   padding-left: 10px;
+	padding-left: 10px;
 
-   .newFolder {
-      display: flex;
-      flex-direction: row;
-   }
+	.newFolder {
+		display: flex;
+		flex-direction: row;
+	}
 }
 
 .newFolderButton {
-   display: flex;
-   align-items: center;
-   font-size: 75%;
+	display: flex;
+	align-items: center;
+	font-size: 75%;
 }

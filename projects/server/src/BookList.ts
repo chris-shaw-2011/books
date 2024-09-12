@@ -1,8 +1,8 @@
 import chokidar from "chokidar"
 import fs from "fs"
 import path from "path"
-import db from "./Database"
-import ServerDirectory from "./ServerDirectory"
+import db from "./Database.js"
+import ServerDirectory from "./ServerDirectory.js"
 import { Mutex, Semaphore } from "async-mutex"
 
 class BookList {
@@ -102,9 +102,9 @@ class BookList {
 
 		const dir = this.books.findClosestDirectory(addPath)
 
-		await dir?.loadBooks(path.parse(addPath))
+		await dir.loadBooks(path.parse(addPath))
 
-		dir?.sortItems(true)
+		dir.sortItems(true)
 
 		this.mutex.release()
 	}
@@ -112,7 +112,7 @@ class BookList {
 	public findBookByPath(bookPath: string) {
 		const dir = this.books.findClosestDirectory(bookPath)
 
-		return dir?.items.find(i => i.fullPath === bookPath)
+		return dir.items.find(i => i.fullPath === bookPath)
 	}
 
 	public async allBooks() {

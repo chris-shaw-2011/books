@@ -1,6 +1,6 @@
-import { ConverterStatus } from "../ConverterStatus"
-import ApiMessage from "./ApiMessage"
-import ApiMessageType from "./ApiMessageType"
+import { ConverterStatus } from "../ConverterStatus.js"
+import ApiMessage from "./ApiMessage.js"
+import ApiMessageType from "./ApiMessageType.js"
 
 export default class ConversionUpdateRequest extends ApiMessage {
 	knownPercent = 0

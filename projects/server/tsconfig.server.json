@@ -1,15 +1,15 @@
 {
 	"compilerOptions": {
 		"outDir": "../../bin/server",
-		"resolveJsonModule": true,
 		"paths": {
 			"@books/shared": [
 				"../shared/src/*"
 			],
-			"@books/*": [
-				"../*/src"
-			],
-		}
+		},
+		"moduleResolution": "Node16",
+		"module": "Node16",
+		"strict": true,
+		"rootDir": "./src"
 	},
 	"extends": "../../tsconfig.base.json",
 	"include": [

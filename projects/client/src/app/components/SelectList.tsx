@@ -1,7 +1,7 @@
 import { type ReactNode, useState } from "react"
 import styles from "./SelectList.module.scss"
 import classnames from "classnames"
-import AnimateHeight from "react-animate-height"
+import AnimateHeight, { type Height } from "react-animate-height"
 
 interface Props {
 	className?: string,
@@ -11,9 +11,17 @@ interface Props {
 
 const SelectList = (props: Props) => {
 	const [hidden, setHidden] = useState(!props.open ? styles.hidden : "")
+	const onHeightAnimationEnd = (newHeight: Height) => {
+		if (newHeight) {
+			setHidden("")
+		}
+		else {
+			setHidden(styles.hidden)
+		}
+	}
 
 	return (
-		<AnimateHeight duration={250} height={props.open ? "auto" : 0} className={classnames(styles.selectList, props.className, hidden)} onHeightAnimationEnd={newHeight => newHeight ? setHidden("") : setHidden(styles.hidden)}>
+		<AnimateHeight duration={250} height={props.open ? "auto" : 0} className={classnames(styles.selectList, props.className, hidden)} onHeightAnimationEnd={onHeightAnimationEnd}>
 			{props.children}
 		</AnimateHeight>
 	)

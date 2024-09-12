@@ -1,7 +1,7 @@
-import BookStatuses from "../BookStatuses"
-import Directory from "../Directory"
-import ApiMessage from "./ApiMessage"
-import ApiMessageType from "./ApiMessageType"
+import BookStatuses from "../BookStatuses.js"
+import Directory from "../Directory.js"
+import ApiMessage from "./ApiMessage.js"
+import ApiMessageType from "./ApiMessageType.js"
 
 export default class Books extends ApiMessage {
 	directory = new Directory()

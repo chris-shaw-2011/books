@@ -81,8 +81,8 @@ interface FolderListProps {
 }
 
 const FolderList = ({ directory, selectedFolder, folderClicked, className, newFolderName, setNewFolderName }: FolderListProps) => {
-	const open = selectedFolder.indexOf(directory.folderPath) === 0
-	const subDirs = directory.items.filter(i => i.type === ItemType.directory)
+	const open = selectedFolder.startsWith(directory.folderPath)
+	const subDirs = directory.items.filter((i): i is Directory => i.type === ItemType.directory)
 	const addingFolder = open && newFolderName !== undefined && directory.folderPath === selectedFolder
 
 	return (
@@ -98,9 +98,9 @@ const FolderList = ({ directory, selectedFolder, folderClicked, className, newFo
 				{addingFolder &&
 					<div className={styles.newFolder}>
 						<FolderClosed className={styles.folder} />
-						<Textbox autoFocus={true} placeholder="New Folder Name" onChange={e => setNewFolderName(e.target.value)} value={newFolderName} />
+						<Textbox autoFocus={true} placeholder="New Folder Name" onChange={e => { setNewFolderName(e.target.value) }} value={newFolderName} />
 					</div>}
-				{subDirs.map(i => <FolderList key={i.id} directory={i as Directory} selectedFolder={selectedFolder} folderClicked={folderClicked} newFolderName={newFolderName} setNewFolderName={setNewFolderName} />)}
+				{subDirs.map(i => <FolderList key={i.id} directory={i} selectedFolder={selectedFolder} folderClicked={folderClicked} newFolderName={newFolderName} setNewFolderName={setNewFolderName} />)}
 			</div>}
 		</div>
 	)
@@ -123,10 +123,10 @@ const FolderSelection = (props: FolderSelectionProps) => {
 			<FolderList {...props} className={styles.folderList} newFolderName={newFolderName} setNewFolderName={setNewFolderName} />
 			{newFolderName !== undefined ?
 				<div className={styles.buttons}>
-					<CancelButton className={styles.newFolderButton} onClick={() => setNewFolderName(undefined)} />
+					<CancelButton className={styles.newFolderButton} onClick={() => { setNewFolderName(undefined) }} />
 					<OkButton className={styles.newFolderButton} value="Create Folder" disabled={!newFolderName} onClick={() => void addNewFolder()} type="button" />
 				</div> :
-				<Button type="button" className={styles.newFolderButton} onClick={() => setNewFolderName("")}><FolderOpen className={styles.folder} /> New Folder</Button>}
+				<Button type="button" className={styles.newFolderButton} onClick={() => { setNewFolderName("") }}><FolderOpen className={styles.folder} /> New Folder</Button>}
 		</div>
 	)
 }
@@ -159,7 +159,7 @@ const BookLink = forwardRef<HTMLDivElement, BookProps>((props: BookProps, ref) =
 			context.logOut("Something unexpected happened")
 		}
 	}
-	const bookClicked = (e: React.MouseEvent<HTMLAnchorElement, MouseEvent>) => {
+	const bookClicked = (e: React.MouseEvent<HTMLAnchorElement>) => {
 		e.stopPropagation()
 
 		if (editing) {
@@ -181,7 +181,7 @@ const BookLink = forwardRef<HTMLDivElement, BookProps>((props: BookProps, ref) =
 			newBook.comment = newDescription
 			newBook.author = newAuthor
 			newBook.narrator = newNarrator
-			newBook.folderPath = newPath || props.book.folderPath
+			newBook.folderPath = newPath ?? props.book.folderPath
 
 			setEditingState({ status: EditStatus.Saving })
 
@@ -238,14 +238,14 @@ const BookLink = forwardRef<HTMLDivElement, BookProps>((props: BookProps, ref) =
 	}, [showPathOptions])
 
 	return (
-		<div className={classnames({ [styles.editing]: editing }, props.className)} style={props.style} ref={ref} onClick={e => e.stopPropagation()}>
+		<div className={classnames({ [styles.editing]: editing }, props.className)} style={props.style} ref={ref} onClick={e => { e.stopPropagation() }}>
 			<form onSubmit={e => void handleSubmit(e)}>
 				<Inner className={classnames(itemStyles.inner, styles.inner)} href={props.book.download} onClick={bookClicked} editing={editing}>
 					<img src={props.book.cover} alt="cover" />
 					<div>
 						{alertMessage ? <Alert variant="danger">{alertMessage}</Alert> : null}
 						<div className={classnames(styles.title, styles.editable)}>
-							<EditableTextbox editing={editing} defaultValue={props.book.name} placeholder="Title" onChange={e => setNewTitle(e.target.value)} searchWords={props.searchWords} />
+							<EditableTextbox editing={editing} defaultValue={props.book.name} placeholder="Title" onChange={e => { setNewTitle(e.target.value) }} searchWords={props.searchWords} />
 							{!editing && context.token.user.isAdmin ? <Edit onClick={e => {
 								e.stopPropagation()
 								e.preventDefault()
@@ -253,29 +253,29 @@ const BookLink = forwardRef<HTMLDivElement, BookProps>((props: BookProps, ref) =
 							}} /> : null}
 						</div>
 						<div className={classnames(styles.description, styles.editable)}>
-							{editing ? <TextareaAutosize defaultValue={props.book.comment} minRows={3} placeholder="Description" required={true} onChange={e => setNewDescription(e.target.value)} /> : <Highlighter searchWords={props.searchWords} textToHighlight={props.book.comment} sanitize={sanitize} />}
+							{editing ? <TextareaAutosize defaultValue={props.book.comment} minRows={3} placeholder="Description" required={true} onChange={e => { setNewDescription(e.target.value) }} /> : <Highlighter searchWords={props.searchWords} textToHighlight={props.book.comment} sanitize={sanitize} />}
 						</div>
 						<div className={classnames(styles.author, styles.editable)}>
-							<EditableTextboxField editing={editing} label="Author" defaultValue={props.book.author} placeholder="Author" onChange={e => setNewAuthor(e.target.value)} searchWords={props.searchWords} />,&nbsp;
-							<EditableTextbox editing={editing} defaultValue={props.book.year} placeholder="Year" type="number" min="1700" max={new Date().getFullYear()} size={4} className={styles.year} onChange={e => setNewYear(parseInt(e.target.value, 10))} searchWords={props.searchWords} />
+							<EditableTextboxField editing={editing} label="Author" defaultValue={props.book.author} placeholder="Author" onChange={e => { setNewAuthor(e.target.value) }} searchWords={props.searchWords} />,&nbsp;
+							<EditableTextbox editing={editing} defaultValue={props.book.year} placeholder="Year" type="number" min="1700" max={new Date().getFullYear()} size={4} className={styles.year} onChange={e => { setNewYear(parseInt(e.target.value, 10)) }} searchWords={props.searchWords} />
 						</div>
 						<div className={classnames(styles.narrator, styles.editable)}>
-							<EditableTextboxField editing={editing} label="Narrator" defaultValue={props.book.narrator} placeholder="Narrator" onChange={e => setNewNarrator(e.target.value)} searchWords={props.searchWords} />
+							<EditableTextboxField editing={editing} label="Narrator" defaultValue={props.book.narrator} placeholder="Narrator" onChange={e => { setNewNarrator(e.target.value) }} searchWords={props.searchWords} />
 						</div>
 						<div className={classnames(styles.genre, styles.editable)}>
-							<EditableTextboxField editing={editing} label="Genre" defaultValue={props.book.genre} placeholder="Genre" onChange={e => setNewGenre(e.target.value)} searchWords={props.searchWords} />
+							<EditableTextboxField editing={editing} label="Genre" defaultValue={props.book.genre} placeholder="Genre" onChange={e => { setNewGenre(e.target.value) }} searchWords={props.searchWords} />
 						</div>
 						{editing && <div className={classnames(styles.path, styles.editable)}>
-							<label onClick={() => setShowPathOptions(p => !p)}>
+							<label onClick={() => { setShowPathOptions(p => !p) }}>
 								<span>Path</span>
 								<span>
 									{!showPathOptions ? <FolderClosed className={styles.folder} /> : <FolderOpen className={styles.folder} />}
-									<span>{newPath || props.book.folderPath}</span>
+									<span>{newPath ?? props.book.folderPath}</span>
 								</span>
 							</label>
 							{showPathOptions && <div className={styles.pathSelection}>
 								<span>&nbsp;</span>
-								<FolderSelection directory={context.rootDirectory} selectedFolder={newPath || props.book.folderPath} folderClicked={setNewPath} addNewFolder={addNewFolder} />
+								<FolderSelection directory={context.rootDirectory} selectedFolder={newPath ?? props.book.folderPath} folderClicked={setNewPath} addNewFolder={addNewFolder} />
 							</div>}
 						</div>}
 						<div className={styles.size}>
@@ -298,7 +298,7 @@ const BookLink = forwardRef<HTMLDivElement, BookProps>((props: BookProps, ref) =
 				</Inner>
 			</form>
 			{!changingStatus && !editing ?
-				<DropdownButton title={props.book.status} id={props.book.id} onClick={e => e.stopPropagation()}>
+				<DropdownButton title={props.book.status} id={props.book.id} onClick={e => { e.stopPropagation() }}>
 					{
 						Object.values(Status).map(i => {
 							if (i !== props.book.status) {

@@ -1,8 +1,8 @@
 import fs from "fs"
 import path from "path"
-import ServerBook from "./ServerBook"
+import ServerBook from "./ServerBook.js"
 import { Directory } from "@books/shared"
-import db from "./Database"
+import db from "./Database.js"
 
 export default class ServerDirectory extends Directory {
 
@@ -52,28 +52,26 @@ export default class ServerDirectory extends Directory {
 		const bookFullPath = path.join(fullPath.dir, fullPath.base)
 		let closestDir = this.findClosestDirectory(fullPath.dir)
 
-		if (closestDir) {
-			for (let index = 0; index < closestDir.items.length; ++index) {
-				const item = closestDir.items[index]
+		for (let index = 0; index < closestDir.items.length; ++index) {
+			const item = closestDir.items[index]
 
-				if (item.fullPath === bookFullPath) {
-					// eslint-disable-next-line no-console
-					console.log(`Removing book ${item.fullPath}`)
-
-					closestDir.items.splice(index, 1)
-
-					break
-				}
-			}
-
-			while (closestDir && closestDir.parent && closestDir.items.length === 0) {
+			if (item.fullPath === bookFullPath) {
 				// eslint-disable-next-line no-console
-				console.log(`Removing directory ${closestDir.fullPath}`)
+				console.log(`Removing book ${item.fullPath}`)
 
-				closestDir.parent.items.splice(closestDir.parent.items.indexOf(closestDir), 1)
+				closestDir.items.splice(index, 1)
 
-				closestDir = closestDir.parent
+				break
 			}
+		}
+
+		while (closestDir.parent && closestDir.items.length === 0) {
+			// eslint-disable-next-line no-console
+			console.log(`Removing directory ${closestDir.fullPath}`)
+
+			closestDir.parent.items.splice(closestDir.parent.items.indexOf(closestDir), 1)
+
+			closestDir = closestDir.parent
 		}
 	}
 

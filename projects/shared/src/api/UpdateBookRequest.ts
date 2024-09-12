@@ -1,7 +1,7 @@
-import Book from "../Book"
-import ApiMessage from "./ApiMessage"
-import Token from "./Token"
-import ApiMessageType from "./ApiMessageType"
+import Book from "../Book.js"
+import ApiMessage from "./ApiMessage.js"
+import Token from "./Token.js"
+import ApiMessageType from "./ApiMessageType.js"
 
 export default class UpdateBookRequest extends ApiMessage {
 	token = new Token()

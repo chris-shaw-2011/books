@@ -1,6 +1,6 @@
-import ApiMessage from "./ApiMessage"
-import Books from "./Books"
-import ApiMessageType from "./ApiMessageType"
+import ApiMessage from "./ApiMessage.js"
+import Books from "./Books.js"
+import ApiMessageType from "./ApiMessageType.js"
 
 export default class UpdateBookResponse extends ApiMessage {
 	message = ""

@@ -1,13 +1,13 @@
-import { Status } from "./Book"
+import { Status } from "./Book.js"
 
 export default class BookWithStatus {
-   dateStatusSet = 0
-   status = Status.Unread
+	dateStatusSet = 0
+	status: Status = Status.Unread
 
-   constructor(json?: BookWithStatus) {
-      if (json) {
-         this.status = json.status
-         this.dateStatusSet = json.dateStatusSet
-      }
-   }
+	constructor(json?: Partial<BookWithStatus>) {
+		if (json) {
+			this.status = json.status ?? Status.Unread
+			this.dateStatusSet = json.dateStatusSet ?? 0  // Provide default value for undefined
+		}
+	}
 }

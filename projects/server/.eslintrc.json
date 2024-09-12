@@ -1,9 +1,0 @@
-{
-	"root": false,
-	"parserOptions": {
-		"project": [
-			"tsconfig.json",
-			"../shared/tsconfig.json"
-		]
-	}
-}

@@ -14,7 +14,7 @@ import classNames from "classnames"
 interface Props {
 	searchWords: { words: string[] },
 	onPasswordChanged: (token: Token) => void,
-	logOut: (message?: string | undefined) => void,
+	logOut: (message?: string) => void,
 	token: Token,
 	visibleComponent: VisibleComponent,
 	setVisibleComponent: React.Dispatch<React.SetStateAction<VisibleComponent>>,
@@ -26,7 +26,7 @@ interface TabState {
 }
 
 function isMatch(searchWords: string[], ...checkMatch: string[]) {
-	return !searchWords.length || searchWords.every(s => checkMatch.some(m => m.indexOf(s) !== -1))
+	return !searchWords.length || searchWords.every(s => checkMatch.some(m => m.includes(s)))
 }
 
 function filter(dir: Directory, status?: Status, searchWords?: string[]) {
@@ -76,7 +76,7 @@ const Authenticated = (props: Props) => {
 	const statusChanged = useCallback((books: Books) => {
 		setState(books.directory)
 	}, [])
-	const viewBooks = () => setVisibleComponent(VisibleComponent.Books)
+	const viewBooks = () => { setVisibleComponent(VisibleComponent.Books) }
 	const setSelectedTab = (tab: Status) => {
 		setTabsState(prev => {
 			return {
@@ -125,7 +125,7 @@ const Authenticated = (props: Props) => {
 				<div className={Styles.tabsContainer}>
 					<div className={Styles.tabBar}>
 						{tabsMap.map(t => {
-							return <div key={`${t.status}-tab`} onClick={() => setSelectedTab(t.status)} className={classNames({ [Styles.selected]: tabsState.selectedTab === t.status })}>{t.status} ({t.filtered.bookCount()})</div>
+							return <div key={`${t.status}-tab`} onClick={() => { setSelectedTab(t.status) }} className={classNames({ [Styles.selected]: tabsState.selectedTab === t.status })}>{t.status} ({t.filtered.bookCount()})</div>
 						})}
 					</div>
 					{tabsMap.filter(t => tabsState.mountedTabs.includes(t.status)).map(t => {
@@ -142,7 +142,7 @@ const Authenticated = (props: Props) => {
 								viewBooks()
 							}} onClose={viewBooks} {...context} />
 						case VisibleComponent.Settings:
-							return <EditSettings onSettingsSaved={viewBooks} onClose={state ? viewBooks : undefined} />
+							return <EditSettings onSettingsSaved={viewBooks} onClose={viewBooks} />
 						case VisibleComponent.Users:
 							return <UserList onClose={viewBooks} />
 						case VisibleComponent.Upload:

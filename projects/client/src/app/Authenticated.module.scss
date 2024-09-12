@@ -1,29 +1,31 @@
 .tabsContainer {
-   height: 100%;
-   background-color: white;
-   display: flex;
-   flex-direction: column;
-   flex-shrink: 1;
+	height: 100%;
+	background-color: white;
+	display: flex;
+	flex-direction: column;
+	flex-shrink: 1;
 }
-.tabBar {
-   display: flex;
-   background-color: #fafafa;
-   border-bottom: 1px solid #dee2e6;
-   flex-shrink: 0;
-   > div {
-      border-top-left-radius: .25rem;
-      border-top-right-radius: .25rem;
-      padding: .5rem 1rem;
-      cursor: pointer;
-      color: #007bff;
-      border: 1px solid transparent;
-      flex-shrink: 0;
 
-      &.selected {
-         background-color: white;
-         color: #495057;
-         border-color: #dee2e6 #dee2e6 #fff;
-         margin-bottom: -1px;
-      }
-   }
+.tabBar {
+	display: flex;
+	background-color: #fafafa;
+	border-bottom: 1px solid #dee2e6;
+	flex-shrink: 0;
+
+	>div {
+		border-top-left-radius: .25rem;
+		border-top-right-radius: .25rem;
+		padding: .5rem 1rem;
+		cursor: pointer;
+		color: #007bff;
+		border: 1px solid transparent;
+		flex-shrink: 0;
+
+		&.selected {
+			background-color: white;
+			color: #495057;
+			border-color: #dee2e6 #dee2e6 #fff;
+			margin-bottom: -1px;
+		}
+	}
 }

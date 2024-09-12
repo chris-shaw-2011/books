@@ -12,19 +12,17 @@ import { pipeline } from "stream"
 import url from "url"
 import { v4 as uuid } from "uuid"
 import * as shared from "@books/shared"
-import bookList from "./BookList"
-import Converter from "./Converter"
-import db from "./Database"
-import ServerToken from "./ServerToken"
+import bookList from "./BookList.js"
+import Converter from "./Converter.js"
+import db from "./Database.js"
+import ServerToken from "./ServerToken.js"
 import NodeID3 from "node-id3"
 import sanitize from "sanitize-filename"
-import ServerBook from "./ServerBook"
+import ServerBook from "./ServerBook.js"
 import aacWriter from "write-aac-metadata"
-import { fileURLToPath } from "url"
-import ServerUser from "./ServerUser"
+import ServerUser from "./ServerUser.js"
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const __dirname = import.meta.dirname
 
 const pump = util.promisify(pipeline)
 const authorizationExpiration = new Map<string, dayjs.Dayjs>()
@@ -43,9 +41,9 @@ const conversions = new Map<string, Converter>()
 const conversionMutex = new Mutex()
 const server = fastify({ logger: true, bodyLimit: 10_000_000_000 })
 const getAllUsers = async (message?: string) => {
-	const users = await db.all("SELECT id, email, isAdmin, lastLogIn FROM user")
+	const users: shared.User[] = await db.all("SELECT id, email, isAdmin, lastLogIn FROM user")
 
-	return new shared.UserListResponse({ users, type: shared.ApiMessageType.UserListResponse, message: message || "" })
+	return new shared.UserListResponse({ users, type: shared.ApiMessageType.UserListResponse, message: message ?? "" })
 }
 const validatePassword = async (email: string, password: string, reply: FastifyReply) => {
 	const dbUser = await db.get<ServerUser>("SELECT id, email, hash, isAdmin, lastLogIn FROM user WHERE email = ?", email)
@@ -73,8 +71,8 @@ const passwordHash = async (password: string) => {
 }
 
 const requestToken = (request: FastifyRequest) => {
-	const cookies = cookie.parse(request.headers.cookie || "") || {}
-	const loginCookie = tryParse<shared.Token>(cookies["loginCookie"])
+	const cookies = cookie.parse(request.headers.cookie ?? "")
+	const loginCookie = tryParse<shared.Token>(cookies.loginCookie)
 	const tokenJson = cookies.loginCookie ? new ServerToken(loginCookie) : undefined
 
 	return new ServerToken(tokenJson)
@@ -117,9 +115,8 @@ const validateAdminRequest = (request: FastifyRequest, reply: FastifyReply, done
 }
 const statusesForUser = async (userId: string) => {
 	const qr = (await db.get<{ bookStatuses: string }>("SELECT bookStatuses FROM User WHERE id = ?", userId))
-	const json = tryParse<shared.BookStatuses>(qr ? qr.bookStatuses : "")
 
-	return new shared.BookStatuses(json)
+	return shared.BookStatuses.fromJSON(qr?.bookStatuses)
 }
 
 void server.register(fastifyMultipart, {
@@ -300,10 +297,10 @@ server.post<{ Body: shared.ChangeBookStatusRequest }>("/changeBookStatus", { pre
 		statuses = await statusesForUser(statusRequest.token.user.id)
 
 		if (statusRequest.status !== shared.Status.Unread) {
-			statuses[statusRequest.bookId] = new shared.BookWithStatus({ status: statusRequest.status, dateStatusSet: new Date().getTime() })
+			statuses.set(statusRequest.bookId, new shared.BookWithStatus({ status: statusRequest.status, dateStatusSet: new Date().getTime() }))
 		}
 		else {
-			delete statuses[statusRequest.bookId]
+			statuses.delete(statusRequest.bookId)
 		}
 
 		await db.run("UPDATE User SET bookStatuses = ? WHERE id = ?", JSON.stringify(statuses), statusRequest.token.user.id)
@@ -360,10 +357,6 @@ server.post<{ Body: shared.ConversionUpdateRequest }>("/conversionUpdate", { pre
 
 		if (conversion.status === shared.ConverterStatus.Complete) {
 			book = bookList.findBookByPath(conversion.convertedFilePath) as ServerBook
-
-			if (!book) {
-				response.errorMessage = `Couldn't find book at path ${conversion.convertedFilePath}`
-			}
 		}
 	}
 	else {
@@ -440,7 +433,7 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 			const foundBook = bookList.findBookByPath(newPath)
 
 			if (foundBook) {
-				await db.run("UPDATE user SET bookStatuses = REPLACE(bookStatuses, ?, ?) WHERE bookStatuses LIKE ?", `${JSON.stringify(book.id)}`, `${JSON.stringify(foundBook.id)}`, `%${JSON.stringify(book.id)}%`)
+				await db.run("UPDATE user SET bookStatuses = REPLACE(bookStatuses, ?, ?) WHERE bookStatuses LIKE ?", JSON.stringify(book.id), JSON.stringify(foundBook.id), `%${JSON.stringify(book.id)}%`)
 			}
 		}
 		else {

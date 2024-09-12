@@ -20,12 +20,12 @@ interface Props {
 
 const Navigation = (props: Props) => {
 	const [open, setOpen] = useState(false)
-	const openClassName: { [key: string]: boolean } = {}
+	const openClassName: Record<string, boolean> = {}
 	const ref = useOnclickOutside(() => {
 		setOpen(false)
 	}, { disabled: !open })
 
-	const setVisibleComponent = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, component: VisibleComponent) => {
+	const setVisibleComponent = (e: React.MouseEvent<HTMLDivElement>, component: VisibleComponent) => {
 		e.preventDefault()
 		e.stopPropagation()
 		setOpen(false)
@@ -35,18 +35,18 @@ const Navigation = (props: Props) => {
 	openClassName[styles.open] = open
 
 	return (
-		<div className={classnames(styles.downArrow, openClassName)} onClick={() => setOpen(s => !s)} ref={ref}>
+		<div className={classnames(styles.downArrow, openClassName)} onClick={() => { setOpen(s => !s) }} ref={ref}>
 			<DownArrow />
 			<SelectList className={styles.navlist} open={open}>
-				<SelectListItem onClick={e => setVisibleComponent(e, VisibleComponent.Upload)}><Upload /> Upload Books</SelectListItem>
+				<SelectListItem onClick={e => { setVisibleComponent(e, VisibleComponent.Upload) }}><Upload /> Upload Books</SelectListItem>
 				{props.token.user.isAdmin &&
 					<>
-						<SelectListItem onClick={e => setVisibleComponent(e, VisibleComponent.Users)}><Users /> Manage Users</SelectListItem>
-						<SelectListItem onClick={e => setVisibleComponent(e, VisibleComponent.Settings)}><Gear /> Settings</SelectListItem>
+						<SelectListItem onClick={e => { setVisibleComponent(e, VisibleComponent.Users) }}><Users /> Manage Users</SelectListItem>
+						<SelectListItem onClick={e => { setVisibleComponent(e, VisibleComponent.Settings) }}><Gear /> Settings</SelectListItem>
 					</>}
 				<hr />
-				<SelectListItem onClick={e => setVisibleComponent(e, VisibleComponent.ChangePassword)}><Lock /> Change Password</SelectListItem>
-				<SelectListItem onClick={() => props.logOut()}><LogOut /> Log Out</SelectListItem>
+				<SelectListItem onClick={e => { setVisibleComponent(e, VisibleComponent.ChangePassword) }}><Lock /> Change Password</SelectListItem>
+				<SelectListItem onClick={() => { props.logOut() }}><LogOut /> Log Out</SelectListItem>
 			</SelectList>
 		</div>
 	)

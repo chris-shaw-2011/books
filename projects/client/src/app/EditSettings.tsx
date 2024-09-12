@@ -95,16 +95,16 @@ const EditSettings = (props: Props) => {
 						<Modal.Body>
 							{message ? <Alert variant="danger">{message}</Alert> : null}
 							<TextboxField label="Base Books Path" type="text" placeholder="Enter Base Path" required={true} defaultValue={settings.baseBooksPath}
-								onChange={e => onChange({ baseBooksPath: e.currentTarget.value || "" })}
+								onChange={e => { onChange({ baseBooksPath: e.currentTarget.value || "" }) }}
 							/>
 							<TextboxField label="Upload Location" type="text" placeholder="Enter Upload Location" required={true} defaultValue={settings.uploadLocation}
-								onChange={e => onChange({ uploadLocation: e.currentTarget.value || "" })}
+								onChange={e => { onChange({ uploadLocation: e.currentTarget.value || "" }) }}
 							/>
 							<TextboxField label="Invite Email Address" type="email" placeholder="Enter Invite Email Address" required={true} defaultValue={settings.inviteEmail}
-								onChange={e => onChange({ inviteEmail: e.currentTarget.value || "" })}
+								onChange={e => { onChange({ inviteEmail: e.currentTarget.value || "" }) }}
 							/>
 							<TextboxField label="Invite Email Address" type="password" placeholder="Enter Invite Email Password" required={true} defaultValue={settings.inviteEmailPassword}
-								onChange={e => onChange({ inviteEmailPassword: e.currentTarget.value || "" })}
+								onChange={e => { onChange({ inviteEmailPassword: e.currentTarget.value || "" }) }}
 							/>
 						</Modal.Body>
 						<Modal.Footer>

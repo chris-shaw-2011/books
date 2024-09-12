@@ -1,9 +1,9 @@
-import User from "../User"
-import ApiMessage from "./ApiMessage"
-import ApiMessageType from "./ApiMessageType"
+import User from "../User.js"
+import ApiMessage from "./ApiMessage.js"
+import ApiMessageType from "./ApiMessageType.js"
 
 export default class UserListResponse extends ApiMessage {
-	users = new Array<User>()
+	users: User[] = []
 	message = ""
 
 	constructor(json?: UserListResponse) {

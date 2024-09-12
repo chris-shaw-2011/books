@@ -1,7 +1,7 @@
 import { Book, Status } from "@books/shared"
 import * as mm from "music-metadata"
 import fs from "fs"
-import ServerDirectory from "./ServerDirectory"
+import ServerDirectory from "./ServerDirectory.js"
 import path from "path"
 
 export default class ServerBook extends Book {
@@ -40,21 +40,16 @@ export default class ServerBook extends Book {
 		const tags = metadata.common
 		const stats = (await fs.promises.stat(fullPath))
 
-		if (tags) {
-			this.name = tags.title || fileName
-			this.author = tags.artist || ""
-			this.year = tags.year
-			this.comment = tags.comment && tags.comment.length ? tags.comment[0] : ""
-			this.duration = metadata.format.duration
-			this.narrator = tags.composer?.length ? tags.composer[0] : ""
-			this.genre = tags.genre?.length ? tags.genre[0] : ""
+		this.name = tags.title ?? fileName
+		this.author = tags.artist ?? ""
+		this.year = tags.year
+		this.comment = tags.comment?.length ? tags.comment[0].text ?? "" : ""
+		this.duration = metadata.format.duration
+		this.narrator = tags.composer?.length ? tags.composer[0] : ""
+		this.genre = tags.genre?.length ? tags.genre[0] : ""
 
-			if (tags.picture && tags.picture.length && !fs.existsSync(this.photoPath)) {
-				fs.writeFileSync(this.photoPath, new Uint8Array(tags.picture[0].data))
-			}
-		}
-		else {
-			this.name = fileName
+		if (tags.picture?.length && !fs.existsSync(this.photoPath)) {
+			fs.writeFileSync(this.photoPath, new Uint8Array(tags.picture[0].data))
 		}
 
 		this.id = bookUri

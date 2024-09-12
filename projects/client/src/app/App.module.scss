@@ -1,35 +1,35 @@
 .app {
-   height: 100%;
-   display: flex;
-   flex-direction: column
+	height: 100%;
+	display: flex;
+	flex-direction: column
 }
 
 .mainContent {
-   background-color: #fafafa;
-   overflow: hidden;
-   position: relative;
-   flex-grow: 1;
-   flex-shrink: 1;
-   display: flex;
-   flex-direction: column
+	background-color: #fafafa;
+	overflow: hidden;
+	position: relative;
+	flex-grow: 1;
+	flex-shrink: 1;
+	display: flex;
+	flex-direction: column
 }
 
 .spacer {
-   flex-grow: 1;
-   flex-shrink: 1;
+	flex-grow: 1;
+	flex-shrink: 1;
 }
 
 .navbar {
-   background-color: #343a40;
-   color: #fff;
-   padding: .5rem 1rem;
-   display: flex;
-   align-items: center;
-   flex-shrink: 0;
+	background-color: #343a40;
+	color: #fff;
+	padding: .5rem 1rem;
+	display: flex;
+	align-items: center;
+	flex-shrink: 0;
 
-   > h1 {
-      padding: 0 0 0 5px;
-      font-size: 1.25rem;
-      margin: 0;
-   }
+	>h1 {
+		padding: 0 0 0 5px;
+		font-size: 1.25rem;
+		margin: 0;
+	}
 }

@@ -1,16 +1,15 @@
 import { Mutex } from "async-mutex"
 import { ChildProcess, exec } from "child_process"
 import { EventEmitter } from "events"
-import ffmpegPath from "ffmpeg-static"
-import { path as ffprobePath } from "ffprobe-static"
+import { ffprobePath, ffmpegPath } from "ffmpeg-ffprobe-static"
 import fs from "fs"
-import * as mm from "music-metadata"
+import { parseFile } from "music-metadata"
 import path from "path"
 import sanitize from "sanitize-filename"
 import unzipper from "unzipper"
 import { v4 as uuid } from "uuid"
 import { ConverterStatus } from "@books/shared"
-import bookList from "./BookList"
+import bookList from "./BookList.js"
 
 function toString(data: unknown) {
 	let ret = ""
@@ -74,7 +73,7 @@ export default class Converter {
 				this.eventEmitter.once("update", resolve)
 			})
 
-			return Promise.race([promise, new Promise<number | void>(resolve => {
+			return Promise.race([promise, new Promise<void>(resolve => {
 				setTimeout(() => {
 					this.eventEmitter.removeListener("update", resolve)
 					resolve()
@@ -87,14 +86,14 @@ export default class Converter {
 		const str = data
 
 		if (this.totalDuration === 0) {
-			const matches = str.match(/Duration: ([\d]{1,3}):([\d]{1,2})(?::([\d]{1,2}))?.*, start/)
+			const matches = /Duration: ([\d]{1,3}):([\d]{1,2})(?::([\d]{1,2}))?.*, start/.exec(str)
 
 			if (matches) {
 				this.totalDuration = this.durationToSeconds(matches)
 			}
 		}
 		else {
-			const matches = str.match(/frame=.* time=([\d]{1,3}):([\d]{1,2})(?::([\d]{1,2}))?.* bitrate=/)
+			const matches = /frame=.* time=([\d]{1,3}):([\d]{1,2})(?::([\d]{1,2}))?.* bitrate=/.exec(str)
 
 			if (matches) {
 				const completeDuration = this.durationToSeconds(matches)
@@ -215,7 +214,7 @@ export default class Converter {
 			const opt = { cwd: currPath, pipeStdio: true, metaDataOverrides: { title: outputName, coverPicturePath: bestCover } }
 			const args = ["-i"]
 			const metadata = opt.metaDataOverrides
-			const coverPicturePath = metadata && metadata.coverPicturePath ? metadata.coverPicturePath : ""
+			const coverPicturePath = metadata.coverPicturePath ? metadata.coverPicturePath : ""
 			const outputFilePath = path.join(currPath, outputFileName)
 
 			if (mp3s.length > 1) {
@@ -237,21 +236,19 @@ export default class Converter {
 
 			args.push("-c", "copy", "-id3v2_version", "3")
 
-			if (metadata) {
-				/*addMetaData(args, "album", metadata.album)
-				addMetaData(args, "artist", metadata.artist)
-				addMetaData(args, "album_artist", metadata.albumArtist)
-				addMetaData(args, "grouping", metadata.grouping)
-				addMetaData(args, "composer", metadata.composer)
-				addMetaData(args, "date", metadata.year)
-				addMetaData(args, "track", metadata.trackNumber)
-				addMetaData(args, "comment", metadata.comment)
-				addMetaData(args, "genre", metadata.genre)
-				addMetaData(args, "copyright", metadata.copyright)
-				addMetaData(args, "description", metadata.description)
-				addMetaData(args, "synopsis", metadata.synopsis)*/
-				addMetaData(args, "title", metadata.title)
-			}
+			/*addMetaData(args, "album", metadata.album)
+			addMetaData(args, "artist", metadata.artist)
+			addMetaData(args, "album_artist", metadata.albumArtist)
+			addMetaData(args, "grouping", metadata.grouping)
+			addMetaData(args, "composer", metadata.composer)
+			addMetaData(args, "date", metadata.year)
+			addMetaData(args, "track", metadata.trackNumber)
+			addMetaData(args, "comment", metadata.comment)
+			addMetaData(args, "genre", metadata.genre)
+			addMetaData(args, "copyright", metadata.copyright)
+			addMetaData(args, "description", metadata.description)
+			addMetaData(args, "synopsis", metadata.synopsis)*/
+			addMetaData(args, "title", metadata.title)
 
 			args.push(`"${outputFilePath}"`)
 
@@ -259,10 +256,10 @@ export default class Converter {
 				return false
 			}
 
-			let finalFilePath = path.join(baseFilePath, outputName + ".mp3")
+			let finalFilePath = path.join(baseFilePath, `${outputName}.mp3`)
 
 			if (fs.existsSync(finalFilePath)) {
-				finalFilePath = path.join(baseFilePath, outputName + uuid() + ".mp3")
+				finalFilePath = path.join(baseFilePath, `${outputName}${uuid()}.mp3`)
 			}
 
 			await fs.promises.rename(outputFilePath, finalFilePath)
@@ -295,7 +292,7 @@ export default class Converter {
 
 		await fs.promises.unlink(inputFilePath)
 
-		const metadata = (await mm.parseFile(outputFilePath, { skipCovers: true, skipPostHeaders: true, includeChapters: false }))
+		const metadata = (await parseFile(outputFilePath, { skipCovers: true, skipPostHeaders: true, includeChapters: false }))
 
 		if (metadata.common.title) {
 			const sanitized = sanitize(metadata.common.title.replace(/:/gi, " - "))
@@ -330,7 +327,7 @@ export default class Converter {
 			return ""
 		}
 
-		const matches = probeOutput.match(/file checksum == (.*)/)
+		const matches = /file checksum == (.*)/.exec(probeOutput)
 
 		if (!matches) {
 			this.errorMessage = `Couldn't find checksum from ffprobe
@@ -353,14 +350,18 @@ export default class Converter {
 		try {
 			await onExit(cracker)
 		}
-		catch {
+		catch (e) {
+			if (e instanceof Error) {
+				crackerOutput = `${e.message}\n\n${e.stack}\n\n${crackerOutput}`
+			}
+
 			this.errorMessage = crackerOutput
 			this.status = ConverterStatus.Error
 
 			return ""
 		}
 
-		const activationBytesMatches = crackerOutput.match(/hex:(.*)/)
+		const activationBytesMatches = /hex:(.*)/.exec(crackerOutput)
 
 		if (activationBytesMatches) {
 			return activationBytesMatches[1]
@@ -377,23 +378,23 @@ export default class Converter {
 	}
 
 	private async runFfmpeg(outputFilePath: string, args: string[], workingDirectory: string) {
-		if (!ffmpegPath) {
-			throw Error("no ffmpegPath")
-		}
-
 		const logFile = `${outputFilePath}.ffmpeg.log`
 		const ffmpeg = exec(`${ffmpegPath} ${args.join(" ")}`, { cwd: workingDirectory })
 
-		ffmpeg.stdout?.on("data", data => this.parseData(toString(data), outputFilePath))
-		ffmpeg.stderr?.on("data", data => this.parseData(toString(data), outputFilePath))
+		ffmpeg.stdout?.on("data", data => { this.parseData(toString(data), outputFilePath) })
+		ffmpeg.stderr?.on("data", data => { this.parseData(toString(data), outputFilePath) })
 
 		ffmpeg.stderr?.pipe(fs.createWriteStream(logFile))
 
 		try {
 			await onExit(ffmpeg)
 		}
-		catch {
-			this.errorMessage = await fs.promises.readFile(logFile, "utf8")
+		catch (e) {
+			if (e instanceof Error) {
+				this.errorMessage = `${e.message}\n\n${e.stack}\n\n`
+			}
+
+			this.errorMessage += await fs.promises.readFile(logFile, "utf8")
 			this.status = ConverterStatus.Error
 
 			return false

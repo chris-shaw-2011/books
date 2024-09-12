@@ -1,7 +1,7 @@
-import Book from "./Book"
-import BookStatuses from "./BookStatuses"
-import ItemType from "./ItemType"
-import SortOrder from "./SortOrder"
+import Book from "./Book.js"
+import BookStatuses from "./BookStatuses.js"
+import ItemType from "./ItemType.js"
+import SortOrder from "./SortOrder.js"
 
 export default class Directory {
 	items: (Directory | Book)[] = []
@@ -24,7 +24,7 @@ export default class Directory {
 				let upload: Date
 
 				if (i.type === ItemType.book) {
-					const status = bookStatuses ? bookStatuses[i.id]?.status : undefined
+					const status = bookStatuses ? bookStatuses.get(i.id)?.status : undefined
 					const book = new Book(i, status)
 
 					this.items.push(new Book(i, status))

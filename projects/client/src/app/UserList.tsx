@@ -61,11 +61,11 @@ const UserList = (props: Props) => {
 			handleUserListResponse(ret)
 		}
 	}
-	const cancelAddUser = () => setAddingUserState(s => ({ ...s, addingUser: false }))
+	const cancelAddUser = () => { setAddingUserState(s => ({ ...s, addingUser: false })) }
 	const deleteClick = (userId: string) => {
 		setUsers(s => ({ ...s, deletingUser: userId }))
 
-		void Api.deleteUser(token, userId).then(ret => handleUserListResponse(ret))
+		void Api.deleteUser(token, userId).then(ret => { handleUserListResponse(ret) })
 	}
 	useEffect(() => {
 		async function getUsers() {
@@ -86,16 +86,16 @@ const UserList = (props: Props) => {
 			<>
 				{addingUserState.addingUser &&
 					<OverlayComponent onClick={cancelAddUser}>
-						<form onSubmit={e => void handleSubmit(e)} onClick={e => e.target === e.currentTarget && cancelAddUser()}>
+						<form onSubmit={e => void handleSubmit(e)} onClick={e => { if (e.target === e.currentTarget) { cancelAddUser() } }}>
 							<ModalDialog>
 								<Modal.Header>
 									<Modal.Title>Add User</Modal.Title>
 								</Modal.Header>
 								<Modal.Body>
 									<TextboxField label="Email address" type="email" placeholder="Enter email" required={true} autoFocus={true}
-										onChange={e => mergeAddingUserState({ email: e.currentTarget.value || "" })}
+										onChange={e => { mergeAddingUserState({ email: e.currentTarget.value || "" }) }}
 									/>
-									<CheckboxField type="checkbox" label="Is Admin?" onChange={e => mergeAddingUserState({ isAdmin: e.currentTarget.checked })} />
+									<CheckboxField type="checkbox" label="Is Admin?" onChange={e => { mergeAddingUserState({ isAdmin: e.currentTarget.checked }) }} />
 								</Modal.Body>
 								<Modal.Footer>
 									{!addingUserState.saving ?
@@ -132,10 +132,10 @@ const UserList = (props: Props) => {
 													<Loading text="Deleting..." /> :
 													u.id === users.confirmDeleteUser ?
 														<>
-															<CancelButton onClick={() => setUsers(s => ({ ...s, confirmDeleteUser: "" }))} />&nbsp;
-															<DeleteButton onClick={() => deleteClick(u.id)} value="Confirm Delete" />
+															<CancelButton onClick={() => { setUsers(s => ({ ...s, confirmDeleteUser: "" })) }} />&nbsp;
+															<DeleteButton onClick={() => { deleteClick(u.id) }} value="Confirm Delete" />
 														</> :
-														<DeleteButton onClick={() => setUsers(s => ({ ...s, confirmDeleteUser: u.id }))} />
+														<DeleteButton onClick={() => { setUsers(s => ({ ...s, confirmDeleteUser: u.id })) }} />
 												}
 											</> :
 											"Cannot delete logged in user"}
