@@ -1,9 +1,8 @@
 import typescript from "@rollup/plugin-typescript";
 import alias from "@rollup/plugin-alias";
 import path, { dirname } from "path";
-import { fileURLToPath } from "url";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const __dirname = import.meta.dirname;
 
 export default {
 	input: "src/index.ts",
