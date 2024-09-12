@@ -1,5 +1,5 @@
 import { cloneElement, useState, useRef, useEffect, useCallback } from "react"
-import useResizeObserver from "use-resize-observer/polyfilled"
+import useResizeObserver from "@react-hook/resize-observer"
 import Styles from "./VirtualList.module.scss"
 import classNames from "classnames"
 
@@ -100,10 +100,7 @@ const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
 		updateRenderedComponents()
 	}, [elm, estimatedChildHeight, updateRenderedComponents])
 
-	useResizeObserver({
-		onResize: updateRenderedComponents,
-		ref: elm,
-	})
+	useResizeObserver(elm, updateRenderedComponents)
 
 	useEffect(() => {
 		const currentElm = elm.current

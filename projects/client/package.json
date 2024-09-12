@@ -3,6 +3,7 @@
 	"type": "module",
 	"dependencies": {
 		"@books/shared": "file:../shared",
+		"@react-hook/resize-observer": "^2.0.2",
 		"bootstrap": "^5.3.3",
 		"browserslist": "^4.23.3",
 		"classnames": "^2.5.1",
