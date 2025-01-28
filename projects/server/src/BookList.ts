@@ -1,4 +1,4 @@
-import chokidar from "chokidar"
+import chokidar, { FSWatcher } from "chokidar"
 import fs from "fs"
 import path from "path"
 import db from "./Database.js"
@@ -7,7 +7,7 @@ import { Mutex, Semaphore } from "async-mutex"
 
 class BookList {
 	private books = new ServerDirectory()
-	private watcher?: chokidar.FSWatcher
+	private watcher?: FSWatcher
 	private mutex = new Mutex()
 	private pauseSemaphore = new Semaphore(10)
 	private loading = false
@@ -18,7 +18,7 @@ class BookList {
 
 		if (this.watcher) {
 			await this.watcher.close()
-			this.watcher = undefined
+			delete this.watcher
 		}
 
 		// eslint-disable-next-line no-console

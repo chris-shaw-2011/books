@@ -1,13 +1,7 @@
 import { createContext } from "react"
 import { Token, Directory } from "@books/shared"
 
-export enum VisibleComponent {
-	Books,
-	Settings,
-	Users,
-	ChangePassword,
-	Upload,
-}
+export type VisibleComponent = "Books" | "Settings" | "Users" | "ChangePassword" | "Upload";
 
 interface LoggedInAppContextType {
 	logOut: (message?: string) => void,
@@ -21,7 +15,7 @@ interface LoggedInAppContextType {
 const LoggedInAppContext = createContext<LoggedInAppContextType>({
 	logOut: () => { return },
 	token: new Token(),
-	visibleComponent: VisibleComponent.Books,
+	visibleComponent: "Books",
 	setVisibleComponent: () => { return },
 	updateBooks: () => { return },
 	rootDirectory: new Directory(),

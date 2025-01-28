@@ -1,25 +1,21 @@
 import Book from "../Book.js"
-import { ConverterStatus } from "../ConverterStatus.js"
+import { type ConverterStatus } from "../ConverterStatus.js"
 import ApiMessage from "./ApiMessage.js"
-import ApiMessageType from "./ApiMessageType.js"
 
 export default class ConversionUpdateResponse extends ApiMessage {
-	conversionPercent = 0
-	errorMessage = ""
-	converterStatus = ConverterStatus.Waiting
-	book?: Book
+	override readonly type = "ConversionUpdateResponse"
 
-	constructor(json?: ConversionUpdateResponse) {
-		super(ApiMessageType.ConversionUpdateResponse)
+	conversionPercent: number
+	errorMessage: string
+	converterStatus: ConverterStatus
+	book: Book
 
-		if (json) {
-			this.conversionPercent = json.conversionPercent
-			this.errorMessage = json.errorMessage
-			this.converterStatus = json.converterStatus
+	constructor(json?: Partial<ConversionUpdateResponse>) {
+		super()
 
-			if (json.book) {
-				this.book = new Book(json.book)
-			}
-		}
+		this.conversionPercent = json?.conversionPercent ?? 0
+		this.errorMessage = json?.errorMessage ?? ""
+		this.converterStatus = json?.converterStatus ?? "Waiting"
+		this.book = new Book(json?.book)
 	}
 }

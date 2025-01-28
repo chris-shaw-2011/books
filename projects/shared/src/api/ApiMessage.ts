@@ -1,9 +1,5 @@
-import ApiMessageType from "./ApiMessageType.js"
+import { type ApiMessageType } from "./ApiMessageType.js"
 
-export default class ApiMessage {
-	type: ApiMessageType
-
-	constructor(type: ApiMessageType) {
-		this.type = type
-	}
+export default abstract class ApiMessage {
+	readonly abstract type: ApiMessageType
 }

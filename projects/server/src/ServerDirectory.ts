@@ -16,7 +16,7 @@ export default class ServerDirectory extends Directory {
 	}
 
 	fullPath = ""
-	items: (ServerDirectory | ServerBook)[] = []
+	override items: (ServerDirectory | ServerBook)[] = []
 	parent?: ServerDirectory
 	pathTree: string[] = []
 

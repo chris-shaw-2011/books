@@ -1,14 +1,6 @@
-import ApiMessage from "./ApiMessage.js"
-import ApiMessageType from "./ApiMessageType.js"
+import RequestDeniedResponse from "./RequestDeniedResponse.js"
 
-export default class Unauthorized extends ApiMessage {
-	message = ""
-
-	constructor(json?: Unauthorized) {
-		super(ApiMessageType.Unauthorized)
-
-		if (json) {
-			this.message = json.message
-		}
-	}
+export default class Unauthorized extends RequestDeniedResponse {
+	readonly code = 401
+	override readonly type = "Unauthorized"
 }

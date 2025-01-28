@@ -1,14 +1,6 @@
-import ApiMessage from "./ApiMessage.js"
-import ApiMessageType from "./ApiMessageType.js"
+import RequestDeniedResponse from "./RequestDeniedResponse.js"
 
-export default class AccessDenied extends ApiMessage {
-	message = ""
-
-	constructor(json?: AccessDenied) {
-		super(ApiMessageType.AccessDenied)
-
-		if (json) {
-			this.message = json.message
-		}
-	}
+export default class AccessDenied extends RequestDeniedResponse {
+	readonly code = 403
+	override readonly type = "AccessDenied"
 }

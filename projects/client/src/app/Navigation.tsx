@@ -6,7 +6,7 @@ import classnames from "classnames"
 import useOnclickOutside from "react-cool-onclickoutside"
 import Upload from "./svg/Upload"
 import { Token } from "@books/shared"
-import { VisibleComponent } from "./LoggedInAppContext"
+import { type VisibleComponent } from "./LoggedInAppContext"
 import Users from "./svg/Users"
 import Gear from "./svg/Gear"
 import Lock from "./svg/Lock"
@@ -38,14 +38,14 @@ const Navigation = (props: Props) => {
 		<div className={classnames(styles.downArrow, openClassName)} onClick={() => { setOpen(s => !s) }} ref={ref}>
 			<DownArrow />
 			<SelectList className={styles.navlist} open={open}>
-				<SelectListItem onClick={e => { setVisibleComponent(e, VisibleComponent.Upload) }}><Upload /> Upload Books</SelectListItem>
+				<SelectListItem onClick={e => { setVisibleComponent(e, "Upload") }}><Upload /> Upload Books</SelectListItem>
 				{props.token.user.isAdmin &&
 					<>
-						<SelectListItem onClick={e => { setVisibleComponent(e, VisibleComponent.Users) }}><Users /> Manage Users</SelectListItem>
-						<SelectListItem onClick={e => { setVisibleComponent(e, VisibleComponent.Settings) }}><Gear /> Settings</SelectListItem>
+						<SelectListItem onClick={e => { setVisibleComponent(e, "Users") }}><Users /> Manage Users</SelectListItem>
+						<SelectListItem onClick={e => { setVisibleComponent(e, "Settings") }}><Gear /> Settings</SelectListItem>
 					</>}
 				<hr />
-				<SelectListItem onClick={e => { setVisibleComponent(e, VisibleComponent.ChangePassword) }}><Lock /> Change Password</SelectListItem>
+				<SelectListItem onClick={e => { setVisibleComponent(e, "ChangePassword") }}><Lock /> Change Password</SelectListItem>
 				<SelectListItem onClick={() => { props.logOut() }}><LogOut /> Log Out</SelectListItem>
 			</SelectList>
 		</div>

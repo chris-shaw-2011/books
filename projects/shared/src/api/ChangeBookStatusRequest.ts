@@ -1,20 +1,16 @@
-import { Status } from "../Book.js"
+import { type Status } from "../Book.js"
 import ApiMessage from "./ApiMessage.js"
-import Token from "./Token.js"
-import ApiMessageType from "./ApiMessageType.js"
 
 export default class ChangeBookStatusRequest extends ApiMessage {
-	token = new Token()
-	bookId = ""
-	status = Status.Unread
+	override readonly type = "ChangeBookStatusRequest"
 
-	constructor(json?: ChangeBookStatusRequest) {
-		super(ApiMessageType.ChangeBookStatusRequest)
+	bookId: string
+	status: Status
 
-		if (json) {
-			this.token = new Token(json.token)
-			this.bookId = json.bookId
-			this.status = json.status
-		}
+	constructor(json?: Partial<ChangeBookStatusRequest>) {
+		super()
+
+		this.bookId = json?.bookId ?? ""
+		this.status = json?.status ?? "Unread"
 	}
 }

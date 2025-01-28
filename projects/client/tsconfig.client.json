@@ -4,7 +4,6 @@
 		"skipLibCheck": true,
 		"allowImportingTsExtensions": true,
 		"resolveJsonModule": true,
-		"isolatedModules": true,
 		"noEmit": true,
 		"strict": true,
 		"noUnusedLocals": true,

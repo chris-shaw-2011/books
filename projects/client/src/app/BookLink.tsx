@@ -3,7 +3,7 @@ import { useContext, useState, forwardRef, useEffect } from "react"
 import AppContext from "./LoggedInAppContext"
 import { Dropdown, DropdownButton } from "react-bootstrap"
 import Highlighter from "react-highlight-words"
-import { AccessDenied, Books, Unauthorized, Book, Status, UpdateBookResponse, Directory, ItemType } from "@books/shared"
+import { AccessDenied, Books, Unauthorized, Book, type Status, UpdateBookResponse, Directory, StatusValues } from "@books/shared"
 import Api from "./api/LoggedInApi"
 import Loading from "./Loading"
 import Textbox from "./components/Textbox"
@@ -14,7 +14,7 @@ import CancelButton from "./components/CancelButton"
 import OkButton from "./components/OkButton"
 import itemStyles from "./ItemLink.module.scss"
 import styles from "./BookLink.module.scss"
-import TextboxField, { LabelLocation, type TextboxFieldProps } from "./components/TextboxField"
+import TextboxField, { type TextboxFieldProps } from "./components/TextboxField"
 import Alert from "./components/Alert"
 import FolderOpen from "./svg/FolderOpen"
 import FolderClosed from "./svg/FolderClosed"
@@ -30,11 +30,7 @@ function readableDuration(secNum: number) {
 	return `${hours}:${minutes < 10 ? "0" : ""}${minutes}:${seconds < 10 ? "0" : ""}${seconds}`
 }
 
-enum EditStatus {
-	ReadOnly,
-	Editing,
-	Saving,
-}
+type EditStatus = "ReadOnly" | "Editing" | "Saving"
 
 interface BookProps {
 	book: Book,
@@ -68,7 +64,7 @@ const EditableTextbox = ({ editing, searchWords, ...passThroughProps }: Editable
 )
 
 const EditableTextboxField = ({ editing, searchWords, ...passThroughProps }: EditableTextboxFieldProps) => (
-	editing ? <TextboxField required={true} {...passThroughProps} labelLocation={LabelLocation.Left} /> : <label><span>{passThroughProps.label}</span> <Highlighter searchWords={searchWords} textToHighlight={passThroughProps.defaultValue?.toString() ?? ""} sanitize={sanitize} /></label>
+	editing ? <TextboxField required={true} {...passThroughProps} labelLocation={"Left"} /> : <label><span>{passThroughProps.label}</span> <Highlighter searchWords={searchWords} textToHighlight={passThroughProps.defaultValue?.toString() ?? ""} sanitize={sanitize} /></label>
 )
 
 interface FolderListProps {
@@ -76,20 +72,21 @@ interface FolderListProps {
 	selectedFolder: string,
 	folderClicked: (folderPath: string) => void,
 	className?: string,
-	newFolderName: string | undefined,
+	newFolderName?: string,
 	setNewFolderName: (name: string) => void,
 }
 
-const FolderList = ({ directory, selectedFolder, folderClicked, className, newFolderName, setNewFolderName }: FolderListProps) => {
+const FolderList = (props: FolderListProps) => {
+	const { directory, selectedFolder, newFolderName } = { ...props }
 	const open = selectedFolder.startsWith(directory.folderPath)
-	const subDirs = directory.items.filter((i): i is Directory => i.type === ItemType.directory)
+	const subDirs = directory.items.filter((i): i is Directory => i.type === "Directory")
 	const addingFolder = open && newFolderName !== undefined && directory.folderPath === selectedFolder
 
 	return (
-		<div className={className}>
+		<div className={props.className}>
 			<div className={classnames({ [styles.selected]: selectedFolder === directory.folderPath }, styles.selectableFolder)} onClick={e => {
 				e.stopPropagation()
-				folderClicked(directory.folderPath)
+				props.folderClicked(directory.folderPath)
 			}}>
 				{open ? <FolderOpen className={styles.folder} /> : <FolderClosed className={styles.folder} />}
 				{directory.name || directory.folderPath}
@@ -98,9 +95,9 @@ const FolderList = ({ directory, selectedFolder, folderClicked, className, newFo
 				{addingFolder &&
 					<div className={styles.newFolder}>
 						<FolderClosed className={styles.folder} />
-						<Textbox autoFocus={true} placeholder="New Folder Name" onChange={e => { setNewFolderName(e.target.value) }} value={newFolderName} />
+						<Textbox autoFocus={true} placeholder="New Folder Name" onChange={e => { props.setNewFolderName(e.target.value) }} value={newFolderName} />
 					</div>}
-				{subDirs.map(i => <FolderList key={i.id} directory={i} selectedFolder={selectedFolder} folderClicked={folderClicked} newFolderName={newFolderName} setNewFolderName={setNewFolderName} />)}
+				{subDirs.map(i => <FolderList {...props} key={i.id} directory={i} />)}
 			</div>}
 		</div>
 	)
@@ -111,19 +108,19 @@ interface FolderSelectionProps extends Omit<FolderListProps, "newFolderName" | "
 }
 
 const FolderSelection = (props: FolderSelectionProps) => {
-	const [newFolderName, setNewFolderName] = useState<string | undefined>(undefined)
+	const [newFolderName, setNewFolderName] = useState<string>("")
 	const addNewFolder = async () => {
-		await props.addNewFolder(props.selectedFolder, newFolderName ?? "")
+		await props.addNewFolder(props.selectedFolder, newFolderName)
 		props.folderClicked(`${props.selectedFolder}${!props.selectedFolder.endsWith("/") ? "/" : ""}${newFolderName}`)
-		setNewFolderName(undefined)
+		setNewFolderName("")
 	}
 
 	return (
 		<div>
 			<FolderList {...props} className={styles.folderList} newFolderName={newFolderName} setNewFolderName={setNewFolderName} />
-			{newFolderName !== undefined ?
+			{newFolderName !== "" ?
 				<div className={styles.buttons}>
-					<CancelButton className={styles.newFolderButton} onClick={() => { setNewFolderName(undefined) }} />
+					<CancelButton className={styles.newFolderButton} onClick={() => { setNewFolderName("") }} />
 					<OkButton className={styles.newFolderButton} value="Create Folder" disabled={!newFolderName} onClick={() => void addNewFolder()} type="button" />
 				</div> :
 				<Button type="button" className={styles.newFolderButton} onClick={() => { setNewFolderName("") }}><FolderOpen className={styles.folder} /> New Folder</Button>}
@@ -134,8 +131,8 @@ const FolderSelection = (props: FolderSelectionProps) => {
 const BookLink = forwardRef<HTMLDivElement, BookProps>((props: BookProps, ref) => {
 	const context = useContext(AppContext)
 	const [changingStatus, setChangingStatus] = useState(false)
-	const [editingState, setEditingState] = useState<{ status: EditStatus, alertMessage?: string }>({ status: props.editOnly ? EditStatus.Editing : EditStatus.ReadOnly })
-	const editing = editingState.status === EditStatus.Editing || editingState.status === EditStatus.Saving
+	const [editingState, setEditingState] = useState<{ status: EditStatus, alertMessage?: string }>({ status: props.editOnly ? "Editing" : "ReadOnly" })
+	const editing = editingState.status === "Editing" || editingState.status === "Saving"
 	const [newTitle, setNewTitle] = useState(props.book.name)
 	const [newDescription, setNewDescription] = useState(props.book.comment)
 	const [newAuthor, setNewAuthor] = useState(props.book.author)
@@ -147,7 +144,7 @@ const BookLink = forwardRef<HTMLDivElement, BookProps>((props: BookProps, ref) =
 	const changeBookStatus = async (status: Status) => {
 		setChangingStatus(true)
 
-		const ret = await Api.changeBookStatus(props.book.id, status, context.token)
+		const ret = await Api.changeBookStatus(props.book.id, status)
 
 		if (ret instanceof Books) {
 			props.statusChanged(ret)
@@ -183,22 +180,17 @@ const BookLink = forwardRef<HTMLDivElement, BookProps>((props: BookProps, ref) =
 			newBook.narrator = newNarrator
 			newBook.folderPath = newPath ?? props.book.folderPath
 
-			setEditingState({ status: EditStatus.Saving })
+			setEditingState({ status: "Saving" })
 
-			const ret = await Api.updateBook(context.token, newBook, props.book)
+			const ret = await Api.updateBook(newBook, props.book)
 
 			if (ret instanceof UpdateBookResponse) {
-				if (ret.books) {
-					context.updateBooks(ret.books.directory)
+				context.updateBooks(ret.books.directory)
 
-					setEditingState({ status: EditStatus.ReadOnly })
+				setEditingState({ status: "ReadOnly" })
 
-					if (props.onEditComplete) {
-						props.onEditComplete()
-					}
-				}
-				else {
-					setEditingState({ status: EditStatus.Editing, alertMessage: ret.message })
+				if (props.onEditComplete) {
+					props.onEditComplete()
 				}
 			}
 			else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
@@ -214,11 +206,11 @@ const BookLink = forwardRef<HTMLDivElement, BookProps>((props: BookProps, ref) =
 			props.onEditComplete()
 		}
 
-		setEditingState({ status: EditStatus.ReadOnly })
+		setEditingState({ status: "ReadOnly" })
 	}
 	const alertMessage = editingState.alertMessage
 	const addNewFolder = async (path: string, folderName: string) => {
-		const ret = await Api.addFolder(context.token, path, folderName)
+		const ret = await Api.addFolder(path, folderName)
 
 		if (ret instanceof Books) {
 			context.updateBooks(ret.directory)
@@ -249,7 +241,7 @@ const BookLink = forwardRef<HTMLDivElement, BookProps>((props: BookProps, ref) =
 							{!editing && context.token.user.isAdmin ? <Edit onClick={e => {
 								e.stopPropagation()
 								e.preventDefault()
-								setEditingState({ status: EditStatus.Editing })
+								setEditingState({ status: "Editing" })
 							}} /> : null}
 						</div>
 						<div className={classnames(styles.description, styles.editable)}>
@@ -288,11 +280,11 @@ const BookLink = forwardRef<HTMLDivElement, BookProps>((props: BookProps, ref) =
 								<span>Uploaded</span> <span>{moment(props.book.uploadTime).format("M/D/YYYY h:mm:ss A")}</span>
 							</label>
 						</div>
-						{editingState.status === EditStatus.Editing ?
+						{editingState.status === "Editing" ?
 							<>
 								<CancelButton value="Cancel" onClick={onCancel} />
 								<OkButton value="Save" />
-							</> : editingState.status === EditStatus.Saving ?
+							</> : editingState.status === "Saving" ?
 								<Loading text="Saving..." /> : null}
 					</div>
 				</Inner>
@@ -300,7 +292,7 @@ const BookLink = forwardRef<HTMLDivElement, BookProps>((props: BookProps, ref) =
 			{!changingStatus && !editing ?
 				<DropdownButton title={props.book.status} id={props.book.id} onClick={e => { e.stopPropagation() }}>
 					{
-						Object.values(Status).map(i => {
+						StatusValues.map(i => {
 							if (i !== props.book.status) {
 								return <Dropdown.Item key={i} onClick={e => {
 									e.preventDefault()

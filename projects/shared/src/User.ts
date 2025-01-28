@@ -1,21 +1,34 @@
 export default class User {
-	email = ""
+	email: string
 	password?: string
-	id = ""
-	isAdmin = false
-	lastLogin = 0
+	id: string
+	isAdmin: boolean
+	lastLogin?: number
 
 	get lastLoginDate() {
-		return new Date(this.lastLogin)
+		if (this.lastLogin !== undefined) {
+			return new Date(this.lastLogin)
+		}
+
+		return undefined
 	}
 
-	constructor(json?: User) {
-		if (json) {
-			this.email = json.email
+	constructor(json?: Partial<User>) {
+		this.email = json?.email ?? ""
+
+		if (json?.password !== undefined) {
 			this.password = json.password
-			this.id = json.id
-			this.isAdmin = json.isAdmin
+		}
+
+		this.id = json?.id ?? ""
+		this.isAdmin = json?.isAdmin ?? false
+
+		if (json?.lastLogin !== undefined) {
 			this.lastLogin = json.lastLogin
 		}
+	}
+
+	public isValid() {
+		return this.id !== "" && this.email !== ""
 	}
 }

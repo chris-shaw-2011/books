@@ -54,7 +54,7 @@ const UserList = (props: Props) => {
 		if (form.checkValidity()) {
 			setAddingUserState(s => ({ ...s, saving: true }))
 
-			const ret = await Api.addUser(token, new User({ email: addingUserState.email, isAdmin: addingUserState.isAdmin, id: "", lastLogin: 0, lastLoginDate: new Date() }))
+			const ret = await Api.addUser(new User({ email: addingUserState.email, isAdmin: addingUserState.isAdmin }))
 
 			setAddingUserState(s => ({ ...s, addingUser: false }))
 
@@ -65,11 +65,11 @@ const UserList = (props: Props) => {
 	const deleteClick = (userId: string) => {
 		setUsers(s => ({ ...s, deletingUser: userId }))
 
-		void Api.deleteUser(token, userId).then(ret => { handleUserListResponse(ret) })
+		void Api.deleteUser(userId).then(ret => { handleUserListResponse(ret) })
 	}
 	useEffect(() => {
 		async function getUsers() {
-			const ret = await Api.users(token)
+			const ret = await Api.users()
 
 			handleUserListResponse(ret)
 		}
@@ -124,7 +124,7 @@ const UserList = (props: Props) => {
 								<tr key={u.id}>
 									<td>{u.email}</td>
 									<td>{u.isAdmin ? "Yes" : "No"}</td>
-									<td>{u.lastLogin ? moment(u.lastLoginDate).format("MM/D/YYYY, h:mm:ss a") : "Never"}</td>
+									<td>{u.lastLogin !== undefined ? moment(u.lastLoginDate).format("MM/D/YYYY, h:mm:ss a") : "Never"}</td>
 									<td>
 										{u.id !== token.user.id ?
 											<>

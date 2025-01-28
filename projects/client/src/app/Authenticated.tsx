@@ -1,10 +1,10 @@
 import { useCallback, useContext, useEffect, useState } from "react"
-import { AccessDenied, Books, SettingsRequired, Unauthorized, Token, Book, Status, Directory } from "@books/shared"
+import { AccessDenied, Books, SettingsRequired, Unauthorized, Token, Book, type Status, Directory, StatusValues } from "@books/shared"
 import Api from "./api/LoggedInApi"
 import ChangePassword from "./ChangePassword"
 import EditSettings from "./EditSettings"
 import Loading from "./Loading"
-import AppContext, { VisibleComponent } from "./LoggedInAppContext"
+import AppContext, { type VisibleComponent } from "./LoggedInAppContext"
 import UploadBooks from "./UploadBooks"
 import UserList from "./UserList"
 import ItemListTabContent from "./ItemListTabContent"
@@ -68,7 +68,7 @@ function filter(dir: Directory, status?: Status, searchWords?: string[]) {
 const Authenticated = (props: Props) => {
 	const logOut = props.logOut
 	const [state, setState] = useState<Directory | undefined>()
-	const [tabsState, setTabsState] = useState<TabState>({ selectedTab: Status.Unread, mountedTabs: [Status.Unread] })
+	const [tabsState, setTabsState] = useState<TabState>({ selectedTab: "Unread", mountedTabs: ["Unread"] })
 	const context = useContext(AppContext)
 	const visibleComponent = props.visibleComponent
 	const setVisibleComponent = props.setVisibleComponent
@@ -76,7 +76,7 @@ const Authenticated = (props: Props) => {
 	const statusChanged = useCallback((books: Books) => {
 		setState(books.directory)
 	}, [])
-	const viewBooks = () => { setVisibleComponent(VisibleComponent.Books) }
+	const viewBooks = () => { setVisibleComponent("Books") }
 	const setSelectedTab = (tab: Status) => {
 		setTabsState(prev => {
 			return {
@@ -94,7 +94,7 @@ const Authenticated = (props: Props) => {
 				setState(ret.directory)
 			}
 			else if (ret instanceof SettingsRequired) {
-				setVisibleComponent(VisibleComponent.Settings)
+				setVisibleComponent("Settings")
 				setState(new Directory())
 			}
 			else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
@@ -105,7 +105,7 @@ const Authenticated = (props: Props) => {
 			}
 		}
 
-		if (visibleComponent === VisibleComponent.Books) {
+		if (visibleComponent === "Books") {
 			void getBooks()
 		}
 	}, [token, logOut, visibleComponent, setVisibleComponent])
@@ -114,7 +114,7 @@ const Authenticated = (props: Props) => {
 		return <Loading />
 	}
 
-	const tabsMap = Object.values(Status).map(s => {
+	const tabsMap = StatusValues.map(s => {
 		return { status: s, filtered: filter(state, s) }
 	})
 
@@ -136,16 +136,16 @@ const Authenticated = (props: Props) => {
 			{
 				(() => {
 					switch (visibleComponent) {
-						case VisibleComponent.ChangePassword:
+						case "ChangePassword":
 							return <ChangePassword onPasswordChanged={(t: Token) => {
 								props.onPasswordChanged(t)
 								viewBooks()
 							}} onClose={viewBooks} {...context} />
-						case VisibleComponent.Settings:
+						case "Settings":
 							return <EditSettings onSettingsSaved={viewBooks} onClose={viewBooks} />
-						case VisibleComponent.Users:
+						case "Users":
 							return <UserList onClose={viewBooks} />
-						case VisibleComponent.Upload:
+						case "Upload":
 							return <UploadBooks onClose={viewBooks} />
 						default:
 							return null

@@ -1,4 +1,4 @@
-import { Book, Status } from "@books/shared"
+import { Book, type Status } from "@books/shared"
 import * as mm from "music-metadata"
 import fs from "fs"
 import ServerDirectory from "./ServerDirectory.js"
@@ -42,9 +42,17 @@ export default class ServerBook extends Book {
 
 		this.name = tags.title ?? fileName
 		this.author = tags.artist ?? ""
-		this.year = tags.year
+
+		if (tags.year !== undefined) {
+			this.year = tags.year
+		}
+
 		this.comment = tags.comment?.length ? tags.comment[0].text ?? "" : ""
-		this.duration = metadata.format.duration
+
+		if (metadata.format.duration !== undefined) {
+			this.duration = metadata.format.duration
+		}
+
 		this.narrator = tags.composer?.length ? tags.composer[0] : ""
 		this.genre = tags.genre?.length ? tags.genre[0] : ""
 

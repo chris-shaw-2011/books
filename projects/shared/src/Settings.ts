@@ -1,15 +1,18 @@
 export default class Settings {
-	baseBooksPath = ""
-	inviteEmail = ""
-	inviteEmailPassword = ""
-	uploadLocation = ""
+	protected _baseBooksPath: string
+	protected _inviteEmail: string
+	protected _inviteEmailPassword: string
+	protected _uploadLocation: string
 
-	constructor(json?: Settings) {
-		if (json) {
-			this.baseBooksPath = json.baseBooksPath
-			this.inviteEmail = json.inviteEmail
-			this.inviteEmailPassword = json.inviteEmailPassword
-			this.uploadLocation = json.uploadLocation
-		}
+	get baseBooksPath() { return this._baseBooksPath }
+	get inviteEmail() { return this._inviteEmail }
+	get inviteEmailPassword() { return this._inviteEmailPassword }
+	get uploadLocation() { return this._uploadLocation }
+
+	constructor(json?: Partial<Settings>) {
+		this._baseBooksPath = json?.baseBooksPath ?? ""
+		this._inviteEmail = json?.inviteEmail ?? ""
+		this._inviteEmailPassword = json?.inviteEmailPassword ?? ""
+		this._uploadLocation = json?.uploadLocation ?? ""
 	}
 }

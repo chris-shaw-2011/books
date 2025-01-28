@@ -3,7 +3,7 @@ import { lazy, useCallback, useMemo, useState, Suspense } from "react"
 import { CookiesProvider, useCookies } from "react-cookie"
 import { Token } from "@books/shared"
 import ChangePassword from "./ChangePassword"
-import { VisibleComponent } from "./LoggedInAppContext"
+import { type VisibleComponent } from "./LoggedInAppContext"
 import LogIn from "./LogIn"
 import styles from "./App.module.scss"
 import "./styles.scss"
@@ -22,7 +22,7 @@ const App = () => {
 	const [searchWords, setSearchWords] = useState({ words: new Array<string>() })
 	const [cookies, setCookies] = useCookies(["loginCookie"])
 	const [loginMessage, setLoginMessage] = useState("")
-	const [visibleComponent, setVisibleComponent] = useState(VisibleComponent.Books)
+	const [visibleComponent, setVisibleComponent] = useState<VisibleComponent>("Books")
 	const loginCookie = cookies.loginCookie as Token | undefined
 	const token = useMemo(() => loginCookie ? new Token(loginCookie) : undefined, [loginCookie])
 	const inviteUserId = window.location.pathname.includes("/invite/") ? window.location.pathname.replace("/invite/", "") : ""

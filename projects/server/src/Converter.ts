@@ -1,5 +1,5 @@
 import { Mutex } from "async-mutex"
-import { ChildProcess, exec } from "child_process"
+import { type ChildProcess, exec } from "child_process"
 import { EventEmitter } from "events"
 import { ffprobePath, ffmpegPath } from "ffmpeg-ffprobe-static"
 import fs from "fs"
@@ -8,7 +8,7 @@ import path from "path"
 import sanitize from "sanitize-filename"
 import unzipper from "unzipper"
 import { v4 as uuid } from "uuid"
-import { ConverterStatus } from "@books/shared"
+import { type ConverterStatus } from "@books/shared"
 import bookList from "./BookList.js"
 
 function toString(data: unknown) {
@@ -39,7 +39,7 @@ function onExit(childProcess: ChildProcess): Promise<void> {
 
 export default class Converter {
 	constructor() {
-		this._status = ConverterStatus.Complete
+		this._status = "Complete"
 	}
 
 	totalDuration = 0
@@ -68,7 +68,7 @@ export default class Converter {
 	}
 
 	waitForUpdate = async (knownPercent: number, knownStatus: ConverterStatus) => {
-		if (knownPercent === this.percentComplete && this.status !== ConverterStatus.Complete && this.status !== ConverterStatus.Error && this.status === knownStatus) {
+		if (knownPercent === this.percentComplete && this.status !== "Complete" && this.status !== "Error" && this.status === knownStatus) {
 			const promise = new Promise<number>(resolve => {
 				this.eventEmitter.once("update", resolve)
 			})
@@ -120,12 +120,12 @@ export default class Converter {
 		await bookList.fileAdded(this.convertedFilePath)
 		bookList.resumeUpdates()
 
-		this.status = ConverterStatus.Complete
+		this.status = "Complete"
 		mutex.release()
 	}
 
 	private convertMp3 = async (fileName: string, baseFilePath: string) => {
-		this.status = ConverterStatus.Unzipping
+		this.status = "Unzipping"
 
 		const zipPath = path.join(baseFilePath, fileName)
 		const unzipPath = zipPath.replace(".zip", "")
@@ -150,7 +150,7 @@ export default class Converter {
 					fs.mkdirSync(destParsed.dir, { recursive: true })
 				}
 
-				await new Promise(resolve => file.stream().pipe(fs.createWriteStream(path.join(unzipPath, file.path))).on("finish", resolve))
+				await new Promise(resolve => file.stream().pipe(fs.createWriteStream(path.join(unzipPath, file.path))).on("finish", () => { resolve("") }))
 				sizeUnzipped += file.uncompressedSize
 
 				this.percentComplete = Math.round((sizeUnzipped / sizeToUnzip) * 100)
@@ -166,7 +166,7 @@ export default class Converter {
 
 	private combineMp3s = async (currPath: string, baseFilePath: string): Promise<boolean> => {
 		this._percentComplete = 0
-		this.status = ConverterStatus.Converting
+		this.status = "Converting"
 
 		const paths = await fs.promises.readdir(currPath, { withFileTypes: true })
 
@@ -282,7 +282,7 @@ export default class Converter {
 			return
 		}
 
-		this.status = ConverterStatus.Converting
+		this.status = "Converting"
 
 		const args = ["-activation_bytes", encryptionKey, "-i", `"${inputFilePath}"`, "-c", "copy", `"${outputFilePath}"`]
 
@@ -309,7 +309,7 @@ export default class Converter {
 	}
 
 	private crack = async (inputFilePath: string, rootDir: string) => {
-		this.status = ConverterStatus.Cracking
+		this.status = "Cracking"
 
 		const ffprobe = exec(`${ffprobePath} "${inputFilePath}"`)
 		let probeOutput = ""
@@ -322,7 +322,7 @@ export default class Converter {
 		}
 		catch {
 			this.errorMessage = probeOutput
-			this.status = ConverterStatus.Error
+			this.status = "Error"
 
 			return ""
 		}
@@ -333,7 +333,7 @@ export default class Converter {
 			this.errorMessage = `Couldn't find checksum from ffprobe
 
          ${probeOutput}`
-			this.status = ConverterStatus.Error
+			this.status = "Error"
 
 			return ""
 		}
@@ -356,7 +356,7 @@ export default class Converter {
 			}
 
 			this.errorMessage = crackerOutput
-			this.status = ConverterStatus.Error
+			this.status = "Error"
 
 			return ""
 		}
@@ -371,7 +371,7 @@ export default class Converter {
 
          ${crackerOutput}
          `
-			this.status = ConverterStatus.Error
+			this.status = "Error"
 
 			return ""
 		}
@@ -395,7 +395,7 @@ export default class Converter {
 			}
 
 			this.errorMessage += await fs.promises.readFile(logFile, "utf8")
-			this.status = ConverterStatus.Error
+			this.status = "Error"
 
 			return false
 		}

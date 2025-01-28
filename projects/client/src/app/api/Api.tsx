@@ -10,12 +10,12 @@ class ApiClass {
 		return this.fetch("/auth", user)
 	}
 
-	changePassword = async (token: shared.Token, newPassword: string) => {
-		return this.fetch("/changePassword", new shared.ChangePasswordRequest({ type: shared.ApiMessageType.ChangePasswordRequest, token, newPassword }))
+	changePassword = async (newPassword: string) => {
+		return this.fetch("/changePassword", new shared.ChangePasswordRequest({ newPassword }))
 	}
 
 	user = async (userId: string) => {
-		return this.fetch("/user", new shared.UserRequest({ type: shared.ApiMessageType.UserRequest, userId }))
+		return this.fetch("/user", new shared.UserRequest({ userId }))
 	}
 
 	fetch = async (url: string, jsonSend?: unknown) => {
@@ -35,16 +35,16 @@ class ApiClass {
 		if (!json) {
 			return undefined
 		}
-		else if (json.type === shared.ApiMessageType.AccessDenied) {
+		else if (json.type === "AccessDenied") {
 			return new shared.AccessDenied(json as shared.AccessDenied)
 		}
-		else if (json.type === shared.ApiMessageType.Unauthorized) {
+		else if (json.type === "Unauthorized") {
 			return new shared.Unauthorized(json as shared.Unauthorized)
 		}
-		else if (json.type === shared.ApiMessageType.Token) {
+		else if (json.type === "Token") {
 			return new shared.Token(json as shared.Token)
 		}
-		else if (json.type === shared.ApiMessageType.UserResponse) {
+		else if (json.type === "UserResponse") {
 			return new shared.UserResponse(json as shared.UserResponse)
 		}
 		else {

@@ -1,20 +1,46 @@
 import bcrypt from "bcrypt"
-import { ApiMessageType, Token, User } from "@books/shared"
+import { Token, User } from "@books/shared"
 
 export default class ServerToken extends Token {
-	static async create(user: User, authorization: string, secret: string) {
-		const token = new ServerToken({ type: ApiMessageType.Token, user, authorization, checksum: "" })
+	secret: string
 
-		token.checksum = await bcrypt.hash(token.valueForChecksum(secret), 10)
+	constructor(json: Partial<Token>, secret: string) {
+		super(json)
+
+		this.secret = secret
+	}
+
+	static async create(user: User, authorization: string, secret: string) {
+		const token = new ServerToken({ user, authorization }, secret)
+
+		token.checksum = await bcrypt.hash(token.valueForChecksum(), 10)
 
 		return token
 	}
 
-	isChecksumValid(secret: string) {
-		return bcrypt.compareSync(this.valueForChecksum(secret), this.checksum)
+	override isValid() {
+		return super.isValid() && bcrypt.compareSync(this.valueForChecksum(), this.checksum)
 	}
 
-	private valueForChecksum(secret: string) {
-		return JSON.stringify(this.user) + this.authorization + secret
+	private valueForChecksum() {
+		return JSON.stringify(this.user) + this.authorization + this.secret
+	}
+
+	static override fromJSON(secret: string, json?: string) {
+		const token = super.fromJSON(json)
+
+		if (token !== undefined) {
+			const serverToken = new ServerToken(token, secret)
+
+			if (serverToken.isValid()) {
+				return serverToken
+			}
+			else {
+				// eslint-disable-next-line no-console
+				console.error("Specified JSON isn't a valid ServerToken", json)
+			}
+		}
+
+		return undefined
 	}
 }

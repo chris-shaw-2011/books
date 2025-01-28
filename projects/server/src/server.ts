@@ -1,7 +1,6 @@
 import { Mutex } from "async-mutex"
 import bcrypt from "bcrypt"
-import cookie from "cookie"
-import fastify, { type FastifyRequest, type FastifyReply } from "fastify"
+import Fastify, { type FastifyRequest, type FastifyReply } from "fastify"
 import fastifyMultipart from "@fastify/multipart"
 import fastifyStatic from "@fastify/static"
 import fs from "fs"
@@ -21,29 +20,23 @@ import sanitize from "sanitize-filename"
 import ServerBook from "./ServerBook.js"
 import aacWriter from "write-aac-metadata"
 import ServerUser from "./ServerUser.js"
+import { validateRequest } from "./Validation.js"
+import AuthorizationExpiration from "./AuthorizationExpiration.js"
+import cookie from "cookie"
 
 const __dirname = import.meta.dirname
 
 const pump = util.promisify(pipeline)
-const authorizationExpiration = new Map<string, dayjs.Dayjs>()
 const rootDir = __dirname
-const tryParse = <T>(text: string, reviver?: (this: unknown, key: string, value: unknown) => T) => {
-	try {
-		return JSON.parse(text, reviver) as T
-	}
-	catch {
-		return undefined
-	}
-}
 const getNewExpiration = () => dayjs().add(24, "hours")
 const changeBookStatusMutex = new Mutex()
 const conversions = new Map<string, Converter>()
 const conversionMutex = new Mutex()
-const server = fastify({ logger: true, bodyLimit: 10_000_000_000 })
+const server = Fastify({ logger: true, bodyLimit: 10_000_000_000 })
 const getAllUsers = async (message?: string) => {
 	const users: shared.User[] = await db.all("SELECT id, email, isAdmin, lastLogIn FROM user")
 
-	return new shared.UserListResponse({ users, type: shared.ApiMessageType.UserListResponse, message: message ?? "" })
+	return new shared.UserListResponse({ users, message: message ?? "" })
 }
 const validatePassword = async (email: string, password: string, reply: FastifyReply) => {
 	const dbUser = await db.get<ServerUser>("SELECT id, email, hash, isAdmin, lastLogIn FROM user WHERE email = ?", email)
@@ -54,7 +47,7 @@ const validatePassword = async (email: string, password: string, reply: FastifyR
 			const authorization = uuid()
 
 			validatedUser.lastLogin = new Date().getTime()
-			authorizationExpiration.set(authorization, getNewExpiration())
+			AuthorizationExpiration.set(authorization, getNewExpiration())
 
 			await db.run("UPDATE user SET lastLogIn = ? WHERE id = ?", validatedUser.lastLogin, validatedUser.id)
 
@@ -64,60 +57,61 @@ const validatePassword = async (email: string, password: string, reply: FastifyR
 
 	void reply.code(401)
 
-	return new shared.Unauthorized({ type: shared.ApiMessageType.Unauthorized, message: "Invalid Email or Password" })
+	return new shared.Unauthorized("Invalid Email or Password")
 }
 const passwordHash = async (password: string) => {
 	return bcrypt.hash(password, 10)
 }
+const validationResponse = (request: FastifyRequest, requiresAdmin?: boolean) => {
+	const token = request.userToken
 
-const requestToken = (request: FastifyRequest) => {
-	const cookies = cookie.parse(request.headers.cookie ?? "")
-	const loginCookie = tryParse<shared.Token>(cookies.loginCookie)
-	const tokenJson = cookies.loginCookie ? new ServerToken(loginCookie) : undefined
-
-	return new ServerToken(tokenJson)
-}
-const validateToken = (request: FastifyRequest) => {
-	const token = requestToken(request)
-
-	if (!token.user.id || !token.isChecksumValid(db.settings.checksumSecret)) {
-		return undefined
+	if (token === undefined) {
+		return new shared.Unauthorized("Please Log In")
 	}
-	else {
-		const expires = authorizationExpiration.has(token.authorization) ? authorizationExpiration.get(token.authorization) : undefined
 
-		if (!expires || expires < dayjs()) {
-			return undefined
+	const expiration = AuthorizationExpiration.get(token.authorization)
+
+	if (expiration === undefined || expiration < dayjs()) {
+		if (expiration !== undefined) {
+			//Remove the token from memory since it expired
+			AuthorizationExpiration.delete(token.authorization)
 		}
 
-		authorizationExpiration.set(token.authorization, getNewExpiration())
-
-		return token
-	}
-}
-const validateRequest = (request: FastifyRequest, reply: FastifyReply, done: () => void) => {
-	const token = validateToken(request)
-
-	if (!token) {
-		void reply.code(401).send(new shared.Unauthorized({ type: shared.ApiMessageType.Unauthorized, message: "Please Log In" }))
+		return new shared.Unauthorized("Session Expired, Please Log In Again")
 	}
 
-	done()
+	AuthorizationExpiration.set(token.authorization, getNewExpiration())
+
+	if (requiresAdmin && !token.user.isAdmin) {
+		return new shared.AccessDenied("Access Denied")
+	}
+
+	//Request passed validation, let it carry on
+	return undefined
 }
+
 const validateAdminRequest = (request: FastifyRequest, reply: FastifyReply, done: () => void) => {
-	const resp = validateToken(request)
+	const resp = validationResponse(request, true)
 
-	if (resp instanceof ServerToken && !resp.user.isAdmin) {
-		void reply.code(403).send(new shared.AccessDenied({ type: shared.ApiMessageType.AccessDenied, message: "Access Denied" }))
+	if (resp) {
+		reply.code(resp.code).send(resp)
+
+		return
 	}
 
 	done()
 }
-const statusesForUser = async (userId: string) => {
-	const qr = (await db.get<{ bookStatuses: string }>("SELECT bookStatuses FROM User WHERE id = ?", userId))
 
-	return shared.BookStatuses.fromJSON(qr?.bookStatuses)
-}
+server.addHook("preValidation", (request, _, done) => {
+	const cookies = cookie.parse(request.headers.cookie ?? "")
+	const userToken = ServerToken.fromJSON(db.settings.checksumSecret, cookies.loginCookie)
+
+	if (userToken !== undefined) {
+		request.userToken = userToken
+	}
+
+	done()
+})
 
 void server.register(fastifyMultipart, {
 	limits: {
@@ -139,7 +133,7 @@ server.post<{ Body: shared.User }>("/auth", async (request, reply) => {
 	const user = new shared.User(request.body)
 
 	if (!user.password) {
-		return new shared.Unauthorized({ message: "You must specify a password", type: shared.ApiMessageType.Unauthorized })
+		return new shared.Unauthorized("You must specify a password")
 	}
 
 	if (db.noUsers) {
@@ -156,25 +150,31 @@ server.post<{ Body: shared.User }>("/auth", async (request, reply) => {
 })
 
 server.post("/books", { preHandler: validateRequest }, async request => {
-	const token = requestToken(request)
+	// eslint-disable-next-line no-console
+	console.log("called")
+	const token = request.userToken
+
+	if (!token) {
+		throw new ReferenceError()
+	}
 
 	if (!db.settings.baseBooksPath || !db.settings.inviteEmail || !db.settings.inviteEmailPassword || !db.settings.uploadLocation) {
 		if (token.user.isAdmin) {
-			return new shared.SettingsRequired({ type: shared.ApiMessageType.SettingsRequired, message: "You must specify a setting", settings: db.settings })
+			return new shared.SettingsRequired({ message: "You must specify a setting", settings: db.settings })
 		}
 		else {
-			return new shared.AccessDenied({ type: shared.ApiMessageType.AccessDenied, message: "Some settings are missing, but they must be specified by an administrator" })
+			return new shared.AccessDenied("Some settings are missing, but they must be specified by an administrator")
 		}
 	}
 
 	const books = await bookList.allBooks()
-	const statuses = await statusesForUser(token.user.id)
+	const statuses = await db.statusesForUser(token.user.id)
 
-	return new shared.Books({ type: shared.ApiMessageType.Books, directory: books, bookStatuses: statuses })
+	return new shared.Books({ directory: books, bookStatuses: statuses })
 })
 
 server.post("/settings", { preHandler: validateAdminRequest }, (_, reply) => {
-	void reply.send(new shared.SettingsRequired({ type: shared.ApiMessageType.SettingsRequired, settings: db.settings, message: "" }))
+	void reply.send(new shared.SettingsRequired({ settings: db.settings }))
 })
 
 server.post<{ Body: shared.SettingsUpdate }>("/updateSettings", { preHandler: validateAdminRequest }, async (request, reply) => {
@@ -186,7 +186,7 @@ server.post<{ Body: shared.SettingsUpdate }>("/updateSettings", { preHandler: va
 
 	if (settingsUpdate.settings.baseBooksPath !== db.settings.baseBooksPath) {
 		if (!fs.existsSync(settingsUpdate.settings.baseBooksPath)) {
-			void reply.send(new shared.SettingsUpdateResponse({ type: shared.ApiMessageType.SettingsUpdateResponse, message: `Path "${settingsUpdate.settings.baseBooksPath}" does not exist`, successful: false }))
+			void reply.send(new shared.SettingsUpdateResponse({ message: `Path "${settingsUpdate.settings.baseBooksPath}" does not exist`, successful: false }))
 		}
 
 		db.settings.baseBooksPath = settingsUpdate.settings.baseBooksPath
@@ -196,7 +196,7 @@ server.post<{ Body: shared.SettingsUpdate }>("/updateSettings", { preHandler: va
 		await bookList.loadBooks()
 	}
 
-	void reply.send(new shared.SettingsUpdateResponse({ type: shared.ApiMessageType.SettingsUpdateResponse, message: "", successful: true }))
+	void reply.send(new shared.SettingsUpdateResponse({ successful: true }))
 })
 
 server.post("/users", { preHandler: validateAdminRequest }, async () => {
@@ -252,58 +252,48 @@ server.post<{ Body: shared.UserRequest }>("/user", async (request, reply) => {
 	if (!dbUser || dbUser.lastLogin || dbUser.hash) {
 		void reply.code(403)
 
-		return new shared.AccessDenied({ message: "This user has logged in or has a password already set", type: shared.ApiMessageType.AccessDenied })
+		return new shared.AccessDenied("This user has logged in or has a password already set")
 	}
 	else {
-		return new shared.UserResponse({ user: new shared.User(dbUser), type: shared.ApiMessageType.UserResponse })
+		return new shared.UserResponse({ user: new shared.User(dbUser) })
 	}
 })
 
-server.post<{ Body: shared.ChangePasswordRequest }>("/changePassword", async (request, reply) => {
+server.post<{ Body: shared.ChangePasswordRequest }>("/changePassword", { preHandler: validateRequest }, async (request, reply) => {
 	const changeRequest = new shared.ChangePasswordRequest(request.body)
-
-	if (changeRequest.token.authorization) {
-		// This is a change password request for someone that's already logged in
-		const token = validateToken(request)
-
-		if (!token) {
-			return token
-		}
-	}
-	else {
-		// This is a change password request for someone that's never logged in
-		const dbUser = await db.get<{ lastLogin: number, hash: string }>("SELECT hash, lastLogin FROM User WHERE id = ?", changeRequest.token.user.id)
-
-		if (!dbUser || dbUser.lastLogin || dbUser.hash) {
-			void reply.code(403)
-
-			return new shared.AccessDenied({ message: "This user has logged in or has a password already set", type: shared.ApiMessageType.AccessDenied })
-		}
-	}
-
+	const token = request.userToken
 	const hash = await passwordHash(changeRequest.newPassword)
 
-	await db.run("UPDATE User SET hash = ? WHERE id = ?", hash, changeRequest.token.user.id)
+	if (!token) {
+		throw new ReferenceError()
+	}
 
-	return validatePassword(changeRequest.token.user.email, changeRequest.newPassword, reply)
+	await db.run("UPDATE User SET hash = ? WHERE id = ?", hash, token.user.id)
+
+	return validatePassword(token.user.email, changeRequest.newPassword, reply)
 })
 
 server.post<{ Body: shared.ChangeBookStatusRequest }>("/changeBookStatus", { preHandler: validateRequest }, async request => {
 	const statusRequest = new shared.ChangeBookStatusRequest(request.body)
 	const release = await changeBookStatusMutex.acquire()
 	let statuses: shared.BookStatuses
+	const token = request.userToken
+
+	if (!token) {
+		throw new ReferenceError()
+	}
 
 	try {
-		statuses = await statusesForUser(statusRequest.token.user.id)
+		statuses = await db.statusesForUser(token.user.id)
 
-		if (statusRequest.status !== shared.Status.Unread) {
+		if (statusRequest.status !== "Unread") {
 			statuses.set(statusRequest.bookId, new shared.BookWithStatus({ status: statusRequest.status, dateStatusSet: new Date().getTime() }))
 		}
 		else {
 			statuses.delete(statusRequest.bookId)
 		}
 
-		await db.run("UPDATE User SET bookStatuses = ? WHERE id = ?", JSON.stringify(statuses), statusRequest.token.user.id)
+		await db.run("UPDATE User SET bookStatuses = ? WHERE id = ?", JSON.stringify(statuses), token.user.id)
 	}
 	finally {
 		release()
@@ -311,7 +301,7 @@ server.post<{ Body: shared.ChangeBookStatusRequest }>("/changeBookStatus", { pre
 
 	const books = await bookList.allBooks()
 
-	return new shared.Books({ type: shared.ApiMessageType.Books, directory: books, bookStatuses: statuses })
+	return new shared.Books({ directory: books, bookStatuses: statuses })
 })
 
 server.post("/upload", { preHandler: validateRequest }, async (request, reply) => {
@@ -339,54 +329,61 @@ server.post("/upload", { preHandler: validateRequest }, async (request, reply) =
 		}, 60000)
 	})
 
-	void reply.code(200).send(new shared.UploadResponse({ type: shared.ApiMessageType.UploadResponse, conversionId: id }))
+	void reply.code(200).send(new shared.UploadResponse({ conversionId: id }))
 })
 
 server.post<{ Body: shared.ConversionUpdateRequest }>("/conversionUpdate", { preHandler: validateRequest }, async request => {
 	const updateRequest = new shared.ConversionUpdateRequest(request.body)
 	const conversion = conversions.get(updateRequest.conversionId)
-	let book: ServerBook | undefined
-	let response = { conversionPercent: 100, errorMessage: "", converterStatus: shared.ConverterStatus.Complete }
+	const response = new shared.ConversionUpdateResponse({ conversionPercent: 100, converterStatus: "Complete" })
 
 	if (conversion) {
-		if (conversion.status !== shared.ConverterStatus.Error) {
+		if (conversion.status !== "Error") {
 			await conversion.waitForUpdate(updateRequest.knownPercent, updateRequest.knownConverterStatus)
 		}
 
-		response = { conversionPercent: conversion.percentComplete, errorMessage: conversion.errorMessage, converterStatus: conversion.status }
+		response.conversionPercent = conversion.percentComplete
+		response.errorMessage = conversion.errorMessage
+		response.converterStatus = conversion.status
 
-		if (conversion.status === shared.ConverterStatus.Complete) {
-			book = bookList.findBookByPath(conversion.convertedFilePath) as ServerBook
+		if (conversion.status === "Complete") {
+			response.book = bookList.findBookByPath(conversion.convertedFilePath) as ServerBook
 		}
 	}
 	else {
 		response.errorMessage = `No conversion found for id: ${updateRequest.conversionId}`
 	}
 
-	return new shared.ConversionUpdateResponse({ ...response, type: shared.ApiMessageType.ConversionUpdateResponse, book })
+	return response
 })
 
 server.post<{ Body: shared.AddFolderRequest }>("/addFolder", { preHandler: validateAdminRequest }, async request => {
+	const token = request.userToken
 	const addFolderRequest = new shared.AddFolderRequest(request.body)
 	const fullPath = path.join(db.settings.baseBooksPath, addFolderRequest.path, addFolderRequest.folderName)
+
+	if (!token) {
+		throw new ReferenceError()
+	}
 
 	await fs.promises.mkdir(fullPath)
 
 	await bookList.fileAdded(fullPath)
 
 	const books = await bookList.allBooks()
-	const statuses = await statusesForUser(addFolderRequest.token.user.id)
+	const statuses = await db.statusesForUser(token.user.id)
 
-	return new shared.Books({ type: shared.ApiMessageType.Books, directory: books, bookStatuses: statuses })
+	return new shared.Books({ directory: books, bookStatuses: statuses })
 })
 
 server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: validateAdminRequest }, async request => {
 	const updateBookRequest = new shared.UpdateBookRequest(request.body)
+	const token = request.userToken ?? (() => { throw new Error() })()
 	const book = (await bookList.allBooks()).findById(updateBookRequest.newBook.id)
 	const newBook = updateBookRequest.newBook
 
 	if (!(book instanceof shared.Book)) {
-		return new shared.UpdateBookResponse({ type: shared.ApiMessageType.UpdateBookResponse, message: `Couldn't find existing book with ID ${updateBookRequest.newBook.id}` })
+		return new shared.UpdateBookResponse({ message: `Couldn't find existing book with ID ${updateBookRequest.newBook.id}` })
 	}
 
 	const newDir = path.join(db.settings.baseBooksPath, updateBookRequest.newBook.folderPath)
@@ -399,7 +396,7 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 		// Check to see if the file needs renamed
 		if (book.fullPath.toLowerCase() !== newPath.toLowerCase()) {
 			if (fs.existsSync(newPath)) {
-				return new shared.UpdateBookResponse({ type: shared.ApiMessageType.UpdateBookResponse, message: `File ${newPath} already exists` })
+				return new shared.UpdateBookResponse({ message: `File ${newPath} already exists` })
 			}
 
 			// eslint-disable-next-line no-console
@@ -415,12 +412,12 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 		}
 
 		if (extension === ".mp3") {
-			const ret = NodeID3.update({ title: newBook.name, artist: newBook.author, year: newBook.year?.toString(), comment: { language: "eng", text: newBook.comment }, composer: newBook.narrator, genre: newBook.genre }, newPath)
+			const ret = NodeID3.update({ title: newBook.name, artist: newBook.author, year: newBook.year.toString(), comment: { language: "eng", text: newBook.comment }, composer: newBook.narrator, genre: newBook.genre }, newPath)
 
 			if (ret !== true) {
 				// eslint-disable-next-line no-console
 				console.log(ret)
-				return new shared.UpdateBookResponse({ type: shared.ApiMessageType.UpdateBookResponse, message: ret.message })
+				return new shared.UpdateBookResponse({ message: ret.message })
 			}
 		}
 		else if (book.name !== newBook.name || book.author !== newBook.author || book.year !== newBook.year || book.comment !== newBook.comment || book.narrator !== newBook.narrator || book.genre !== newBook.genre) {
@@ -445,25 +442,25 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 	}
 
 	const books = await bookList.allBooks()
-	const statuses = await statusesForUser(updateBookRequest.token.user.id)
+	const statuses = await db.statusesForUser(token.user.id)
 
-	return new shared.UpdateBookResponse({ type: shared.ApiMessageType.UpdateBookResponse, message: "", books: new shared.Books({ type: shared.ApiMessageType.Books, bookStatuses: statuses, directory: books }) })
+	return new shared.UpdateBookResponse({ books: new shared.Books({ bookStatuses: statuses, directory: books }) })
 })
 
 server.get<{ Params: Record<string, string> }>("/files/*", { preHandler: validateRequest }, (request, reply) => {
 	const filePath = request.params["*"]
 
 	if (filePath.endsWith(".jpg")) {
-		void reply.sendFile(filePath, db.settings.baseBooksPath)
+		reply.sendFile(filePath, db.settings.baseBooksPath)
 	}
 	else if (filePath.endsWith(".m4b") || filePath.endsWith(".mp3")) {
 		const splitPath = filePath.split("/")
 
-		void reply.header("Content-Disposition", `attachment; filename="${splitPath[splitPath.length - 1]}"`)
-		void reply.sendFile(filePath, db.settings.baseBooksPath)
+		reply.header("Content-Disposition", `attachment; filename="${splitPath[splitPath.length - 1]}"`)
+		reply.sendFile(filePath, db.settings.baseBooksPath)
 	}
 	else {
-		void reply.code(404).send("Not Found")
+		reply.code(404).send("Not Found")
 	}
 })
 

@@ -1,6 +1,6 @@
 import typescript from "@rollup/plugin-typescript";
 import alias from "@rollup/plugin-alias";
-import path, { dirname } from "path";
+import path from "path";
 
 const __dirname = import.meta.dirname;
 

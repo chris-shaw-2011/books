@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Status, Directory, Books, SortOrder } from "@books/shared"
+import { type Status, Directory, Books, SortOrderValues, type SortOrder } from "@books/shared"
 import { DropdownButton, Dropdown } from "react-bootstrap"
 import Styles from "./ItemListTabContent.module.scss"
 import classNames from "classnames"
@@ -15,14 +15,14 @@ interface BookTabProps {
 }
 
 const ItemListTabContent = (props: BookTabProps) => {
-	const [sort, setSort] = useState(SortOrder.AlphabeticallyAscending)
+	const [sort, setSort] = useState<SortOrder>("Alphabetically - Ascending")
 	const items = new Directory(props.dir, undefined, sort)
 
 	return (
 		<>
 			<div className={classNames(Styles.sortDropDown, { [Styles.hidden]: props.hidden })}>
 				<DropdownButton title={`Sorted: ${sort}`} id={`${props.status ?? "All"}-sortButton`} variant="secondary">
-					{Object.values(SortOrder).map(s => (
+					{SortOrderValues.map(s => (
 						<Dropdown.Item key={s} onClick={() => { setSort(s) }}>{s}</Dropdown.Item>
 					))}
 				</DropdownButton>

@@ -1,71 +1,64 @@
 import Book from "./Book.js"
 import BookStatuses from "./BookStatuses.js"
-import ItemType from "./ItemType.js"
-import SortOrder from "./SortOrder.js"
+import Item from "./Item.js"
+import { type SortOrder } from "./SortOrder.js"
 
-export default class Directory {
-	items: (Directory | Book)[] = []
-	name = ""
-	id = ""
-	uploadTime = new Date()
-	hasBooks = true
-	folderPath = ""
-	readonly type = ItemType.directory
+export default class Directory extends Item {
+	override readonly type = "Directory"
 
-	constructor(json?: Directory, bookStatuses?: BookStatuses, sortOrder?: SortOrder) {
-		if (json) {
-			this.name = json.name
-			this.id = json.id
-			this.hasBooks = json.hasBooks
-			this.folderPath = json.folderPath
-			let uploadSet = false
+	items: (Directory | Book)[]
+	hasBooks: boolean
 
-			json.items.forEach(i => {
-				let upload: Date
+	constructor(json?: Partial<Directory>, bookStatuses?: BookStatuses, sortOrder?: SortOrder) {
+		super(json)
 
-				if (i.type === ItemType.book) {
-					const status = bookStatuses ? bookStatuses.get(i.id)?.status : undefined
-					const book = new Book(i, status)
+		this.hasBooks = json?.hasBooks ?? false
+		this.items = []
 
-					this.items.push(new Book(i, status))
+		let upload: Date | number | undefined
 
-					upload = book.uploadTime
-				}
-				else {
-					const dir = new Directory(i, bookStatuses, sortOrder)
+		json?.items?.forEach(i => {
+			const newUpload = i.uploadTime
 
-					this.items.push(dir)
-					upload = dir.uploadTime
-				}
+			if (i.type === "Book") {
+				const status = bookStatuses ? bookStatuses.get(i.id)?.status : undefined
+				const book = new Book(i, status)
 
-				if (sortOrder === SortOrder.UploadedAscending && (!uploadSet || upload < this.uploadTime)) {
-					uploadSet = true
-					this.uploadTime = upload
-				}
-				else if (sortOrder === SortOrder.UploadedDescending && (!uploadSet || upload > this.uploadTime)) {
-					uploadSet = true
-					this.uploadTime = upload
-				}
-			})
+				this.items.push(book)
+			}
+			else {
+				const dir = new Directory(i, bookStatuses, sortOrder)
 
-			if (sortOrder) {
-				switch (sortOrder) {
-					case SortOrder.AlphabeticallyDescending:
-						this.items.reverse()
-						break
-					case SortOrder.AlphabeticallyAscending:
-						break
-					case SortOrder.UploadedAscending:
-						this.items.sort((a, b) => {
-							return a.uploadTime > b.uploadTime ? 1 : -1
-						})
-						break
-					case SortOrder.UploadedDescending:
-						this.items.sort((a, b) => {
-							return a.uploadTime > b.uploadTime ? -1 : 1
-						})
-						break
-				}
+				this.items.push(dir)
+			}
+
+			if (sortOrder === "Uploaded - Ascending" && (!upload || newUpload < this.uploadTime)) {
+				upload = newUpload
+			}
+			else if (sortOrder === "Uploaded - Descending" && (!upload || newUpload > this.uploadTime)) {
+				upload = newUpload
+			}
+		})
+
+		this.uploadTime = upload ?? this.uploadTime
+
+		if (sortOrder) {
+			switch (sortOrder) {
+				case "Alphabetically - Descending":
+					this.items.reverse()
+					break
+				case "Alphabetically - Ascending":
+					break
+				case "Uploaded - Ascending":
+					this.items.sort((a, b) => {
+						return a.uploadTime > b.uploadTime ? 1 : -1
+					})
+					break
+				case "Uploaded - Descending":
+					this.items.sort((a, b) => {
+						return a.uploadTime > b.uploadTime ? -1 : 1
+					})
+					break
 			}
 		}
 	}
@@ -74,7 +67,7 @@ export default class Directory {
 		let count = 0
 
 		this.items.forEach(i => {
-			if (i.type === ItemType.book) {
+			if (i.type === "Book") {
 				count += 1
 			}
 			else {
@@ -85,13 +78,15 @@ export default class Directory {
 		return count
 	}
 
-	toJSON() {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const directory: any = { ...this }
-
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		delete directory.uploadTime
-
-		return directory as unknown
+	toJSON(): Omit<Directory, "uploadTime" | "bookCount" | "toJSON"> & { uploadTime?: number } {
+		return {
+			items: this.items,
+			hasBooks: this.hasBooks,
+			id: this.id,
+			name: this.name,
+			folderPath: this.folderPath,
+			uploadTime: new Date(this.uploadTime).getTime(),
+			type: "Directory",
+		}
 	}
 }

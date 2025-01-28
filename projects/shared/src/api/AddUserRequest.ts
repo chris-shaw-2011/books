@@ -1,18 +1,14 @@
 import User from "../User.js"
 import ApiMessage from "./ApiMessage.js"
-import Token from "./Token.js"
-import ApiMessageType from "./ApiMessageType.js"
 
 export default class AddUserRequest extends ApiMessage {
-	user = new User()
-	token = new Token()
+	override readonly type = "AddUserRequest"
 
-	constructor(json?: AddUserRequest) {
-		super(ApiMessageType.AddUserRequest)
+	user: User
 
-		if (json) {
-			this.user = new User(json.user)
-			this.token = new Token(json.token)
-		}
+	constructor(json: Partial<AddUserRequest>) {
+		super()
+
+		this.user = new User(json.user)
 	}
 }

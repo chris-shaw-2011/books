@@ -3,11 +3,11 @@ import * as sqlite from "sqlite"
 import { v4 as uuid } from "uuid"
 import { Settings } from "@books/shared"
 
-export default class ServerSettings implements Settings {
-	get baseBooksPath() {
+export default class ServerSettings extends Settings {
+	override get baseBooksPath() {
 		return this._baseBooksPath
 	}
-	set baseBooksPath(value: string) {
+	override set baseBooksPath(value: string) {
 		if (this._baseBooksPath !== value) {
 			this._baseBooksPath = value
 			this.updateDbSetting("baseBooksPath", value)
@@ -24,10 +24,10 @@ export default class ServerSettings implements Settings {
 		}
 	}
 
-	get inviteEmail() {
+	override get inviteEmail() {
 		return this._inviteEmail
 	}
-	set inviteEmail(value: string) {
+	override set inviteEmail(value: string) {
 		if (this._inviteEmail !== value) {
 			this._inviteEmail = value
 			this.updateDbSetting("inviteEmail", value)
@@ -35,10 +35,10 @@ export default class ServerSettings implements Settings {
 		}
 	}
 
-	get inviteEmailPassword() {
+	override get inviteEmailPassword() {
 		return this._inviteEmailPassword
 	}
-	set inviteEmailPassword(value: string) {
+	override set inviteEmailPassword(value: string) {
 		if (this._inviteEmailPassword !== value) {
 			this._inviteEmailPassword = value
 			this.updateDbSetting("inviteEmailPassword", value)
@@ -46,61 +46,62 @@ export default class ServerSettings implements Settings {
 		}
 	}
 
-	get uploadLocation() {
+	override get uploadLocation() {
 		return this._uploadLocation
 	}
-	set uploadLocation(value: string) {
+	override set uploadLocation(value: string) {
 		if (this._uploadLocation !== value) {
 			this._uploadLocation = value
 			this.updateDbSetting("uploadLocation", value)
 		}
 	}
 	mailer = this.createMailer()
-	private _baseBooksPath = ""
 	private _checksumSecret = ""
-	private _inviteEmail = ""
-	private _inviteEmailPassword = ""
-	private _uploadLocation = ""
 	private _db: sqlite.Database
 
 	constructor(db: sqlite.Database) {
+		super()
 		this._db = db
 	}
 
-	async loadFromDatabase() {
-		(await this._db.all("SELECT key, value FROM setting")).forEach((row: { key: string, value: string }) => {
-			switch (row.key) {
-				case "baseBooksPath": {
-					this._baseBooksPath = row.value
-					break
-				}
-				case "checksumSecret": {
-					this._checksumSecret = row.value
-					break
-				}
-				case "inviteEmail": {
-					this._inviteEmail = row.value
-					break
-				}
-				case "inviteEmailPassword": {
-					this._inviteEmailPassword = row.value
-					break
-				}
-				case "uploadLocation": {
-					this._uploadLocation = row.value
-					break
-				}
-			}
-		})
+	static async loadFromDatabase(db: sqlite.Database) {
+		const settings = new ServerSettings(db)
 
-		if (!this.checksumSecret) {
-			this.checksumSecret = uuid()
+		if (!settings.checksumSecret) {
+			settings.checksumSecret = uuid()
 
 			// eslint-disable-next-line no-console
 			console.log("Creating checksum secret")
 		}
 
-		this.mailer = this.createMailer()
+		(await db.all("SELECT key, value FROM setting")).forEach((row: { key: string, value: string }) => {
+			switch (row.key) {
+				case "baseBooksPath": {
+					settings._baseBooksPath = row.value
+					break
+				}
+				case "checksumSecret": {
+					settings._checksumSecret = row.value
+					break
+				}
+				case "inviteEmail": {
+					settings._inviteEmail = row.value
+					break
+				}
+				case "inviteEmailPassword": {
+					settings._inviteEmailPassword = row.value
+					break
+				}
+				case "uploadLocation": {
+					settings._uploadLocation = row.value
+					break
+				}
+			}
+		})
+
+		settings.mailer = settings.createMailer()
+
+		return settings
 	}
 
 	toJSON() {

@@ -1,18 +1,17 @@
 import BookStatuses from "../BookStatuses.js"
 import Directory from "../Directory.js"
 import ApiMessage from "./ApiMessage.js"
-import ApiMessageType from "./ApiMessageType.js"
 
 export default class Books extends ApiMessage {
-	directory = new Directory()
-	bookStatuses = new BookStatuses()
+	override readonly type = "Books"
 
-	constructor(json?: Books) {
-		super(ApiMessageType.Books)
+	directory: Directory
+	bookStatuses: BookStatuses
 
-		if (json) {
-			this.bookStatuses = new BookStatuses(json.bookStatuses)
-			this.directory = new Directory(json.directory, this.bookStatuses)
-		}
+	constructor(json?: Partial<Books>) {
+		super()
+
+		this.bookStatuses = new BookStatuses(json?.bookStatuses)
+		this.directory = new Directory(json?.directory, this.bookStatuses)
 	}
 }

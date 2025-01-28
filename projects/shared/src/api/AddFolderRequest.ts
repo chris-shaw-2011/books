@@ -1,19 +1,15 @@
 import ApiMessage from "./ApiMessage.js"
-import Token from "./Token.js"
-import ApiMessageType from "./ApiMessageType.js"
 
 export default class AddFolderRequest extends ApiMessage {
-	path = ""
-	folderName = ""
-	token = new Token()
+	override readonly type = "AddFolderRequest"
 
-	constructor(json?: AddFolderRequest) {
-		super(ApiMessageType.AddFolderRequest)
+	path: string
+	folderName: string
 
-		if (json) {
-			this.path = json.path
-			this.folderName = json.folderName
-			this.token = new Token(json.token)
-		}
+	constructor(json?: Partial<AddFolderRequest>) {
+		super()
+
+		this.path = json?.path ?? ""
+		this.folderName = json?.folderName ?? ""
 	}
 }

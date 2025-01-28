@@ -5,40 +5,40 @@ class LoggedInApiClass {
 		return this.fetch("/books", token)
 	}
 
-	updateSettings = async (token: shared.Token, settings: shared.Settings) => {
-		return this.fetch("/updateSettings", new shared.SettingsUpdate({ type: shared.ApiMessageType.SettingsUpdate, settings, token }))
+	updateSettings = async (settings: shared.Settings) => {
+		return this.fetch("/updateSettings", new shared.SettingsUpdate({ settings }))
 	}
 
 	settings = async (token: shared.Token) => {
 		return this.fetch("/settings", token)
 	}
 
-	users = async (token: shared.Token) => {
-		return this.fetch("/users", token)
+	users = async () => {
+		return this.fetch("/users")
 	}
 
-	addUser = async (token: shared.Token, user: shared.User) => {
-		return this.fetch("/addUser", new shared.AddUserRequest({ type: shared.ApiMessageType.AddUserRequest, user, token }))
+	addUser = async (user: shared.User) => {
+		return this.fetch("/addUser", new shared.AddUserRequest({ user }))
 	}
 
-	deleteUser = async (token: shared.Token, userId: string) => {
-		return this.fetch("/deleteUser", new shared.DeleteUserRequest({ type: shared.ApiMessageType.DeleteUserRequest, userId, token }))
+	deleteUser = async (userId: string) => {
+		return this.fetch("/deleteUser", new shared.DeleteUserRequest({ userId }))
 	}
 
-	changeBookStatus = async (bookId: string, status: shared.Status, token: shared.Token) => {
-		return this.fetch("/changeBookStatus", new shared.ChangeBookStatusRequest({ bookId, status, token, type: shared.ApiMessageType.ChangeBookStatusRequest }))
+	changeBookStatus = async (bookId: string, status: shared.Status) => {
+		return this.fetch("/changeBookStatus", new shared.ChangeBookStatusRequest({ bookId, status }))
 	}
 
 	conversionUpdate = async (conversionId: string, knownPercent: number, knownConverterStatus: shared.ConverterStatus) => {
-		return this.fetch("/conversionUpdate", new shared.ConversionUpdateRequest({ type: shared.ApiMessageType.ConversionUpdateRequest, conversionId, knownPercent, knownConverterStatus }))
+		return this.fetch("/conversionUpdate", new shared.ConversionUpdateRequest({ conversionId, knownPercent, knownConverterStatus }))
 	}
 
-	updateBook = async (token: shared.Token, newBook: shared.Book, prevBook: shared.Book) => {
-		return this.fetch("/updateBook", new shared.UpdateBookRequest({ type: shared.ApiMessageType.UpdateBookRequest, newBook, prevBook, token }))
+	updateBook = async (newBook: shared.Book, prevBook: shared.Book) => {
+		return this.fetch("/updateBook", new shared.UpdateBookRequest({ newBook, prevBook }))
 	}
 
-	addFolder = async (token: shared.Token, path: string, folderName: string) => {
-		return this.fetch("/addFolder", new shared.AddFolderRequest({ type: shared.ApiMessageType.AddFolderRequest, token, path, folderName }))
+	addFolder = async (path: string, folderName: string) => {
+		return this.fetch("/addFolder", new shared.AddFolderRequest({ path, folderName }))
 	}
 
 	fetch = async (url: string, jsonSend?: unknown) => {
@@ -58,34 +58,34 @@ class LoggedInApiClass {
 		if (!json) {
 			return undefined
 		}
-		else if (json.type === shared.ApiMessageType.AccessDenied) {
+		else if (json.type === "AccessDenied") {
 			return new shared.AccessDenied(json as shared.AccessDenied)
 		}
-		else if (json.type === shared.ApiMessageType.Unauthorized) {
+		else if (json.type === "Unauthorized") {
 			return new shared.Unauthorized(json as shared.Unauthorized)
 		}
-		else if (json.type === shared.ApiMessageType.Token) {
+		else if (json.type === "Token") {
 			return new shared.Token(json as shared.Token)
 		}
-		else if (json.type === shared.ApiMessageType.Books) {
+		else if (json.type === "Books") {
 			return new shared.Books(json as shared.Books)
 		}
-		else if (json.type === shared.ApiMessageType.SettingsRequired) {
+		else if (json.type === "SettingsRequired") {
 			return new shared.SettingsRequired(json as shared.SettingsRequired)
 		}
-		else if (json.type === shared.ApiMessageType.SettingsUpdateResponse) {
+		else if (json.type === "SettingsUpdateResponse") {
 			return new shared.SettingsUpdateResponse(json as shared.SettingsUpdateResponse)
 		}
-		else if (json.type === shared.ApiMessageType.UserListResponse) {
+		else if (json.type === "UserListResponse") {
 			return new shared.UserListResponse(json as shared.UserListResponse)
 		}
-		else if (json.type === shared.ApiMessageType.ConversionUpdateResponse) {
+		else if (json.type === "ConversionUpdateResponse") {
 			return new shared.ConversionUpdateResponse(json as shared.ConversionUpdateResponse)
 		}
-		else if (json.type === shared.ApiMessageType.UploadResponse) {
+		else if (json.type === "UploadResponse") {
 			return new shared.UploadResponse(json as shared.UploadResponse)
 		}
-		else if (json.type === shared.ApiMessageType.UpdateBookResponse) {
+		else if (json.type === "UpdateBookResponse") {
 			return new shared.UpdateBookResponse(json as shared.UpdateBookResponse)
 		}
 		else {

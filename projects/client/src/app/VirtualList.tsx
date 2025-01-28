@@ -11,10 +11,7 @@ interface Props {
 	className?: string,
 }
 
-enum Direction {
-	Up,
-	Down,
-}
+type Direction = "Up" | "Down"
 
 interface Range {
 	min: number
@@ -27,7 +24,7 @@ const location = (index: number, direction: Direction, estimatedChildHeight: num
 	if (ref || index === 0) {
 		return { top: ref?.offsetTop ?? 0, height: ref?.getBoundingClientRect().height ?? estimatedChildHeight }
 	}
-	else if (direction === Direction.Up) {
+	else if (direction === "Up") {
 		return { top: index * estimatedChildHeight, height: estimatedChildHeight }
 	}
 	else {
@@ -53,7 +50,7 @@ const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
 				return children.length - 1
 			}
 
-			const loc = location(currentMin, Direction.Up, estimatedChildHeight, childRefs)
+			const loc = location(currentMin, "Up", estimatedChildHeight, childRefs)
 			const renderStartPosition = (elm.current?.scrollTop ?? 0) - (estimatedChildHeight * extraRowsToRender)
 
 			if (renderStartPosition <= 0) {
@@ -79,7 +76,7 @@ const VirtualList = ({ children, estimatedChildHeight, className }: Props) => {
 				return 0
 			}
 
-			const loc = location(currentMax, Direction.Down, estimatedChildHeight, childRefs)
+			const loc = location(currentMax, "Down", estimatedChildHeight, childRefs)
 			const renderStopPosition = (elm.current?.scrollTop ?? 0.0) + (elm.current?.getBoundingClientRect().height ?? 0.0) + (estimatedChildHeight * extraRowsToRender)
 
 			if (renderStopPosition > loc.top + loc.height && change >= 0) {

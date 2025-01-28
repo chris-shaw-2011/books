@@ -1,19 +1,18 @@
-import { ConverterStatus } from "../ConverterStatus.js"
+import { type ConverterStatus } from "../ConverterStatus.js"
 import ApiMessage from "./ApiMessage.js"
-import ApiMessageType from "./ApiMessageType.js"
 
 export default class ConversionUpdateRequest extends ApiMessage {
-	knownPercent = 0
-	knownConverterStatus = ConverterStatus.Waiting
-	conversionId = ""
+	override readonly type = "ConversionUpdateRequest"
 
-	constructor(json?: ConversionUpdateRequest) {
-		super(ApiMessageType.ConversionUpdateRequest)
+	knownPercent: number
+	knownConverterStatus: ConverterStatus
+	conversionId: string
 
-		if (json) {
-			this.knownPercent = json.knownPercent
-			this.conversionId = json.conversionId
-			this.knownConverterStatus = json.knownConverterStatus
-		}
+	constructor(json?: Partial<ConversionUpdateRequest>) {
+		super()
+
+		this.knownPercent = json?.knownPercent ?? 0
+		this.conversionId = json?.conversionId ?? ""
+		this.knownConverterStatus = json?.knownConverterStatus ?? "Waiting"
 	}
 }

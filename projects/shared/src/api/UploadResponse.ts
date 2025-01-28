@@ -1,14 +1,13 @@
 import ApiMessage from "./ApiMessage.js"
-import ApiMessageType from "./ApiMessageType.js"
 
 export default class UploadResponse extends ApiMessage {
-	conversionId = ""
+	override readonly type = "UploadResponse"
 
-	constructor(json?: UploadResponse) {
-		super(ApiMessageType.UploadResponse)
+	conversionId: string
 
-		if (json) {
-			this.conversionId = json.conversionId
-		}
+	constructor(json?: Partial<UploadResponse>) {
+		super()
+
+		this.conversionId = json?.conversionId ?? ""
 	}
 }

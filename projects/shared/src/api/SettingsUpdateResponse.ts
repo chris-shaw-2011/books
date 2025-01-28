@@ -1,16 +1,15 @@
 import ApiMessage from "./ApiMessage.js"
-import ApiMessageType from "./ApiMessageType.js"
 
 export default class SettingsUpdateResponse extends ApiMessage {
-	successful = false
-	message = ""
+	override readonly type = "SettingsUpdateResponse"
 
-	constructor(json?: SettingsUpdateResponse) {
-		super(ApiMessageType.SettingsUpdateResponse)
+	successful: boolean
+	message: string
 
-		if (json) {
-			this.successful = json.successful
-			this.message = json.message
-		}
+	constructor(json?: Partial<SettingsUpdateResponse>) {
+		super()
+
+		this.successful = json?.successful ?? false
+		this.message = json?.message ?? ""
 	}
 }

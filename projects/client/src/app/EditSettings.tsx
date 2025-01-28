@@ -24,13 +24,15 @@ const EditSettings = (props: Props) => {
 	const context = useContext(AppContext)
 	const onUnauthorized = context.logOut
 	const token = context.token
-	const onChange = (obj: Record<string, unknown>) => {
+	const onChange = (obj: Record<string, string>) => {
 		setSettings(s => {
-			if (!s) {
-				s = new Settings()
-			}
-
-			return { ...s, ...obj }
+			return new Settings({
+				baseBooksPath: s?.baseBooksPath ?? "",
+				inviteEmail: s?.inviteEmail ?? "",
+				inviteEmailPassword: s?.inviteEmailPassword ?? "",
+				uploadLocation: s?.uploadLocation ?? "",
+				...obj,
+			})
 		})
 	}
 
@@ -60,7 +62,7 @@ const EditSettings = (props: Props) => {
 		event.stopPropagation()
 
 		if (form.checkValidity()) {
-			const ret = await Api.updateSettings(token, settings)
+			const ret = await Api.updateSettings(settings)
 
 			if (ret instanceof SettingsUpdateResponse) {
 				if (ret.successful) {

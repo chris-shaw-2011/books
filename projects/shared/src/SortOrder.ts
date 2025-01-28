@@ -1,8 +1,3 @@
-enum SortOrder {
-	AlphabeticallyAscending = "Alphabetically - Ascending",
-	AlphabeticallyDescending = "Alphabetically - Descending",
-	UploadedAscending = "Uploaded - Ascending",
-	UploadedDescending = "Uploaded - Descending",
-}
+export const SortOrderValues = ["Alphabetically - Ascending", "Alphabetically - Descending", "Uploaded - Ascending", "Uploaded - Descending"] as const
 
-export default SortOrder
+export type SortOrder = typeof SortOrderValues[number];

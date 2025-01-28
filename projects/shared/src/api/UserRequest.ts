@@ -1,14 +1,13 @@
 import ApiMessage from "./ApiMessage.js"
-import ApiMessageType from "./ApiMessageType.js"
 
 export default class UserRequest extends ApiMessage {
-	userId = ""
+	override readonly type = "UserRequest"
 
-	constructor(json?: UserRequest) {
-		super(ApiMessageType.UserRequest)
+	userId: string
 
-		if (json) {
-			this.userId = json.userId
-		}
+	constructor(json?: Partial<UserRequest>) {
+		super()
+
+		this.userId = json?.userId ?? ""
 	}
 }

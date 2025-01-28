@@ -21,34 +21,15 @@ export default class BookStatuses extends Map<string, BookWithStatus> {
 		}
 	}
 
+	//This may not be necessary
 	static fromJSON(jsonString?: string): BookStatuses {
 		if (jsonString) {
-			const parsed = JSON.parse(jsonString) as unknown  // Parse as unknown to avoid any type assignment
+			const parsed = JSON.parse(jsonString) as Record<string, Partial<BookWithStatus>>
 
-			if (BookStatuses.isValid(parsed)) {
-				return new BookStatuses(parsed)
-			}
-			else {
-				throw new Error("Invalid JSON format for BookStatuses.")
-			}
+			return new BookStatuses(parsed)
 		}
 		else {
 			return new BookStatuses()
 		}
-	}
-
-	private static isValid(json: unknown): json is Record<string, Partial<BookWithStatus>> {
-		if (typeof json !== "object" || json === null) {
-			return false
-		}
-
-		return Object.values(json).every(
-			item =>
-				typeof item === "object" &&
-				item !== null &&
-				("status" in item || "dateStatusSet" in item) &&
-				(typeof (item as Partial<BookWithStatus>).status === "string" || typeof (item as Partial<BookWithStatus>).status === "undefined") &&
-				(typeof (item as Partial<BookWithStatus>).dateStatusSet === "number" || typeof (item as Partial<BookWithStatus>).dateStatusSet === "undefined")
-		)
 	}
 }

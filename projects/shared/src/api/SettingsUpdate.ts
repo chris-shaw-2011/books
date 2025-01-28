@@ -1,18 +1,14 @@
 import Settings from "../Settings.js"
 import ApiMessage from "./ApiMessage.js"
-import Token from "./Token.js"
-import ApiMessageType from "./ApiMessageType.js"
 
 export default class SettingsUpdate extends ApiMessage {
-	settings = new Settings()
-	token = new Token()
+	override readonly type = "SettingsUpdate"
 
-	constructor(json?: SettingsUpdate) {
-		super(ApiMessageType.SettingsUpdate)
+	settings: Settings
 
-		if (json) {
-			this.settings = new Settings(json.settings)
-			this.token = new Token(json.token)
-		}
+	constructor(json?: Partial<SettingsUpdate>) {
+		super()
+
+		this.settings = new Settings(json?.settings)
 	}
 }

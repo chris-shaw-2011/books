@@ -1,58 +1,59 @@
-import ItemType from "./ItemType.js"
+import Item from "./Item.js"
 
-export enum Status {
-	Unread = "Unread",
-	Read = "Read",
-	Skipped = "Skipped",
-}
+export const StatusValues = ["Unread", "Read", "Skipped"] as const
 
-export default class Book {
-	name = ""
-	author = ""
-	numBytes = 0
-	cover = ""
-	download = ""
-	status = Status.Unread
-	year?: number
-	comment = ""
-	duration?: number
-	id = ""
-	uploadTime = new Date(0)
-	narrator = ""
-	genre = ""
-	folderPath = ""
+export type Status = typeof StatusValues[number]
 
-	readonly type = ItemType.book
+export default class Book extends Item {
+	author: string
+	numBytes: number
+	cover: string
+	download: string
+	status: Status
+	year: number
+	comment: string
+	duration: number
+	narrator: string
+	genre: string
 
-	constructor(json?: Book, status?: Status) {
-		if (json) {
-			this.name = json.name.trim()
-			this.author = json.author.trim()
-			this.numBytes = json.numBytes
-			this.cover = json.cover
-			this.download = json.download
-			this.status = json.status
-			this.year = json.year
-			this.comment = json.comment.trim()
-			this.duration = json.duration
-			this.id = json.id
-			this.uploadTime = new Date(json.uploadTime)
-			this.narrator = json.narrator.trim()
-			this.genre = json.genre.trim()
-			this.folderPath = json.folderPath
-		}
+	override readonly type = "Book"
 
-		if (status) {
+	constructor(json?: Partial<Book>, status?: Status) {
+		super(json)
+
+		this.author = json?.author?.trim() ?? ""
+		this.numBytes = json?.numBytes ?? 0
+		this.cover = json?.cover ?? ""
+		this.download = json?.download ?? ""
+		this.status = json?.status ?? "Unread"
+		this.year = json?.year ?? 0
+		this.comment = json?.comment?.trim() ?? ""
+		this.duration = json?.duration ?? 0
+		this.narrator = json?.narrator?.trim() ?? ""
+		this.genre = json?.genre?.trim() ?? ""
+
+		if (status !== undefined) {
 			this.status = status
 		}
 	}
 
-	toJSON() {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const json: any = { ...this }
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		json.uploadTime = this.uploadTime.getTime()
-
-		return json as unknown
+	toJSON(): Omit<Book, "uploadTime" | "toJSON"> & { uploadTime?: number } {
+		return {
+			author: this.author,
+			numBytes: this.numBytes,
+			cover: this.cover,
+			download: this.download,
+			status: this.status,
+			year: this.year,
+			comment: this.comment,
+			duration: this.duration,
+			narrator: this.narrator,
+			genre: this.genre,
+			id: this.id,
+			name: this.name,
+			folderPath: this.folderPath,
+			uploadTime: new Date(this.uploadTime).getTime(),
+			type: "Book",
+		}
 	}
 }

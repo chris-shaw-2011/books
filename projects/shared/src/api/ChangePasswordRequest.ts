@@ -1,17 +1,13 @@
 import ApiMessage from "./ApiMessage.js"
-import Token from "./Token.js"
-import ApiMessageType from "./ApiMessageType.js"
 
 export default class ChangePasswordRequest extends ApiMessage {
-	newPassword = ""
-	token = new Token()
+	override readonly type = "ChangePasswordRequest"
 
-	constructor(json?: ChangePasswordRequest) {
-		super(ApiMessageType.ChangePasswordRequest)
+	newPassword: string
 
-		if (json) {
-			this.newPassword = json.newPassword
-			this.token = new Token(json.token)
-		}
+	constructor(json?: Partial<ChangePasswordRequest>) {
+		super()
+
+		this.newPassword = json?.newPassword ?? ""
 	}
 }

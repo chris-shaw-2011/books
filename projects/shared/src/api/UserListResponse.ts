@@ -1,17 +1,16 @@
 import User from "../User.js"
 import ApiMessage from "./ApiMessage.js"
-import ApiMessageType from "./ApiMessageType.js"
 
 export default class UserListResponse extends ApiMessage {
-	users: User[] = []
-	message = ""
+	override readonly type = "UserListResponse"
 
-	constructor(json?: UserListResponse) {
-		super(ApiMessageType.UserListResponse)
+	users: User[]
+	message: string
 
-		if (json) {
-			this.users = json.users.map(u => new User(u))
-			this.message = json.message
-		}
+	constructor(json?: Partial<UserListResponse>) {
+		super()
+
+		this.users = json?.users?.map(u => new User(u)) ?? []
+		this.message = json?.message ?? ""
 	}
 }

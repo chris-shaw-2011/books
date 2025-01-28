@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import Alert from "./components/Alert"
-import { Token, AccessDenied, ApiMessageType, Unauthorized, UserResponse, User } from "@books/shared"
+import { Token, AccessDenied, Unauthorized, UserResponse } from "@books/shared"
 import Api from "./api/Api"
 import Loading from "./Loading"
 import OverlayComponent from "./components/OverlayComponent"
@@ -45,7 +45,7 @@ const ChangePassword = (props: Props) => {
 				setPasswordsMatch(true)
 				setState(s => ({ ...s, changingPasswords: true }))
 
-				const ret = await Api.changePassword(props.token ?? { authorization: "", checksum: "", type: ApiMessageType.Token, user: new User(user) }, state.password)
+				const ret = await Api.changePassword(state.password)
 
 				if (ret instanceof Token) {
 					props.onPasswordChanged(ret)
