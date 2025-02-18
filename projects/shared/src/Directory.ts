@@ -1,7 +1,7 @@
-import Book from "./Book.js"
-import BookStatuses from "./BookStatuses.js"
-import Item from "./Item.js"
-import { type SortOrder } from "./SortOrder.js"
+import Book from "./Book.ts"
+import BookStatuses from "./BookStatuses.ts"
+import Item from "./Item.ts"
+import { type SortOrder } from "./SortOrder.ts"
 
 export default class Directory extends Item {
 	override readonly type = "Directory"
@@ -40,7 +40,7 @@ export default class Directory extends Item {
 			}
 		})
 
-		this.uploadTime = upload ?? this.uploadTime
+		this.uploadTime = new Date(upload ?? this.uploadTime)
 
 		if (sortOrder) {
 			switch (sortOrder) {
@@ -50,14 +50,10 @@ export default class Directory extends Item {
 				case "Alphabetically - Ascending":
 					break
 				case "Uploaded - Ascending":
-					this.items.sort((a, b) => {
-						return a.uploadTime > b.uploadTime ? 1 : -1
-					})
+					this.items.sort((a, b) => a.uploadTime > b.uploadTime ? 1 : -1)
 					break
 				case "Uploaded - Descending":
-					this.items.sort((a, b) => {
-						return a.uploadTime > b.uploadTime ? -1 : 1
-					})
+					this.items.sort((a, b) => a.uploadTime > b.uploadTime ? -1 : 1)
 					break
 			}
 		}

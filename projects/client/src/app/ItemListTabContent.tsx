@@ -1,17 +1,14 @@
 import { useState } from "react"
-import { type Status, Directory, Books, SortOrderValues, type SortOrder } from "@books/shared"
+import { type Status, Directory, SortOrderValues, type SortOrder } from "@books/shared"
 import { DropdownButton, Dropdown } from "react-bootstrap"
 import Styles from "./ItemListTabContent.module.scss"
 import classNames from "classnames"
-import VirtualList from "./VirtualList"
 import ItemLink from "./ItemLink"
+import { Virtuoso } from "react-virtuoso"
 
 interface BookTabProps {
 	dir: Directory,
 	status?: Status,
-	searchWords: string[],
-	statusChanged: (books: Books) => void,
-	hidden: boolean,
 }
 
 const ItemListTabContent = (props: BookTabProps) => {
@@ -20,17 +17,17 @@ const ItemListTabContent = (props: BookTabProps) => {
 
 	return (
 		<>
-			<div className={classNames(Styles.sortDropDown, { [Styles.hidden]: props.hidden })}>
+			<div className={classNames(Styles.sortDropDown)}>
 				<DropdownButton title={`Sorted: ${sort}`} id={`${props.status ?? "All"}-sortButton`} variant="secondary">
 					{SortOrderValues.map(s => (
 						<Dropdown.Item key={s} onClick={() => { setSort(s) }}>{s}</Dropdown.Item>
 					))}
 				</DropdownButton>
 			</div>
-
-			<VirtualList estimatedChildHeight={195} className={classNames({ [Styles.hidden]: props.hidden })}>
-				{items.items.map(i => <ItemLink key={i.id} item={i} {...props} />)}
-			</VirtualList>
+			<Virtuoso
+				data={items.items}
+				itemContent={(_, item) => <ItemLink {...props} key={item.id} item={item} />}
+			/>
 		</>
 	)
 }

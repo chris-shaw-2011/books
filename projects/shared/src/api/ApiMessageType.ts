@@ -1,4 +1,4 @@
 export type ApiMessageType = "Books" | "AccessDenied" | "Unauthorized" | "Token" | "SettingsRequired" | "SettingsUpdate" |
 	"SettingsUpdateResponse" | "Settings" | "UserListResponse" | "AddUserRequest" | "DeleteUserRequest" |
 	"ChangePasswordRequest" | "UserRequest" | "UserResponse" | "ChangeBookStatusRequest" | "ConversionUpdateRequest" |
-	"ConversionUpdateResponse" | "UploadResponse" | "UpdateBookRequest" | "UpdateBookResponse" | "AddFolderRequest"
+	"ConversionUpdateResponse" | "UploadResponse" | "UpdateBookRequest" | "UpdateBookResponse" | "AddFolderRequest" | "AddUserResponse" | "SetPasswordRequest" | "LoginRequest"

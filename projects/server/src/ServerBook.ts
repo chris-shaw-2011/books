@@ -1,7 +1,7 @@
 import { Book, type Status } from "@books/shared"
 import * as mm from "music-metadata"
 import fs from "fs"
-import ServerDirectory from "./ServerDirectory.js"
+import ServerDirectory from "./ServerDirectory.ts"
 import path from "path"
 
 export default class ServerBook extends Book {
@@ -36,12 +36,12 @@ export default class ServerBook extends Book {
 		// eslint-disable-next-line no-console
 		console.log(`${fullPath} - reading tags`)
 
-		const metadata = (await mm.parseFile(fullPath, { skipPostHeaders: true, skipCovers: fs.existsSync(this.photoPath), includeChapters: false }))
+		const metadata = (await mm.parseFile(fullPath, { skipCovers: fs.existsSync(this.photoPath), includeChapters: false }))
 		const tags = metadata.common
 		const stats = (await fs.promises.stat(fullPath))
 
 		this.name = tags.title ?? fileName
-		this.author = tags.artist ?? ""
+		this.author = tags.artists?.length ? tags.artists.join(", ") : tags.artist ?? ""
 
 		if (tags.year !== undefined) {
 			this.year = tags.year
@@ -53,8 +53,8 @@ export default class ServerBook extends Book {
 			this.duration = metadata.format.duration
 		}
 
-		this.narrator = tags.composer?.length ? tags.composer[0] : ""
-		this.genre = tags.genre?.length ? tags.genre[0] : ""
+		this.narrator = tags.composer?.length ? tags.composer.join(", ") : ""
+		this.genre = tags.genre?.length ? tags.genre.join(", ") : ""
 
 		if (tags.picture?.length && !fs.existsSync(this.photoPath)) {
 			fs.writeFileSync(this.photoPath, new Uint8Array(tags.picture[0].data))

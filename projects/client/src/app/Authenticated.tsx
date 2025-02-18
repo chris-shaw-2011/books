@@ -1,49 +1,45 @@
-import { useCallback, useContext, useEffect, useState } from "react"
+import { useContext, useEffect, useState } from "react"
 import { AccessDenied, Books, SettingsRequired, Unauthorized, Token, Book, type Status, Directory, StatusValues } from "@books/shared"
 import Api from "./api/LoggedInApi"
 import ChangePassword from "./ChangePassword"
+// TODO: move the below import to the admin file
 import EditSettings from "./EditSettings"
 import Loading from "./Loading"
-import AppContext, { type VisibleComponent } from "./LoggedInAppContext"
+import LoggedInAppContext from "./context/LoggedInAppContext"
 import UploadBooks from "./UploadBooks"
+// TODO: move the below import to the admin file
 import UserList from "./UserList"
 import ItemListTabContent from "./ItemListTabContent"
 import Styles from "./Authenticated.module.scss"
 import classNames from "classnames"
+import AppContext from "./context/AppContext"
 
 interface Props {
-	searchWords: { words: string[] },
-	onPasswordChanged: (token: Token) => void,
-	logOut: (message?: string) => void,
 	token: Token,
-	visibleComponent: VisibleComponent,
-	setVisibleComponent: React.Dispatch<React.SetStateAction<VisibleComponent>>,
 }
 
-interface TabState {
-	selectedTab: Status,
-	mountedTabs: Status[],
-}
-
-function isMatch(searchWords: string[], ...checkMatch: string[]) {
+function isMatch(searchWords: readonly string[], ...checkMatch: string[]) {
 	return !searchWords.length || searchWords.every(s => checkMatch.some(m => m.includes(s)))
 }
 
-function filter(dir: Directory, status?: Status, searchWords?: string[]) {
+function filter(dir: Directory, status?: Status, searchWords?: readonly string[]) {
 	const ret = new Directory(dir)
+	const items = dir.items
 
 	ret.items = []
 
-	dir.items.forEach(i => {
-		if (i instanceof Book && (!status || i.status === status)) {
-			const lAuthor = i.author.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
-			const lName = i.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
-			const lComment = i.comment.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
-			const lNarrator = i.narrator.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
-			const lGenre = i.genre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+	items.forEach(i => {
+		if (i instanceof Book) {
+			if (!status || i.status === status) {
+				const lAuthor = i.author.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+				const lName = i.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+				const lComment = i.comment.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+				const lNarrator = i.narrator.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+				const lGenre = i.genre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
 
-			if (!searchWords || isMatch(searchWords, lAuthor, lName, lComment, lNarrator, lGenre)) {
-				ret.items.push(i)
+				if (!searchWords || isMatch(searchWords, lAuthor, lName, lComment, lNarrator, lGenre)) {
+					ret.items.push(i)
+				}
 			}
 		}
 		else if (i instanceof Directory) {
@@ -60,32 +56,65 @@ function filter(dir: Directory, status?: Status, searchWords?: string[]) {
 				ret.items.push(filtered)
 			}
 		}
+		else {
+			throw Error("Unexpected instance of item")
+		}
 	})
 
 	return ret
 }
 
-const Authenticated = (props: Props) => {
-	const logOut = props.logOut
-	const [state, setState] = useState<Directory | undefined>()
-	const [tabsState, setTabsState] = useState<TabState>({ selectedTab: "Unread", mountedTabs: ["Unread"] })
-	const context = useContext(AppContext)
-	const visibleComponent = props.visibleComponent
-	const setVisibleComponent = props.setVisibleComponent
-	const token = props.token
-	const statusChanged = useCallback((books: Books) => {
-		setState(books.directory)
-	}, [])
-	const viewBooks = () => { setVisibleComponent("Books") }
-	const setSelectedTab = (tab: Status) => {
-		setTabsState(prev => {
-			return {
-				selectedTab: tab,
-				mountedTabs: prev.mountedTabs.includes(tab) ? prev.mountedTabs : prev.mountedTabs.concat([tab]),
-			}
-		})
-	}
+interface ItemListTabsProps {
+	items: Directory,
+}
 
+const ItemListTabs = ({ items }: ItemListTabsProps) => {
+	const appContext = useContext(AppContext)
+	const [selectedTab, setSelectedTab] = useState<Status>("Unread")
+
+	if (appContext.searchWords.length) {
+		return <ItemListTabContent dir={filter(items, undefined, appContext.searchWords)} />
+	}
+	else {
+		const tabsMap = new Map<Status, Directory>(StatusValues.map(s =>
+			[s, filter(items, s)],
+		))
+		const selectedTabData = tabsMap.get(selectedTab)
+
+		if (!selectedTabData) {
+			throw Error("SelectedTabData was null for some reason")
+		}
+
+		return (
+			<div className={Styles.tabsContainer}>
+				<div className={Styles.tabBar}>
+					{Array.from(tabsMap).map(m => {
+						const k = m[0]
+						const value = m[1]
+
+						return (
+							<div key={`${k}-tab`} onClick={() => setSelectedTab(k)} className={classNames({ [Styles.selected]: selectedTab === k })}>
+								{k}
+								{" "}
+								(
+								{value.bookCount()}
+								)
+							</div>
+						)
+					})}
+				</div>
+				<ItemListTabContent key={`${selectedTab}-content`} dir={selectedTabData} status={selectedTab} />
+			</div>
+		)
+	}
+}
+
+const Authenticated = ({ token }: Props) => {
+	const { logOut, visibleComponent, setVisibleComponent } = useContext(AppContext)
+	const [state, setState] = useState<Directory | undefined>()
+	const viewBooks = () => setVisibleComponent("Books")
+
+	// TODO: figure out why this is called twice
 	useEffect(() => {
 		async function getBooks() {
 			const ret = await Api.books(token)
@@ -114,33 +143,14 @@ const Authenticated = (props: Props) => {
 		return <Loading />
 	}
 
-	const tabsMap = StatusValues.map(s => {
-		return { status: s, filtered: filter(state, s) }
-	})
-
 	return (
-		<AppContext.Provider value={{ logOut, token, visibleComponent, setVisibleComponent, updateBooks: setState, rootDirectory: state }}>
-			{props.searchWords.words.length ?
-				<ItemListTabContent dir={filter(state, undefined, props.searchWords.words)} searchWords={props.searchWords.words} statusChanged={statusChanged} hidden={false} /> :
-				<div className={Styles.tabsContainer}>
-					<div className={Styles.tabBar}>
-						{tabsMap.map(t => {
-							return <div key={`${t.status}-tab`} onClick={() => { setSelectedTab(t.status) }} className={classNames({ [Styles.selected]: tabsState.selectedTab === t.status })}>{t.status} ({t.filtered.bookCount()})</div>
-						})}
-					</div>
-					{tabsMap.filter(t => tabsState.mountedTabs.includes(t.status)).map(t => {
-						return <ItemListTabContent key={`${t.status}-content`} dir={t.filtered} status={t.status} searchWords={[]} statusChanged={statusChanged} hidden={t.status !== tabsState.selectedTab} />
-					})}
-				</div>
-			}
+		<LoggedInAppContext.Provider value={{ token, updateBooks: setState, rootDirectory: state }}>
+			<ItemListTabs items={state} />
 			{
 				(() => {
 					switch (visibleComponent) {
 						case "ChangePassword":
-							return <ChangePassword onPasswordChanged={(t: Token) => {
-								props.onPasswordChanged(t)
-								viewBooks()
-							}} onClose={viewBooks} {...context} />
+							return <ChangePassword onClose={viewBooks} />
 						case "Settings":
 							return <EditSettings onSettingsSaved={viewBooks} onClose={viewBooks} />
 						case "Users":
@@ -152,7 +162,7 @@ const Authenticated = (props: Props) => {
 					}
 				})()
 			}
-		</AppContext.Provider>
+		</LoggedInAppContext.Provider>
 	)
 }
 

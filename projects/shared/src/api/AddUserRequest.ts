@@ -1,5 +1,5 @@
-import User from "../User.js"
-import ApiMessage from "./ApiMessage.js"
+import User from "../User.ts"
+import ApiMessage from "./ApiMessage.ts"
 
 export default class AddUserRequest extends ApiMessage {
 	override readonly type = "AddUserRequest"

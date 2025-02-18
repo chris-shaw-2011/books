@@ -26,6 +26,7 @@ export default class ServerToken extends Token {
 		return JSON.stringify(this.user) + this.authorization + this.secret
 	}
 
+	// TODO: probably don't need this method and should use constructor instead
 	static override fromJSON(secret: string, json?: string) {
 		const token = super.fromJSON(json)
 

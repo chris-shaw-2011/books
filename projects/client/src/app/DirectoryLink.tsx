@@ -1,48 +1,62 @@
 import classnames from "classnames"
-import { useState, forwardRef } from "react"
-import { Books, Directory } from "@books/shared"
+import { useContext } from "react"
+import { Directory, Book } from "@books/shared"
 import FolderClosed from "./svg/FolderClosed"
 import FolderOpen from "./svg/FolderOpen"
 import Highlighter from "react-highlight-words"
 import ItemLink from "./ItemLink"
 import itemStyles from "./ItemLink.module.scss"
+import SearchContext from "./context/AppContext"
+import { create } from "zustand"
 
 interface DirectoryProps {
 	directory: Directory,
-	className?: string,
-	searchWords: string[],
-	statusChanged: (books: Books) => void,
-	style?: React.CSSProperties,
-	toggleAlwaysRender?: (key: (string | number)) => void
+	className?: string | undefined,
+	style?: React.CSSProperties | undefined,
 }
 
-const DirectoryLink = forwardRef<HTMLDivElement, DirectoryProps>((props: DirectoryProps, ref) => {
-	const [open, setOpen] = useState(false)
-	const displayOpen = open || props.searchWords.length
-	const onClick = (e: React.MouseEvent<HTMLDivElement>) => {
-		e.stopPropagation()
+interface ChildItemProps {
+	items: (Directory | Book)[],
+	className?: string | undefined,
+	style?: React.CSSProperties | undefined,
+}
 
-		if (!props.searchWords.length) {
-			if (props.toggleAlwaysRender) {
-				props.toggleAlwaysRender(props.directory.id)
-			}
+interface FolderStore {
+	openFolders: Record<string, boolean>,
+	toggleFolder: (path: string) => void,
+}
 
-			setOpen(s => !s)
-		}
-	}
+const useFolderStore = create<FolderStore>(set => ({
+	openFolders: {},
+	toggleFolder: id =>
+		set(state => ({
+			openFolders: { ...state.openFolders, [id]: !state.openFolders[id] },
+		})),
+}))
+
+const ChildItems = (props: ChildItemProps) => (
+	<>
+		{props.items.map(item => <ItemLink className={props.className} style={props.style} item={item} key={item.id} />)}
+	</>
+)
+
+const DirectoryLink = (props: DirectoryProps) => {
+	const id = props.directory.id
+	const searchContext = useContext(SearchContext)
+	const searchWords = searchContext.searchWords
+	const isOpen = useFolderStore(state => searchWords.length || state.openFolders[id] || false)
+	const toggleFolder = useFolderStore(state => state.toggleFolder)
 
 	return (
-		<div className={classnames("directory", "item", props.className)} onClick={onClick} style={props.style} ref={ref}>
+		<div style={props.style} className={classnames("directory", "item", props.className)} onClick={() => toggleFolder(id)}>
 			<div className={classnames("inner", itemStyles.inner)}>
-				{displayOpen ? <FolderOpen /> : <FolderClosed />}
-				<Highlighter searchWords={props.searchWords} textToHighlight={props.directory.name} />
+				{isOpen ? <FolderOpen /> : <FolderClosed />}
+				<Highlighter searchWords={[...searchWords]} textToHighlight={props.directory.name} />
 			</div>
-			{displayOpen ? <>
-				{props.directory.items.map(item => <ItemLink item={item} key={item.id} searchWords={props.searchWords} statusChanged={props.statusChanged} />)}
-			</> : null}
+			<ChildItems items={isOpen ? props.directory.items : []} style={props.style} className={props.className} />
 		</div>
 	)
-})
+}
 
 DirectoryLink.displayName = "DirectoryLink"
 

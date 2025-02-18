@@ -3,16 +3,14 @@
 		"outDir": "../../bin/server",
 		"paths": {
 			"@books/shared": [
-				"../shared/src/*"
+				"../shared/src/index.ts",
 			],
 		},
-		"moduleResolution": "Node16",
-		"module": "Node16",
 		"strict": true,
 		"rootDir": "./src",
 	},
 	"extends": "../../tsconfig.base.json",
 	"include": [
-		"src"
+		"src",
 	],
 }

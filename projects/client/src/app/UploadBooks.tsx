@@ -4,7 +4,7 @@ import { ListGroup, Modal } from "react-bootstrap"
 import { v4 as uuid } from "uuid"
 import { AccessDenied, ConversionUpdateResponse, Unauthorized, UploadResponse, type ConverterStatus, Book, ApiMessage } from "@books/shared"
 import Api from "./api/LoggedInApi"
-import LoggedInAppContext from "./LoggedInAppContext"
+import AppContext from "./context/AppContext"
 import OverlayComponent from "./components/OverlayComponent"
 import CancelButton from "./components/CancelButton"
 import styles from "./UploadBooks.module.scss"
@@ -28,19 +28,23 @@ interface FileUploadRowState {
 	percent: number,
 	conversionId: string,
 	errorMessage: string,
-	forceUpdate?: unknown,
 	converterStatus: ConverterStatus,
 	fileName: string,
 }
 
 const FileUploadRow = (props: FileUploadRowProps) => {
-	const [uploadState, setUploadState] = useState<FileUploadRowState>({ status: "Pending", percent: 0, conversionId: "", errorMessage: "", converterStatus: "Waiting", fileName: "" })
+	const [uploadState, setUploadState] = useState<FileUploadRowState>({
+		status: "Pending",
+		percent: 0,
+		conversionId: "",
+		errorMessage: "",
+		converterStatus: "Waiting",
+		fileName: "",
+	})
 	const status = uploadState.status
 	const percent = uploadState.percent
 	const conversionId = uploadState.conversionId
-	const context = useContext(LoggedInAppContext)
-	const onUnauthorized = context.logOut
-	const forceConversionUpdate = uploadState.forceUpdate
+	const { logOut } = useContext(AppContext)
 	const converterStatus = uploadState.converterStatus
 	const fileName = uploadState.fileName
 	const [editingBook, setEditingBook] = useState<Book>()
@@ -49,7 +53,6 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 
 	const uploadFile = (files: FileList | null) => {
 		if (!files?.length || !(files[0].name.endsWith(".aax") || files[0].name.endsWith(".zip"))) {
-
 			return
 		}
 
@@ -77,14 +80,14 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 						setUploadState(prev => ({ ...prev, conversionId: ret.conversionId, percent: 0, status: "Converting" }))
 					}
 					else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
-						onUnauthorized(ret.message)
+						logOut(ret.message)
 					}
 					else {
-						onUnauthorized("Received an unexpected response")
+						logOut("Received an unexpected response")
 					}
 				}
 				else {
-					onUnauthorized("Received an unexpected response")
+					logOut("Received an unexpected response")
 				}
 			}
 		}
@@ -100,55 +103,68 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 
 				onStatusChanged(id, newStatus)
 
-				setUploadState({ percent: ret.conversionPercent, status: newStatus, conversionId, errorMessage: ret.errorMessage, forceUpdate: {}, converterStatus: ret.converterStatus, fileName })
+				setUploadState({ percent: ret.conversionPercent, status: newStatus, conversionId, errorMessage: ret.errorMessage, converterStatus: ret.converterStatus, fileName })
 
 				if (newStatus === "Editing") {
 					setEditingBook(ret.book)
 				}
 			}
 			else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
-				onUnauthorized(ret.message)
+				logOut(ret.message)
 			}
 			else {
-				onUnauthorized("Received an unexpected response")
+				logOut("Received an unexpected response")
 			}
 		}
 
 		if (status === "Converting") {
 			void getConversionUpdate()
 		}
-	}, [status, percent, setUploadState, conversionId, onUnauthorized, forceConversionUpdate, converterStatus, fileName, onStatusChanged, id])
+	}, [status, percent, setUploadState, conversionId, logOut, converterStatus, fileName, onStatusChanged, id])
 
-	return (
-		<div>
-			{status === "Pending" ?
+	if (status === "Pending") {
+		return (
+			<div>
 				<form>
 					<div>
 						<input type="file" required={true} placeholder="Specify File" accept=".aax,.zip" onChange={e => { uploadFile(e.currentTarget.files) }} />
 					</div>
 				</form>
-				: editingBook ?
-					<BookLink book={editingBook} searchWords={[]} statusChanged={() => { return }} editOnly={true} onEditComplete={() => { onStatusChanged(id, "Complete") }} /> :
-					<div>
+			</div>
+		)
+	}
+	else if (editingBook) {
+		return (
+			<div>
+				<BookLink book={editingBook} editOnly={true} onEditComplete={() => onStatusChanged(id, "Complete")} />
+			</div>
+		)
+	}
+	else {
+		return (
+			<div>
+				<div>
+					{fileName}
+				</div>
+				<div>
+					<Line percent={percent} strokeWidth={1} strokeColor={status === "Error" ? "#FF0000" : status === "Converting" || status === "Complete" ? "#0000FF" : "#00FF00"} />
+				</div>
+				<div>
+					{Math.round(percent)}
+					%
+					{status !== "Converting" ? status : converterStatus}
+					...
+				</div>
+				{status === "Error" && (
+					<div className={styles.error}>
 						<div>
-							{fileName}
+							{uploadState.errorMessage}
 						</div>
-						<div>
-							<Line percent={percent} strokeWidth={1} strokeColor={status === "Error" ? "#FF0000" : status === "Converting" || status === "Complete" ? "#0000FF" : "#00FF00"} />
-						</div>
-						<div>
-							{Math.round(percent)}% {status !== "Converting" ? status : converterStatus}...
-						</div>
-						{status === "Error" &&
-							<div className={styles.error} >
-								<div>
-									{uploadState.errorMessage}
-								</div>
-							</div>}
 					</div>
-			}
-		</div>
-	)
+				)}
+			</div>
+		)
+	}
 }
 
 const UploadBooks = (props: Props) => {

@@ -2,9 +2,7 @@
 	"compilerOptions": {
 		"jsx": "react-jsx",
 		"skipLibCheck": true,
-		"allowImportingTsExtensions": true,
 		"resolveJsonModule": true,
-		"noEmit": true,
 		"strict": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
@@ -12,7 +10,7 @@
 		"baseUrl": ".",
 		"paths": {
 			"@books/shared": [
-				"../shared/src/*"
+				"../shared/src/index.ts"
 			],
 			"@books/*": [
 				"../*/src"

@@ -1,6 +1,6 @@
-import BookStatuses from "../BookStatuses.js"
-import Directory from "../Directory.js"
-import ApiMessage from "./ApiMessage.js"
+import BookStatuses from "../BookStatuses.ts"
+import Directory from "../Directory.ts"
+import ApiMessage from "./ApiMessage.ts"
 
 export default class Books extends ApiMessage {
 	override readonly type = "Books"

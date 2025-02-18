@@ -2,23 +2,28 @@ import Textbox from "./Textbox"
 import styles from "./TextboxField.module.scss"
 import classnames from "classnames"
 
-export type LabelLocation = "Top" | "Left"
+type LabelLocation = "Top" | "Left"
 
 export interface TextboxFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
 	label: string,
-	labelLocation?: LabelLocation
+	labelLocation?: LabelLocation,
+}
+
+const Label = (props: TextboxFieldProps) => {
+	if (props.labelLocation === "Left") {
+		return <span>{props.label}</span>
+	}
+	else {
+		return <div>{props.label}</div>
+	}
 }
 
 const TextboxField = (props: TextboxFieldProps) => {
-	const { label, labelLocation, ...passThroughProps } = props
+	const { labelLocation, ...passThroughProps } = props
 
 	return (
 		<label className={classnames(styles.textboxField, { [styles.labelLeft]: labelLocation === "Left" })}>
-			{labelLocation !== "Left" ?
-				<div>
-					{label}
-				</div> :
-				<span>{label}</span>}
+			<Label {...props} />
 			<Textbox {...passThroughProps} />
 		</label>
 	)

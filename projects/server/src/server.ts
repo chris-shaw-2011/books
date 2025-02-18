@@ -11,33 +11,30 @@ import { pipeline } from "stream"
 import url from "url"
 import { v4 as uuid } from "uuid"
 import * as shared from "@books/shared"
-import bookList from "./BookList.js"
-import Converter from "./Converter.js"
-import db from "./Database.js"
-import ServerToken from "./ServerToken.js"
+import bookList from "./BookList.ts"
+import Converter from "./Converter.ts"
+import db from "./Database.ts"
+import ServerToken from "./ServerToken.ts"
 import NodeID3 from "node-id3"
 import sanitize from "sanitize-filename"
-import ServerBook from "./ServerBook.js"
+import ServerBook from "./ServerBook.ts"
 import aacWriter from "write-aac-metadata"
-import ServerUser from "./ServerUser.js"
-import { validateRequest } from "./Validation.js"
-import AuthorizationExpiration from "./AuthorizationExpiration.js"
+import ServerUser from "./ServerUser.ts"
+import { validateRequest } from "./Validation.ts"
+import AuthorizationExpiration from "./AuthorizationExpiration.ts"
 import cookie from "cookie"
 
+// TODO: look into following current fastify standards
 const __dirname = import.meta.dirname
 
 const pump = util.promisify(pipeline)
 const rootDir = __dirname
 const getNewExpiration = () => dayjs().add(24, "hours")
-const changeBookStatusMutex = new Mutex()
 const conversions = new Map<string, Converter>()
 const conversionMutex = new Mutex()
 const server = Fastify({ logger: true, bodyLimit: 10_000_000_000 })
-const getAllUsers = async (message?: string) => {
-	const users: shared.User[] = await db.all("SELECT id, email, isAdmin, lastLogIn FROM user")
-
-	return new shared.UserListResponse({ users, message: message ?? "" })
-}
+const getAllUsers = async () => await db.all<shared.User[]>("SELECT id, email, isAdmin, lastLogIn FROM user")
+const getUserById = async (userId: string) => await db.get<ServerUser>("SELECT * FROM user WHERE id = ?", userId)
 const validatePassword = async (email: string, password: string, reply: FastifyReply) => {
 	const dbUser = await db.get<ServerUser>("SELECT id, email, hash, isAdmin, lastLogIn FROM user WHERE email = ?", email)
 
@@ -46,7 +43,7 @@ const validatePassword = async (email: string, password: string, reply: FastifyR
 			const validatedUser = new shared.User(dbUser)
 			const authorization = uuid()
 
-			validatedUser.lastLogin = new Date().getTime()
+			validatedUser.lastLogin = new Date()
 			AuthorizationExpiration.set(authorization, getNewExpiration())
 
 			await db.run("UPDATE user SET lastLogIn = ? WHERE id = ?", validatedUser.lastLogin, validatedUser.id)
@@ -59,9 +56,7 @@ const validatePassword = async (email: string, password: string, reply: FastifyR
 
 	return new shared.Unauthorized("Invalid Email or Password")
 }
-const passwordHash = async (password: string) => {
-	return bcrypt.hash(password, 10)
-}
+const passwordHash = async (password: string) => bcrypt.hash(password, 10)
 const validationResponse = (request: FastifyRequest, requiresAdmin?: boolean) => {
 	const token = request.userToken
 
@@ -73,7 +68,7 @@ const validationResponse = (request: FastifyRequest, requiresAdmin?: boolean) =>
 
 	if (expiration === undefined || expiration < dayjs()) {
 		if (expiration !== undefined) {
-			//Remove the token from memory since it expired
+			// Remove the token from memory since it expired
 			AuthorizationExpiration.delete(token.authorization)
 		}
 
@@ -86,7 +81,7 @@ const validationResponse = (request: FastifyRequest, requiresAdmin?: boolean) =>
 		return new shared.AccessDenied("Access Denied")
 	}
 
-	//Request passed validation, let it carry on
+	// Request passed validation, let it carry on
 	return undefined
 }
 
@@ -117,10 +112,10 @@ void server.register(fastifyMultipart, {
 	limits: {
 		fieldNameSize: 100, // Max field name size in bytes
 		fieldSize: 10_000_000_000, // Max field value size in bytes
-		fields: 10,         // Max number of non-file fields
-		fileSize: 10_000_000_000,      // For multipart forms, the max file size
-		files: 1,           // Max number of file fields
-		headerPairs: 2000,   // Max number of header key=>value pairs
+		fields: 10, // Max number of non-file fields
+		fileSize: 10_000_000_000, // For multipart forms, the max file size
+		files: 1, // Max number of file fields
+		headerPairs: 2000, // Max number of header key=>value pairs
 	},
 })
 
@@ -130,28 +125,26 @@ void server.register(fastifyStatic, {
 })
 
 server.post<{ Body: shared.User }>("/auth", async (request, reply) => {
-	const user = new shared.User(request.body)
+	const req = new shared.LoginRequest(request.body)
 
-	if (!user.password) {
+	if (!req.password) {
 		return new shared.Unauthorized("You must specify a password")
 	}
 
 	if (db.noUsers) {
 		db.noUsers = false
 		// eslint-disable-next-line no-console
-		console.warn(`Adding user ${user.email} to the database since they are the first login attempt`)
+		console.warn(`Adding user ${req.email} to the database since they are the first login attempt`)
 
-		const hash = await passwordHash(user.password)
+		const hash = await passwordHash(req.password)
 
-		await db.run("INSERT INTO user (id, email, hash, isAdmin) VALUES(?, ?, ?, ?)", uuid(), user.email, hash, 1)
+		await db.run("INSERT INTO user (id, email, hash, isAdmin) VALUES(?, ?, ?, ?)", uuid(), req.email, hash, 1)
 	}
 
-	return validatePassword(user.email, user.password, reply)
+	return validatePassword(req.email, req.password, reply)
 })
 
 server.post("/books", { preHandler: validateRequest }, async request => {
-	// eslint-disable-next-line no-console
-	console.log("called")
 	const token = request.userToken
 
 	if (!token) {
@@ -179,10 +172,7 @@ server.post("/settings", { preHandler: validateAdminRequest }, (_, reply) => {
 
 server.post<{ Body: shared.SettingsUpdate }>("/updateSettings", { preHandler: validateAdminRequest }, async (request, reply) => {
 	const settingsUpdate = new shared.SettingsUpdate(request.body)
-
-	db.settings.inviteEmail = settingsUpdate.settings.inviteEmail
-	db.settings.inviteEmailPassword = settingsUpdate.settings.inviteEmailPassword
-	db.settings.uploadLocation = settingsUpdate.settings.uploadLocation
+	let settingsUpdated = false
 
 	if (settingsUpdate.settings.baseBooksPath !== db.settings.baseBooksPath) {
 		if (!fs.existsSync(settingsUpdate.settings.baseBooksPath)) {
@@ -190,22 +180,57 @@ server.post<{ Body: shared.SettingsUpdate }>("/updateSettings", { preHandler: va
 		}
 
 		db.settings.baseBooksPath = settingsUpdate.settings.baseBooksPath
+		settingsUpdated = true
 
 		// eslint-disable-next-line no-console
-		console.log("Loading all books into memory because of a settings change")
-		await bookList.loadBooks()
+		console.log("Reloading all books into memory because of a settings change")
+		void bookList.loadBooks()
+	}
+
+	if (db.settings.inviteEmail !== settingsUpdate.settings.inviteEmail) {
+		db.settings.inviteEmail = settingsUpdate.settings.inviteEmail
+		settingsUpdated = true
+
+		// eslint-disable-next-line no-console
+		console.log("inviteEmail setting updated", settingsUpdate.settings.inviteEmail)
+	}
+
+	if (db.settings.inviteEmailPassword !== settingsUpdate.settings.inviteEmailPassword) {
+		db.settings.inviteEmailPassword = settingsUpdate.settings.inviteEmailPassword
+		settingsUpdated = true
+
+		// eslint-disable-next-line no-console
+		console.log("inviteEmailPassword setting updated", settingsUpdate.settings.inviteEmailPassword)
+	}
+
+	if (db.settings.uploadLocation !== settingsUpdate.settings.uploadLocation) {
+		db.settings.uploadLocation = settingsUpdate.settings.uploadLocation
+		settingsUpdated = true
+
+		// eslint-disable-next-line no-console
+		console.log("uploadLocation setting updated", settingsUpdate.settings.uploadLocation)
+	}
+
+	if (settingsUpdated) {
+		// eslint-disable-next-line no-console
+		console.log("updating the database with the new settings", settingsUpdate.settings)
+
+		await db.settings.updateDbSettings()
 	}
 
 	void reply.send(new shared.SettingsUpdateResponse({ successful: true }))
 })
 
 server.post("/users", { preHandler: validateAdminRequest }, async () => {
-	return getAllUsers()
+	const users = await getAllUsers()
+
+	return new shared.UserListResponse({ users })
 })
 
 server.post<{ Body: shared.AddUserRequest }>("/addUser", { preHandler: validateAdminRequest }, async request => {
 	const userRequest = new shared.AddUserRequest(request.body)
 	let message = `${userRequest.user.email} has been invited`
+	let successful = false
 
 	if (!userRequest.user.email) {
 		message = "Email must be specified"
@@ -217,23 +242,36 @@ server.post<{ Body: shared.AddUserRequest }>("/addUser", { preHandler: validateA
 		else {
 			const userId = uuid()
 
+			await db.exec("BEGIN TRANSACTION;")
 			await db.run("INSERT INTO User (id, email, isAdmin) VALUES(?, ?, ?)", userId, userRequest.user.email, userRequest.user.isAdmin)
 
 			const link = new url.URL(`https://books.christopher-shaw.com/invite/${userId}`).href
 
-			await db.settings.mailer.sendMail({
-				from: db.settings.inviteEmail,
-				to: userRequest.user.email,
-				subject: "Invite to Audio Books Website",
-				html: `
-            You have been invited to the audio books website.<br /><br />
-            You can sign up at: <a href="${link}">${link}</a>.
-         `,
-			})
+			try {
+				await db.settings.mailer.sendMail({
+					from: db.settings.inviteEmail,
+					to: userRequest.user.email,
+					subject: "Invite to Audio Books Website",
+					html: `
+					You have been invited to the audio books website.<br /><br />
+					You can sign up at: <a href="${link}">${link}</a>.
+				`,
+				})
+
+				await db.exec("COMMIT;")
+				successful = true
+			}
+			catch (e) {
+				await db.exec("ROLLBACK;")
+
+				message = (e as Error).message
+			}
 		}
 	}
 
-	return getAllUsers(message)
+	const users = await getAllUsers()
+
+	return new shared.AddUserResponse({ users, successful, message })
 })
 
 server.post<{ Body: shared.DeleteUserRequest }>("/deleteUser", { preHandler: validateAdminRequest }, async request => {
@@ -241,21 +279,52 @@ server.post<{ Body: shared.DeleteUserRequest }>("/deleteUser", { preHandler: val
 
 	await db.run("DELETE FROM User WHERE id = ?", userRequest.userId)
 
-	return getAllUsers("User deleted")
+	const users = await getAllUsers()
+
+	return new shared.UserListResponse({ users, message: "User deleted" })
 })
 
 server.post<{ Body: shared.UserRequest }>("/user", async (request, reply) => {
 	const userRequest = new shared.UserRequest(request.body)
 
-	const dbUser = await db.get<shared.User & { hash: string }>("SELECT id, email, hash, isAdmin, lastLogin FROM User WHERE id = ?", userRequest.userId)
+	const dbUser = await getUserById(userRequest.userId)
 
 	if (!dbUser || dbUser.lastLogin || dbUser.hash) {
 		void reply.code(403)
 
-		return new shared.AccessDenied("This user has logged in or has a password already set")
+		return new shared.AccessDenied("This user's password has already been set")
 	}
 	else {
 		return new shared.UserResponse({ user: new shared.User(dbUser) })
+	}
+})
+
+server.post<{ Body: shared.SetPasswordRequest }>("/setPassword", async (request, reply) => {
+	let transactionEnd = "ROLLBACK;"
+	const setRequest = new shared.SetPasswordRequest(request.body)
+
+	await db.exec("BEGIN TRANSACTION;")
+
+	try {
+		const user = await getUserById(setRequest.userId)
+
+		if (!user) {
+			return new shared.AccessDenied("User not found")
+		}
+		else if (user.hash) {
+			return new shared.AccessDenied("User's password has already been set")
+		}
+
+		const hash = await passwordHash(setRequest.newPassword)
+
+		await db.run("UPDATE User SET hash = ? WHERE id = ?", hash, setRequest.userId)
+
+		transactionEnd = "COMMIT;"
+
+		return await validatePassword(user.email, setRequest.newPassword, reply)
+	}
+	finally {
+		await db.exec(transactionEnd)
 	}
 })
 
@@ -275,7 +344,6 @@ server.post<{ Body: shared.ChangePasswordRequest }>("/changePassword", { preHand
 
 server.post<{ Body: shared.ChangeBookStatusRequest }>("/changeBookStatus", { preHandler: validateRequest }, async request => {
 	const statusRequest = new shared.ChangeBookStatusRequest(request.body)
-	const release = await changeBookStatusMutex.acquire()
 	let statuses: shared.BookStatuses
 	const token = request.userToken
 
@@ -283,20 +351,24 @@ server.post<{ Body: shared.ChangeBookStatusRequest }>("/changeBookStatus", { pre
 		throw new ReferenceError()
 	}
 
+	await db.exec("BEGIN TRANSACTION;")
+
 	try {
 		statuses = await db.statusesForUser(token.user.id)
 
 		if (statusRequest.status !== "Unread") {
-			statuses.set(statusRequest.bookId, new shared.BookWithStatus({ status: statusRequest.status, dateStatusSet: new Date().getTime() }))
+			statuses.set(statusRequest.bookId, new shared.BookWithStatus({ status: statusRequest.status, dateStatusSet: new Date() }))
 		}
 		else {
 			statuses.delete(statusRequest.bookId)
 		}
 
-		await db.run("UPDATE User SET bookStatuses = ? WHERE id = ?", JSON.stringify(statuses), token.user.id)
+		const update = JSON.stringify(statuses)
+
+		await db.run("UPDATE user SET bookStatuses = ? WHERE id = ?", update, token.user.id)
 	}
 	finally {
-		release()
+		await db.exec("COMMIT;")
 	}
 
 	const books = await bookList.allBooks()
@@ -378,6 +450,7 @@ server.post<{ Body: shared.AddFolderRequest }>("/addFolder", { preHandler: valid
 
 server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: validateAdminRequest }, async request => {
 	const updateBookRequest = new shared.UpdateBookRequest(request.body)
+	// eslint-disable-next-line @stylistic/max-statements-per-line
 	const token = request.userToken ?? (() => { throw new Error() })()
 	const book = (await bookList.allBooks()).findById(updateBookRequest.newBook.id)
 	const newBook = updateBookRequest.newBook
@@ -411,17 +484,33 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 			await bookList.deleteBook(book.fullPath)
 		}
 
+		// TODO: change this to use taglib: https://github.com/benrr101/node-taglib-sharp#readme
 		if (extension === ".mp3") {
-			const ret = NodeID3.update({ title: newBook.name, artist: newBook.author, year: newBook.year.toString(), comment: { language: "eng", text: newBook.comment }, composer: newBook.narrator, genre: newBook.genre }, newPath)
+			const tags = await NodeID3.Promise.read(book.fullPath)
 
-			if (ret !== true) {
-				// eslint-disable-next-line no-console
-				console.log(ret)
-				return new shared.UpdateBookResponse({ message: ret.message })
+			tags.title = newBook.name.trim()
+			tags.artist = newBook.author.trim().split(", ").map(v => v.trim()).join("/")
+			tags.year = newBook.year.toString()
+			tags.comment = {
+				language: "eng",
+				text: newBook.comment.trim(),
 			}
+			tags.composer = newBook.narrator.trim().split(", ").map(v => v.trim()).join("/")
+			tags.genre = newBook.genre.trim().split(", ").map(v => v.trim()).join("/")
+
+			await NodeID3.Promise.update(tags, newPath)
+
+			/*			if (ret !== true) {
+							const message = "Failed to update the ID3 tag of this book"
+
+							console.error(message, ret)
+
+							//TODO: change this to an error response
+							return new shared.UpdateBookResponse({ message: message })
+						} */
 		}
 		else if (book.name !== newBook.name || book.author !== newBook.author || book.year !== newBook.year || book.comment !== newBook.comment || book.narrator !== newBook.narrator || book.genre !== newBook.genre) {
-			await aacWriter(newPath, { title: newBook.name, artist: newBook.author, year: newBook.year, comment: newBook.comment, composer: newBook.narrator, genre: newBook.genre }, undefined, { debug: true, pipeStdio: true })
+			await aacWriter(newPath, { title: newBook.name.trim(), artist: newBook.author.trim(), year: newBook.year, comment: newBook.comment.trim(), composer: newBook.narrator.trim(), genre: newBook.genre.trim() }, undefined, { debug: true, pipeStdio: true })
 		}
 
 		if (book.fullPath !== newPath) {
@@ -467,15 +556,16 @@ server.get<{ Params: Record<string, string> }>("/files/*", { preHandler: validat
 // This handles requests to the root of the site in production
 server.get<{ Params: Record<string, string> }>("/*", (request, reply) => {
 	let filePath = request.params["*"] || "index.html"
+	const rootPath = path.join(rootDir, "../../../bin/client")
 
 	if (filePath.startsWith("invite/")) {
 		filePath = "index.html"
 	}
 
 	// eslint-disable-next-line no-console
-	console.log({ filePath, fullPath: path.join(rootDir, "../client") })
+	console.log({ filePath, fullPath: rootPath })
 
-	void reply.sendFile(filePath, path.join(rootDir, "../client"))
+	void reply.sendFile(filePath, rootPath)
 })
 
 const start = async () => {

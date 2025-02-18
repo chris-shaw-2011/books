@@ -1,6 +1,6 @@
-import bookList from "./BookList.js"
-import db from "./Database.js"
-import server from "./server.js"
+import bookList from "./BookList.ts"
+import db from "./Database.ts"
+import server from "./server.ts"
 
 await db.open()
 

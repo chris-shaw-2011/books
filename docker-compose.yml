@@ -1,3 +1,5 @@
+# TODO: make it so all testing happens in docker rather than on the pc with the IDE
+
 version: "3.8"
 
 services:
@@ -12,7 +14,7 @@ services:
     ports:
       # use if it is necessary to expose the container to the host machine
       - "3001:3001"
-    command: bash -c "wget -qO- https://github.com/chris-shaw-2011/books/releases/latest/download/transpiled.tar.gz | tar xvz && npm install && npm run start-server-production"
+    command: bash -c "wget -qO- https://github.com/chris-shaw-2011/books/releases/latest/download/transpiled.tar.gz | tar xvz && cd bin/server && npm install && npm run start-production"
 
 volumes:
   ephemeral_data:

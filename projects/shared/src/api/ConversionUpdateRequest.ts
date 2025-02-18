@@ -1,5 +1,5 @@
-import { type ConverterStatus } from "../ConverterStatus.js"
-import ApiMessage from "./ApiMessage.js"
+import { type ConverterStatus } from "../ConverterStatus.ts"
+import ApiMessage from "./ApiMessage.ts"
 
 export default class ConversionUpdateRequest extends ApiMessage {
 	override readonly type = "ConversionUpdateRequest"

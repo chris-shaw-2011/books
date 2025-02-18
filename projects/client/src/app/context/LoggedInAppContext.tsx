@@ -1,23 +1,19 @@
 import { createContext } from "react"
 import { Token, Directory } from "@books/shared"
 
-export type VisibleComponent = "Books" | "Settings" | "Users" | "ChangePassword" | "Upload";
+// TODO: this should probably be renamed AppContext and it should contain things that are availble whether logged in or not
+// anything that's only avilable after logging in should be moved to a new LoggedInAppContext object
 
 interface LoggedInAppContextType {
-	logOut: (message?: string) => void,
 	token: Token,
-	visibleComponent: VisibleComponent,
-	setVisibleComponent: (component: VisibleComponent) => void,
 	updateBooks: (directory: Directory) => void,
 	rootDirectory: Directory,
 }
 
 const LoggedInAppContext = createContext<LoggedInAppContextType>({
-	logOut: () => { return },
 	token: new Token(),
-	visibleComponent: "Books",
-	setVisibleComponent: () => { return },
-	updateBooks: () => { return },
+	// eslint-disable-next-line @typescript-eslint/no-empty-function
+	updateBooks: () => { },
 	rootDirectory: new Directory(),
 })
 

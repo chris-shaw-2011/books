@@ -9,7 +9,7 @@ import sanitize from "sanitize-filename"
 import unzipper from "unzipper"
 import { v4 as uuid } from "uuid"
 import { type ConverterStatus } from "@books/shared"
-import bookList from "./BookList.js"
+import bookList from "./BookList.ts"
 
 function toString(data: unknown) {
 	let ret = ""
@@ -52,17 +52,21 @@ export default class Converter {
 	get percentComplete() {
 		return this._percentComplete
 	}
+
 	set percentComplete(value: number) {
 		this._percentComplete = value
 		this.eventEmitter.emit("update")
 	}
+
 	get status() {
 		return this._status
 	}
+
 	set status(value: ConverterStatus) {
 		this._status = value
 		this.eventEmitter.emit("update")
 	}
+
 	get convertedFilePath() {
 		return this._convertedFilePath
 	}
@@ -150,7 +154,7 @@ export default class Converter {
 					fs.mkdirSync(destParsed.dir, { recursive: true })
 				}
 
-				await new Promise(resolve => file.stream().pipe(fs.createWriteStream(path.join(unzipPath, file.path))).on("finish", () => { resolve("") }))
+				await new Promise(resolve => file.stream().pipe(fs.createWriteStream(path.join(unzipPath, file.path))).on("finish", () => resolve("")))
 				sizeUnzipped += file.uncompressedSize
 
 				this.percentComplete = Math.round((sizeUnzipped / sizeToUnzip) * 100)
@@ -236,7 +240,7 @@ export default class Converter {
 
 			args.push("-c", "copy", "-id3v2_version", "3")
 
-			/*addMetaData(args, "album", metadata.album)
+			/* addMetaData(args, "album", metadata.album)
 			addMetaData(args, "artist", metadata.artist)
 			addMetaData(args, "album_artist", metadata.albumArtist)
 			addMetaData(args, "grouping", metadata.grouping)
@@ -247,7 +251,7 @@ export default class Converter {
 			addMetaData(args, "genre", metadata.genre)
 			addMetaData(args, "copyright", metadata.copyright)
 			addMetaData(args, "description", metadata.description)
-			addMetaData(args, "synopsis", metadata.synopsis)*/
+			addMetaData(args, "synopsis", metadata.synopsis) */
 			addMetaData(args, "title", metadata.title)
 
 			args.push(`"${outputFilePath}"`)
@@ -381,8 +385,8 @@ export default class Converter {
 		const logFile = `${outputFilePath}.ffmpeg.log`
 		const ffmpeg = exec(`${ffmpegPath} ${args.join(" ")}`, { cwd: workingDirectory })
 
-		ffmpeg.stdout?.on("data", data => { this.parseData(toString(data), outputFilePath) })
-		ffmpeg.stderr?.on("data", data => { this.parseData(toString(data), outputFilePath) })
+		ffmpeg.stdout?.on("data", data => this.parseData(toString(data), outputFilePath))
+		ffmpeg.stderr?.on("data", data => this.parseData(toString(data), outputFilePath))
 
 		ffmpeg.stderr?.pipe(fs.createWriteStream(logFile))
 

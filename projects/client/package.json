@@ -3,60 +3,39 @@
 	"type": "module",
 	"dependencies": {
 		"@books/shared": "file:../shared",
-		"@react-hook/resize-observer": "^2.0.2",
 		"bootstrap": "^5.3.3",
-		"browserslist": "^4.24.4",
 		"classnames": "^2.5.1",
+		"dayjs": "^1.11.13",
 		"rc-progress": "^4.0.0",
-		"react": "^18.3.1",
+		"react": "^19.0.0",
 		"react-animate-height": "^3.2.3",
-		"react-bootstrap": "^2.10.8",
+		"react-bootstrap": "^2.10.9",
 		"react-cookie": "^7.2.2",
 		"react-cool-onclickoutside": "^1.7.0",
-		"react-dom": "^18.3.1",
+		"react-dom": "^19.0.0",
 		"react-highlight-words": "^0.21.0",
 		"react-textarea-autosize": "^8.5.7",
-		"sass": "^1.83.4",
-		"use-resize-observer": "^9.1.0"
+		"react-virtuoso": "^4.12.5",
+		"sass": "^1.85.1",
+		"uuid": "^11.1.0",
+		"zustand": "^5.0.3"
 	},
 	"scripts": {
 		"start": "vite",
-		"build": "tsc -b && vite build",
-		"lint": "eslint . --max-warnings 0 --report-unused-disable-directives-severity error"
+		"build": "npm run build-tsc && npm run build-vite",
+		"build-tsc": "tsc -b",
+		"build-vite": "vite build"
 	},
-	"pre-commit": "lint",
 	"proxy": "http://localhost:3001",
-	"browserslist": {
-		"production": [
-			">0.2%",
-			"not chrome 49",
-			"not dead",
-			"not op_mini all",
-			"not ie > 0",
-			"not samsung > 0",
-			"not and_qq > 0",
-			"not and_uc > 0"
-		],
-		"development": [
-			"last 1 chrome version",
-			"last 1 firefox version",
-			"last 1 safari version"
-		]
-	},
 	"devDependencies": {
-		"@types/react": "^18.3.5",
-		"@types/react-dom": "^18.3.0",
+		"@types/react": "^19.0.8",
+		"@types/react-dom": "^19.0.3",
 		"@types/react-highlight-words": "^0.20.0",
 		"@vitejs/plugin-react": "^4.3.4",
-		"eslint-plugin-react-hooks": "^5.1.0",
-		"eslint-plugin-react-refresh": "^0.4.18",
-		"vite": "^6.0.11"
-	},
-	"optionalDependencies": {
-		"@rollup/rollup-linux-x64-gnu": "4.32.0"
-	},
-	"overrides": {
-		"browserslist": "*",
-		"caniuse-lite": "*"
+		"eslint-plugin-react": "^7.37.4",
+		"eslint-plugin-react-hooks": "^5.2.0",
+		"eslint-plugin-react-refresh": "^0.4.19",
+		"globals": "^16.0.0",
+		"vite": "^6.2.1"
 	}
 }

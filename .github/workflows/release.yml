@@ -26,8 +26,6 @@ jobs:
           cwd: ./
           files: |
             ./bin
-            package.json
-            ./projects/server/package.json
           outPath: transpiled.tar.gz
       - name: Getting Release Version
         id: package-version

@@ -13,9 +13,7 @@ export default defineConfig({
 	build: {
 		outDir: "../../bin/client",
 		emptyOutDir: true,
-	},
-	optimizeDeps: {
-		include: ["@books/shared"]
+		target: "esnext",
 	},
 	server: {
 		open: "/",
@@ -36,6 +34,7 @@ export default defineConfig({
 			"/addFolder": proxyOptions,
 			"/updateBook": proxyOptions,
 			"/settings": proxyOptions,
-		}
-	}
+			"/setPassword": proxyOptions,
+		},
+	},
 })

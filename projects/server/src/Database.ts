@@ -1,12 +1,15 @@
 import * as sqlite from "sqlite"
 import sqlite3 from "sqlite3"
-import ServerSettings from "./ServerSettings.js"
+import ServerSettings from "./ServerSettings.ts"
 import * as shared from "@books/shared"
 
+// TODO: save the book metadata to the database so we don't have to wait on the server to read all books on a restart
+// The server should still read the books but it shouldn't be blocking
+// This todo has a dependency on enabling a websocket to notify on book updates
 class DatabaseClass extends sqlite.Database {
 	noUsers = true
 	settings!: ServerSettings
-	//private database: sqlite.Database
+	// private database: sqlite.Database
 
 	constructor() {
 		super({ filename: "db.sqlite", driver: sqlite3.Database })
@@ -35,9 +38,9 @@ class DatabaseClass extends sqlite.Database {
 	}
 
 	async statusesForUser(userId: string) {
-		const qr = (await this.get<{ bookStatuses: string }>("SELECT bookStatuses FROM User WHERE id = ?", userId))
+		const qr = (await this.get<{ bookStatuses: string }>("SELECT bookStatuses FROM user WHERE id = ?", userId))
 
-		return shared.BookStatuses.fromJSON(qr?.bookStatuses)
+		return new shared.BookStatuses(JSON.parse(qr?.bookStatuses ?? "{}") as Record<string, Partial<shared.BookWithStatus>>)
 	}
 }
 

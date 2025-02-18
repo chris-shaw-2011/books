@@ -1,22 +1,12 @@
-import * as shared from "@books/shared"
+import { AccessDenied, ApiMessage, LoginRequest, SetPasswordRequest, Token, Unauthorized, UserRequest, UserResponse } from "@books/shared"
+import BaseApi from "./BaseApi"
 
-class ApiClass {
-	auth = async (email: string, password: string) => {
-		const user = new shared.User()
+class ApiClass extends BaseApi {
+	auth = async (email: string, password: string) => this.fetchWithType("/auth", Token, new LoginRequest({ email, password }))
 
-		user.email = email
-		user.password = password
+	setPassword = async (newPassword: string, userId: string) => this.fetchWithType("/setPassword", Token, new SetPasswordRequest({ userId, newPassword }))
 
-		return this.fetch("/auth", user)
-	}
-
-	changePassword = async (newPassword: string) => {
-		return this.fetch("/changePassword", new shared.ChangePasswordRequest({ newPassword }))
-	}
-
-	user = async (userId: string) => {
-		return this.fetch("/user", new shared.UserRequest({ userId }))
-	}
+	user = async (userId: string) => this.fetch("/user", new UserRequest({ userId }))
 
 	fetch = async (url: string, jsonSend?: unknown) => {
 		const result = await fetch(url, {
@@ -26,26 +16,26 @@ class ApiClass {
 			},
 			body: jsonSend ? JSON.stringify(jsonSend) : "",
 		})
-		const jsonRet = await result.json() as shared.ApiMessage
+		const jsonRet = await result.json() as ApiMessage
 
 		return this.parseJson(jsonRet)
 	}
 
-	parseJson(json?: shared.ApiMessage) {
+	parseJson(json?: ApiMessage) {
 		if (!json) {
 			return undefined
 		}
 		else if (json.type === "AccessDenied") {
-			return new shared.AccessDenied(json as shared.AccessDenied)
+			return new AccessDenied(json as AccessDenied)
 		}
 		else if (json.type === "Unauthorized") {
-			return new shared.Unauthorized(json as shared.Unauthorized)
+			return new Unauthorized(json as Unauthorized)
 		}
 		else if (json.type === "Token") {
-			return new shared.Token(json as shared.Token)
+			return new Token(json as Token)
 		}
 		else if (json.type === "UserResponse") {
-			return new shared.UserResponse(json as shared.UserResponse)
+			return new UserResponse(json as UserResponse)
 		}
 		else {
 			throw Error(`Unknown ApiMessageType: ${json.type}`)

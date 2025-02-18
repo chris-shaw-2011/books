@@ -1,4 +1,4 @@
-import ApiMessage from "./ApiMessage.js"
+import ApiMessage from "./ApiMessage.ts"
 
 export default class AddFolderRequest extends ApiMessage {
 	override readonly type = "AddFolderRequest"

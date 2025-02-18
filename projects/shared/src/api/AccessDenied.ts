@@ -1,4 +1,4 @@
-import RequestDeniedResponse from "./RequestDeniedResponse.js"
+import RequestDeniedResponse from "./RequestDeniedResponse.ts"
 
 export default class AccessDenied extends RequestDeniedResponse {
 	readonly code = 403

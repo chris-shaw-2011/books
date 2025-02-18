@@ -1,48 +1,40 @@
 {
 	"name": "books-monorepo",
-	"version": "1.0.2",
-	"dependencies": {
-		"dayjs": "^1.11.13",
-		"uuid": "^11.0.5"
-	},
+	"version": "1.1.0",
 	"engines": {
-		"npm": ">=11.0.0",
+		"npm": ">=10.9.2",
 		"node": ">=23.6.1"
 	},
 	"workspaces": [
 		"./projects/*"
 	],
+	"private": true,
+	"packageManager": "npm@10.9.2",
 	"scripts": {
-		"start": "run-p start-client start-server",
-		"start-production": "npm run install-packages && npm run build && npm run start-server-production",
+		"start": "concurrently \"npm run start-client\" \"npm run start-server\"",
+		"start-production": "npm run install-packages && npm run build && cpx projects/server/db.sqlite bin/server/ && cd bin/server && npm run start-production",
 		"start-client": "npm start -w @books/client",
 		"start-server": "npm start -w @books/server",
-		"start-server-production": "node --experimental-specifier-resolution=node bin/server/index.js",
 		"install-packages": "npm install",
-		"build": "npm run build-shared && npm run build-client && npm run build-server",
-		"build-shared": "npm run build --workspace=@books/shared",
+		"build": "npm run build-shared && npm run  build-client && npm run build-server",
 		"build-client": "npm run build --workspace=@books/client",
 		"build-server": "npm run build --workspace=@books/server",
-		"lint": "npm run lint-client && npm run lint-server && npm run lint-shared",
-		"lint-client": "npm run lint --workspace=@books/client",
-		"lint-server": "npm run lint --workspace=@books/server",
-		"lint-shared": "npm run lint --workspace=@books/shared",
+		"build-shared": "npm run build --workspace=@books/shared",
+		"lint": "eslint . --max-warnings 0 --report-unused-disable-directives-severity error && knip && npm run sherif",
 		"analyze": "source-map-explorer 'bin/client/*.js'",
-		"debug": "npm run build-server"
+		"sherif": "sherif"
 	},
 	"type": "module",
 	"devDependencies": {
-		"@eslint/compat": "^1.2.5",
-		"@eslint/eslintrc": "^3.2.0",
-		"@eslint/js": "^9.18.0",
-		"@types/eslint__js": "^8.42.3",
-		"@types/uuid": "^10.0.0",
-		"eslint": "^9.19.0",
-		"eslint-plugin-react": "^7.37.4",
-		"nodemon": "^3.1.9",
-		"npm-run-all": "^4.1.5",
+		"@eslint/js": "^9.21.0",
+		"@stylistic/eslint-plugin": "^4.2.0",
+		"concurrently": "^9.1.2",
+		"cpx2": "^8.0.0",
+		"eslint": "^9.21.0",
+		"knip": "^5.45.0",
+		"sherif": "^1.4.0",
 		"source-map-explorer": "^2.5.3",
-		"typescript": "^5.7.3",
-		"typescript-eslint": "^8.22.0"
+		"typescript": "^5.8.2",
+		"typescript-eslint": "^8.26.0"
 	}
 }

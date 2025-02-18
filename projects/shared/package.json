@@ -2,11 +2,11 @@
 	"name": "@books/shared",
 	"main": "./src/index.ts",
 	"type": "module",
-	"private": "true",
+	"private": true,
 	"version": "1.0.0",
 	"scripts": {
-		"build": "tsc -b",
-		"lint": "eslint . --max-warnings 0 --report-unused-disable-directives-severity error"
-	},
-	"devDependencies": {}
+		"build": "npm run copy-package && npm run copy-src",
+		"copy-package": "cpx \"./package.json\" \"../../bin/shared\"",
+		"copy-src": "cpx \"../shared/src/**/*\" \"../../bin/shared/src/\""
+	}
 }

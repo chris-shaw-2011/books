@@ -1,35 +1,29 @@
-import { useState } from "react"
+import { useContext, useState } from "react"
 import DownArrow from "./svg/DownArrow"
 import SelectList, { SelectListItem } from "./components/SelectList"
 import styles from "./Navigation.module.scss"
 import classnames from "classnames"
 import useOnclickOutside from "react-cool-onclickoutside"
 import Upload from "./svg/Upload"
-import { Token } from "@books/shared"
-import { type VisibleComponent } from "./LoggedInAppContext"
-import Users from "./svg/Users"
-import Gear from "./svg/Gear"
 import Lock from "./svg/Lock"
 import LogOut from "./svg/LogOut"
+import AppContext, { type VisibleComponent } from "./context/AppContext"
+// TODO: move this component to the admin js file and use suspense to only load it when the user is an admin
+import AdminNavOptions from "./AdminNavOptions"
 
-interface Props {
-	token: Token,
-	setVisibleComponent: (component: VisibleComponent) => void,
-	logOut: () => void,
-}
-
-const Navigation = (props: Props) => {
+const Navigation = () => {
 	const [open, setOpen] = useState(false)
 	const openClassName: Record<string, boolean> = {}
 	const ref = useOnclickOutside(() => {
 		setOpen(false)
 	}, { disabled: !open })
+	const appContext = useContext(AppContext)
 
 	const setVisibleComponent = (e: React.MouseEvent<HTMLDivElement>, component: VisibleComponent) => {
 		e.preventDefault()
 		e.stopPropagation()
 		setOpen(false)
-		props.setVisibleComponent(component)
+		appContext.setVisibleComponent(component)
 	}
 
 	openClassName[styles.open] = open
@@ -38,15 +32,25 @@ const Navigation = (props: Props) => {
 		<div className={classnames(styles.downArrow, openClassName)} onClick={() => { setOpen(s => !s) }} ref={ref}>
 			<DownArrow />
 			<SelectList className={styles.navlist} open={open}>
-				<SelectListItem onClick={e => { setVisibleComponent(e, "Upload") }}><Upload /> Upload Books</SelectListItem>
-				{props.token.user.isAdmin &&
-					<>
-						<SelectListItem onClick={e => { setVisibleComponent(e, "Users") }}><Users /> Manage Users</SelectListItem>
-						<SelectListItem onClick={e => { setVisibleComponent(e, "Settings") }}><Gear /> Settings</SelectListItem>
-					</>}
+				<SelectListItem onClick={e => { setVisibleComponent(e, "Upload") }}>
+					<Upload />
+					{" "}
+					Upload Books
+				</SelectListItem>
+				{appContext.token?.user.isAdmin && (
+					<AdminNavOptions setVisibleComponent={setVisibleComponent} />
+				)}
 				<hr />
-				<SelectListItem onClick={e => { setVisibleComponent(e, "ChangePassword") }}><Lock /> Change Password</SelectListItem>
-				<SelectListItem onClick={() => { props.logOut() }}><LogOut /> Log Out</SelectListItem>
+				<SelectListItem onClick={e => { setVisibleComponent(e, "ChangePassword") }}>
+					<Lock />
+					{" "}
+					Change Password
+				</SelectListItem>
+				<SelectListItem onClick={() => { appContext.logOut() }}>
+					<LogOut />
+					{" "}
+					Log Out
+				</SelectListItem>
 			</SelectList>
 		</div>
 	)

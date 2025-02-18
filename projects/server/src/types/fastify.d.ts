@@ -1,9 +1,9 @@
 // types/fastify.d.ts
 import "fastify"
-import ServerToken from "../ServerToken.js" // Adjust the import to match your token type
+import ServerToken from "../ServerToken.ts"
 
 declare module "fastify" {
 	interface FastifyRequest {
-		userToken?: ServerToken; // Adjust the type to match your token type
+		userToken?: ServerToken,
 	}
 }

@@ -1,5 +1,5 @@
-import Book from "../Book.js"
-import ApiMessage from "./ApiMessage.js"
+import Book from "../Book.ts"
+import ApiMessage from "./ApiMessage.ts"
 
 export default class UpdateBookRequest extends ApiMessage {
 	override readonly type = "UpdateBookRequest"

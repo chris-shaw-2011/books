@@ -4,7 +4,7 @@ export default abstract class Item {
 	abstract readonly type: ItemType
 
 	id: string
-	uploadTime: Date | number
+	uploadTime: Date
 	name: string
 	folderPath: string
 

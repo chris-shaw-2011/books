@@ -1,11 +1,10 @@
 import fs from "fs"
 import path from "path"
-import ServerBook from "./ServerBook.js"
+import ServerBook from "./ServerBook.ts"
 import { Directory } from "@books/shared"
-import db from "./Database.js"
+import db from "./Database.ts"
 
 export default class ServerDirectory extends Directory {
-
 	/**
 	 *
 	 * @param searchingPath The path we're looking for
@@ -144,9 +143,7 @@ export default class ServerDirectory extends Directory {
 	}
 
 	sortItems(sortParent?: boolean) {
-		this.items.sort((a, b) => {
-			return a.name.toLowerCase().localeCompare(b.name.toLowerCase())
-		})
+		this.items.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
 
 		if (sortParent) {
 			this.parent?.sortItems(sortParent)

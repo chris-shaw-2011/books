@@ -1,13 +1,11 @@
 import type { FastifyReply, FastifyRequest } from "fastify"
 import * as shared from "@books/shared"
-import AuthorizationExpiration from "./AuthorizationExpiration.js"
+import AuthorizationExpiration from "./AuthorizationExpiration.ts"
 import dayjs from "dayjs"
 
 const getNewExpiration = () => dayjs().add(24, "hours")
 
 export function validateRequest(request: FastifyRequest, reply: FastifyReply, done: () => void) {
-	// eslint-disable-next-line no-console
-	console.log("prehandle")
 	const token = request.userToken
 
 	if (token === undefined) {
@@ -21,7 +19,7 @@ export function validateRequest(request: FastifyRequest, reply: FastifyReply, do
 
 	if (expiration === undefined || expiration < dayjs()) {
 		if (expiration !== undefined) {
-			//Remove the token from memory since it expired
+			// Remove the token from memory since it expired
 			AuthorizationExpiration.delete(token.authorization)
 		}
 

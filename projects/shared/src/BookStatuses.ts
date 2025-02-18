@@ -1,4 +1,4 @@
-import BookWithStatus from "./BookWithStatus.js"
+import BookWithStatus from "./BookWithStatus.ts"
 
 export default class BookStatuses extends Map<string, BookWithStatus> {
 	constructor(json?: Record<string, Partial<BookWithStatus>> | BookStatuses) {
@@ -6,10 +6,7 @@ export default class BookStatuses extends Map<string, BookWithStatus> {
 
 		if (json instanceof BookStatuses) {
 			json.forEach((value, key) => {
-				this.set(key, new BookWithStatus({
-					status: value.status,
-					dateStatusSet: value.dateStatusSet,
-				}))
+				this.set(key, new BookWithStatus(value))
 			})
 		}
 		else if (json) {
@@ -21,15 +18,13 @@ export default class BookStatuses extends Map<string, BookWithStatus> {
 		}
 	}
 
-	//This may not be necessary
-	static fromJSON(jsonString?: string): BookStatuses {
-		if (jsonString) {
-			const parsed = JSON.parse(jsonString) as Record<string, Partial<BookWithStatus>>
+	toJSON(): Record<string, BookWithStatus> {
+		const obj: Record<string, BookWithStatus> = {}
 
-			return new BookStatuses(parsed)
-		}
-		else {
-			return new BookStatuses()
-		}
+		this.forEach((value, key) => {
+			obj[key] = value
+		})
+
+		return obj
 	}
 }

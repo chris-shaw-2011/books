@@ -1,5 +1,5 @@
-import Settings from "../Settings.js"
-import ApiMessage from "./ApiMessage.js"
+import Settings from "../Settings.ts"
+import ApiMessage from "./ApiMessage.ts"
 
 export default class SettingsUpdate extends ApiMessage {
 	override readonly type = "SettingsUpdate"

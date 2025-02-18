@@ -1,5 +1,4 @@
-import { forwardRef } from "react"
-import { Directory, Book, Books } from "@books/shared"
+import { Directory, Book } from "@books/shared"
 import BookLink from "./BookLink"
 import DirectoryLink from "./DirectoryLink"
 import styles from "./ItemLink.module.scss"
@@ -7,18 +6,18 @@ import classNames from "classnames"
 
 interface ItemLinkProps {
 	item: Directory | Book,
-	style?: React.CSSProperties,
-	className?: string,
-	searchWords: string[],
-	statusChanged: (books: Books) => void,
-	toggleAlwaysRender?: (key: (string | number)) => void
+	style?: React.CSSProperties | undefined,
+	className?: string | undefined,
 }
 
-const ItemLink = forwardRef<HTMLDivElement, ItemLinkProps>((props, ref) => (
-	props.item.type === "Book" ?
-		<BookLink book={props.item} {...props} ref={ref} className={classNames(props.className, styles.item)} /> :
-		<DirectoryLink directory={props.item} {...props} ref={ref} className={classNames(props.className, styles.item)} />
-))
+const ItemLink = (props: ItemLinkProps) => {
+	if (props.item.type === "Book") {
+		return <BookLink book={props.item} className={classNames(props.className, styles.item)} style={props.style} />
+	}
+	else {
+		return <DirectoryLink directory={props.item} className={classNames(props.className, styles.item)} style={props.style} />
+	}
+}
 
 ItemLink.displayName = "ItemLink"
 

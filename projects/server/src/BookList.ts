@@ -1,8 +1,8 @@
 import chokidar, { FSWatcher } from "chokidar"
 import fs from "fs"
 import path from "path"
-import db from "./Database.js"
-import ServerDirectory from "./ServerDirectory.js"
+import db from "./Database.ts"
+import ServerDirectory from "./ServerDirectory.ts"
 import { Mutex, Semaphore } from "async-mutex"
 
 class BookList {

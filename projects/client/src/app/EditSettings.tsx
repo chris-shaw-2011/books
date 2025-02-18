@@ -1,15 +1,15 @@
 import { useContext, useEffect, useState } from "react"
 import { Modal } from "react-bootstrap"
 import Alert from "./components/Alert"
-import { AccessDenied, SettingsRequired, SettingsUpdateResponse, Unauthorized, Settings } from "@books/shared"
+import { AccessDenied, SettingsRequired, SettingsUpdateResponse, Unauthorized, Settings, NoopFunction } from "@books/shared"
 import Api from "./api/LoggedInApi"
 import Loading from "./Loading"
-import AppContext from "./LoggedInAppContext"
+import LoggedInAppContext from "./context/LoggedInAppContext"
 import OverlayComponent from "./components/OverlayComponent"
 import TextboxField from "./components/TextboxField"
-import CancelButton from "./components/CancelButton"
-import OkButton from "./components/OkButton"
 import ModalDialog from "./components/ModalDialog"
+import ActionButtons from "./components/ActionButtons"
+import AppContext from "./context/AppContext"
 
 interface Props {
 	onSettingsSaved: () => void,
@@ -21,19 +21,16 @@ const EditSettings = (props: Props) => {
 	const [settings, setSettings] = useState<Settings | undefined>()
 	const [saving, setSaving] = useState(false)
 	const [message, setMessage] = useState(props.message)
-	const context = useContext(AppContext)
-	const onUnauthorized = context.logOut
-	const token = context.token
-	const onChange = (obj: Record<string, string>) => {
-		setSettings(s => {
-			return new Settings({
-				baseBooksPath: s?.baseBooksPath ?? "",
-				inviteEmail: s?.inviteEmail ?? "",
-				inviteEmailPassword: s?.inviteEmailPassword ?? "",
-				uploadLocation: s?.uploadLocation ?? "",
-				...obj,
-			})
-		})
+	const { logOut } = useContext(AppContext)
+	const { token } = useContext(LoggedInAppContext)
+	const onChange = (obj: Partial<Settings>) => {
+		setSettings(s => new Settings({
+			baseBooksPath: s?.baseBooksPath ?? "",
+			inviteEmail: s?.inviteEmail ?? "",
+			inviteEmailPassword: s?.inviteEmailPassword ?? "",
+			uploadLocation: s?.uploadLocation ?? "",
+			...obj,
+		}))
 	}
 
 	useEffect(() => {
@@ -44,15 +41,15 @@ const EditSettings = (props: Props) => {
 				setSettings(ret.settings)
 			}
 			else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
-				onUnauthorized(ret.message)
+				logOut(ret.message)
 			}
 			else {
-				onUnauthorized("Received an unexpected response")
+				logOut("Received an unexpected response")
 			}
 		}
 
 		void getSettings()
-	}, [onUnauthorized, token])
+	}, [logOut, token])
 
 	const handleSubmit = async (event: React.FormEvent<HTMLFormElement>, settings: Settings) => {
 		setSaving(true)
@@ -74,11 +71,11 @@ const EditSettings = (props: Props) => {
 				}
 			}
 			else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
-				context.logOut(ret.message)
+				logOut(ret.message)
 				return
 			}
 			else {
-				context.logOut("Received an unexpected response")
+				logOut("Received an unexpected response")
 				return
 			}
 		}
@@ -86,44 +83,63 @@ const EditSettings = (props: Props) => {
 		setSaving(false)
 	}
 
-	if (settings) {
+	if (!settings) {
 		return (
 			<OverlayComponent onClick={props.onClose}>
-				<form onSubmit={e => void handleSubmit(e, settings)}>
-					<ModalDialog>
-						<Modal.Header>
-							<Modal.Title>Settings</Modal.Title>
-						</Modal.Header>
-						<Modal.Body>
-							{message ? <Alert variant="danger">{message}</Alert> : null}
-							<TextboxField label="Base Books Path" type="text" placeholder="Enter Base Path" required={true} defaultValue={settings.baseBooksPath}
-								onChange={e => { onChange({ baseBooksPath: e.currentTarget.value || "" }) }}
-							/>
-							<TextboxField label="Upload Location" type="text" placeholder="Enter Upload Location" required={true} defaultValue={settings.uploadLocation}
-								onChange={e => { onChange({ uploadLocation: e.currentTarget.value || "" }) }}
-							/>
-							<TextboxField label="Invite Email Address" type="email" placeholder="Enter Invite Email Address" required={true} defaultValue={settings.inviteEmail}
-								onChange={e => { onChange({ inviteEmail: e.currentTarget.value || "" }) }}
-							/>
-							<TextboxField label="Invite Email Address" type="password" placeholder="Enter Invite Email Password" required={true} defaultValue={settings.inviteEmailPassword}
-								onChange={e => { onChange({ inviteEmailPassword: e.currentTarget.value || "" }) }}
-							/>
-						</Modal.Body>
-						<Modal.Footer>
-							{!saving ?
-								<>
-									{props.onClose && <CancelButton onClick={props.onClose} />}
-									<OkButton type="submit" value="Save" />
-								</> : <Loading text="Saving..." />}
-						</Modal.Footer>
-					</ModalDialog>
-				</form >
-			</OverlayComponent >
+				<Loading />
+			</OverlayComponent>
 		)
 	}
-	else {
-		return <Loading />
-	}
+
+	return (
+		<OverlayComponent onClick={props.onClose}>
+			<form onSubmit={e => void handleSubmit(e, settings)}>
+				<ModalDialog>
+					<Modal.Header>
+						<Modal.Title>Settings</Modal.Title>
+					</Modal.Header>
+					<Modal.Body>
+						{message ? <Alert variant="danger">{message}</Alert> : null}
+						<TextboxField
+							label="Base Books Path"
+							type="text"
+							placeholder="Enter Base Path"
+							required={true}
+							defaultValue={settings.baseBooksPath}
+							onChange={e => onChange({ baseBooksPath: e.currentTarget.value || "" })}
+						/>
+						<TextboxField
+							label="Upload Location"
+							type="text"
+							placeholder="Enter Upload Location"
+							required={true}
+							defaultValue={settings.uploadLocation}
+							onChange={e => onChange({ uploadLocation: e.currentTarget.value || "" })}
+						/>
+						<TextboxField
+							label="Invite Email Address"
+							type="email"
+							placeholder="Enter Invite Email Address"
+							required={true}
+							defaultValue={settings.inviteEmail}
+							onChange={e => onChange({ inviteEmail: e.currentTarget.value || "" })}
+						/>
+						<TextboxField
+							label="Invite Email Address"
+							type="password"
+							placeholder="Enter Invite Email Password"
+							required={true}
+							defaultValue={settings.inviteEmailPassword}
+							onChange={e => onChange({ inviteEmailPassword: e.currentTarget.value || "" })}
+						/>
+					</Modal.Body>
+					<Modal.Footer>
+						<ActionButtons onCancelClick={props.onClose ?? NoopFunction} actionButtonText="Save" changeHappening={saving} changeHappeningText="Saving..." />
+					</Modal.Footer>
+				</ModalDialog>
+			</form>
+		</OverlayComponent>
+	)
 }
 
 export default EditSettings

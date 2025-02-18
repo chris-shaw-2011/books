@@ -1,4 +1,4 @@
-import Item from "./Item.js"
+import Item from "./Item.ts"
 
 export const StatusValues = ["Unread", "Read", "Skipped"] as const
 

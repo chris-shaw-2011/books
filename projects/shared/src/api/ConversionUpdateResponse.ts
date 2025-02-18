@@ -1,6 +1,6 @@
-import Book from "../Book.js"
-import { type ConverterStatus } from "../ConverterStatus.js"
-import ApiMessage from "./ApiMessage.js"
+import Book from "../Book.ts"
+import { type ConverterStatus } from "../ConverterStatus.ts"
+import ApiMessage from "./ApiMessage.ts"
 
 export default class ConversionUpdateResponse extends ApiMessage {
 	override readonly type = "ConversionUpdateResponse"

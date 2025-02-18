@@ -1,85 +1,46 @@
 import "bootstrap/dist/css/bootstrap.min.css"
-import { lazy, useCallback, useMemo, useState, Suspense } from "react"
-import { CookiesProvider, useCookies } from "react-cookie"
-import { Token } from "@books/shared"
-import ChangePassword from "./ChangePassword"
-import { type VisibleComponent } from "./LoggedInAppContext"
+import { lazy, Suspense, useContext } from "react"
 import LogIn from "./LogIn"
 import styles from "./App.module.scss"
 import "./styles.scss"
 import Loading from "./Loading"
-import Textbox from "./components/Textbox"
+import AppContext, { AppContextProvider } from "./context/AppContext"
+import Header from "./Header"
+import SetPassword from "./SetPassword"
 
-const Navigation = lazy(() => import(/*
-   webpackChunkName: "authenticated" */
-	"./Navigation"))
+// TODO: see if there is some way for the css modules to generate type definitions so it can be verified all modules are used
 
 const Authenticated = lazy(() => import(/*
    webpackChunkName: "authenticated" */
 	"./Authenticated"))
 
-const App = () => {
-	const [searchWords, setSearchWords] = useState({ words: new Array<string>() })
-	const [cookies, setCookies] = useCookies(["loginCookie"])
-	const [loginMessage, setLoginMessage] = useState("")
-	const [visibleComponent, setVisibleComponent] = useState<VisibleComponent>("Books")
-	const loginCookie = cookies.loginCookie as Token | undefined
-	const token = useMemo(() => loginCookie ? new Token(loginCookie) : undefined, [loginCookie])
-	const inviteUserId = window.location.pathname.includes("/invite/") ? window.location.pathname.replace("/invite/", "") : ""
-	const logOut = useCallback((message?: string) => {
-		if (inviteUserId) {
-			window.history.replaceState({}, document.title, "/")
-		}
-		setCookies("loginCookie", "", { maxAge: 0, sameSite: "strict" })
-		setLoginMessage(message ?? "")
-	}, [setCookies, setLoginMessage, inviteUserId])
-	const onLogIn = useCallback((t: Token) => {
-		if (inviteUserId) {
-			window.history.replaceState({}, document.title, "/")
-		}
-		setCookies("loginCookie", JSON.stringify(t), { maxAge: 12 * 30 * 24 * 60 * 60, path: "/", sameSite: "strict" })
-		setLoginMessage("")
-	}, [setCookies, setLoginMessage, inviteUserId])
-	const searchChanged = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const search = (e.currentTarget.value || "").trim()
+const MainContent = () => {
+	const { token, logOut, inviteUserId } = useContext(AppContext)
 
-		if (search) {
-			setSearchWords({ words: search.split(" ").map(w => w.toLowerCase()) })
-		}
-		else {
-			setSearchWords({ words: [] })
-		}
+	if (token) {
+		return (
+			<Suspense fallback={<Loading />}>
+				<Authenticated token={token} />
+			</Suspense>
+		)
 	}
-
-	return (
-		<div className={styles.app}>
-			<CookiesProvider>
-				<div className={styles.navbar}>
-					<img src="favicon.svg" alt="Book" />
-					<h1>Audio Books</h1>
-					<div className={styles.spacer} />
-					{token &&
-						<>
-							<Textbox placeholder="Search" onChange={searchChanged} type="search" />
-							<Suspense fallback={<div />}>
-								<Navigation token={token} setVisibleComponent={setVisibleComponent} logOut={logOut} />
-							</Suspense>
-						</>
-					}
-				</div>
-				<div className={styles.mainContent}>
-					{token ?
-						<Suspense fallback={<Loading />}>
-							<Authenticated searchWords={searchWords} onPasswordChanged={onLogIn} logOut={logOut} token={token} visibleComponent={visibleComponent} setVisibleComponent={setVisibleComponent} />
-						</Suspense> :
-						inviteUserId ?
-							<ChangePassword userId={inviteUserId} onPasswordChanged={onLogIn} logOut={logOut} /> :
-							<LogIn onAuthenticated={onLogIn} message={loginMessage} />
-					}
-				</div>
-			</CookiesProvider>
-		</div>
-	)
+	else if (inviteUserId) {
+		return <SetPassword onClose={logOut} />
+	}
+	else {
+		return (<LogIn />)
+	}
 }
+
+const App = () => (
+	<div className={styles.app}>
+		<AppContextProvider>
+			<Header />
+			<div className={styles.mainContent}>
+				<MainContent />
+			</div>
+		</AppContextProvider>
+	</div>
+)
 
 export default App
