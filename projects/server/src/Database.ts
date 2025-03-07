@@ -12,7 +12,7 @@ class DatabaseClass extends sqlite.Database {
 	// private database: sqlite.Database
 
 	constructor() {
-		super({ filename: "db.sqlite", driver: sqlite3.Database })
+		super({ filename: process.env.BOOKS_DB_LOCATION ?? "db.sqlite", driver: sqlite3.Database })
 
 		void this.open()
 	}
