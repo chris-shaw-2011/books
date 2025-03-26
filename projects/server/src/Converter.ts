@@ -39,7 +39,7 @@ function onExit(childProcess: ChildProcess): Promise<void> {
 
 export default class Converter {
 	constructor() {
-		this._status = "Complete"
+		this._status = "Waiting"
 	}
 
 	totalDuration = 0
@@ -97,7 +97,7 @@ export default class Converter {
 			}
 		}
 		else {
-			const matches = /frame=.* time=([\d]{1,3}):([\d]{1,2})(?::([\d]{1,2}))?.* bitrate=/.exec(str)
+			const matches = /size=.* time=([\d]{1,3}):([\d]{1,2})(?::([\d]{1,2}))?.* bitrate=/.exec(str)
 
 			if (matches) {
 				const completeDuration = this.durationToSeconds(matches)

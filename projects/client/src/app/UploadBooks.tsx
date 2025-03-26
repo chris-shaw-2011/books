@@ -2,7 +2,7 @@ import { Line } from "rc-progress"
 import { useContext, useEffect, useState, useCallback } from "react"
 import { ListGroup, Modal } from "react-bootstrap"
 import { v4 as uuid } from "uuid"
-import { AccessDenied, ConversionUpdateResponse, Unauthorized, UploadResponse, type ConverterStatus, Book, ApiMessage } from "@books/shared"
+import { AccessDenied, ConversionUpdateResponse, Unauthorized, UploadResponse, type ConverterStatus, ConverterStatuses, Book, ApiMessage } from "@books/shared"
 import Api from "./api/LoggedInApi"
 import AppContext from "./context/AppContext"
 import OverlayComponent from "./components/OverlayComponent"
@@ -12,7 +12,7 @@ import BookLink from "./BookLink"
 import classnames from "classnames"
 import ModalDialog from "./components/ModalDialog"
 
-type UploadStatus = "Pending" | "Uploading" | "Converting" | "Editing" | "Complete" | "Error"
+type UploadStatus = ConverterStatus | "Uploading" | "Editing" | "Done"
 
 interface Props {
 	onClose: () => void,
@@ -28,24 +28,32 @@ interface FileUploadRowState {
 	percent: number,
 	conversionId: string,
 	errorMessage: string,
-	converterStatus: ConverterStatus,
 	fileName: string,
 }
 
+const ToConverterStatus = (status: UploadStatus): ConverterStatus => {
+	if ((ConverterStatuses as readonly string[]).includes(status)) {
+		return status as ConverterStatus
+	}
+	else {
+		return "Waiting"
+	}
+}
+
+const IsConversionRunning = (status: UploadStatus) => (status === "Unzipping" || status === "Cracking" || status === "Converting")
+
 const FileUploadRow = (props: FileUploadRowProps) => {
 	const [uploadState, setUploadState] = useState<FileUploadRowState>({
-		status: "Pending",
+		status: "Waiting",
 		percent: 0,
 		conversionId: "",
 		errorMessage: "",
-		converterStatus: "Waiting",
 		fileName: "",
 	})
 	const status = uploadState.status
 	const percent = uploadState.percent
 	const conversionId = uploadState.conversionId
 	const { logOut } = useContext(AppContext)
-	const converterStatus = uploadState.converterStatus
 	const fileName = uploadState.fileName
 	const [editingBook, setEditingBook] = useState<Book>()
 	const onStatusChanged = props.onStatusChanged
@@ -76,8 +84,8 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 					const ret = Api.parseJson(JSON.parse(request.responseText) as ApiMessage)
 
 					if (ret instanceof UploadResponse) {
-						onStatusChanged(id, "Converting")
-						setUploadState(prev => ({ ...prev, conversionId: ret.conversionId, percent: 0, status: "Converting" }))
+						onStatusChanged(id, ret.converterStatus)
+						setUploadState(prev => ({ ...prev, conversionId: ret.conversionId, percent: 0, status: ret.converterStatus }))
 					}
 					else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
 						logOut(ret.message)
@@ -96,14 +104,13 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 
 	useEffect(() => {
 		async function getConversionUpdate() {
-			const ret = await Api.conversionUpdate(conversionId, percent, converterStatus)
+			const ret = await Api.conversionUpdate(conversionId, percent, ToConverterStatus(status))
 
 			if (ret instanceof ConversionUpdateResponse) {
-				const newStatus: UploadStatus = ret.converterStatus === "Error" ? "Error" : ret.converterStatus === "Complete" ? "Editing" : "Converting"
+				const newStatus: UploadStatus = ret.converterStatus === "Complete" ? "Editing" : ret.converterStatus
 
 				onStatusChanged(id, newStatus)
-
-				setUploadState({ percent: ret.conversionPercent, status: newStatus, conversionId, errorMessage: ret.errorMessage, converterStatus: ret.converterStatus, fileName })
+				setUploadState({ percent: ret.conversionPercent, status: newStatus, conversionId, errorMessage: ret.errorMessage, fileName })
 
 				if (newStatus === "Editing") {
 					setEditingBook(ret.book)
@@ -117,12 +124,12 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 			}
 		}
 
-		if (status === "Converting") {
+		if (conversionId && IsConversionRunning(status)) {
 			void getConversionUpdate()
 		}
-	}, [status, percent, setUploadState, conversionId, logOut, converterStatus, fileName, onStatusChanged, id])
+	}, [status, percent, setUploadState, conversionId, logOut, fileName, onStatusChanged, id])
 
-	if (status === "Pending") {
+	if (status === "Waiting") {
 		return (
 			<div>
 				<form>
@@ -136,7 +143,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 	else if (editingBook) {
 		return (
 			<div>
-				<BookLink book={editingBook} editOnly={true} onEditComplete={() => onStatusChanged(id, "Complete")} />
+				<BookLink book={editingBook} editOnly={true} onEditComplete={() => onStatusChanged(id, "Done")} />
 			</div>
 		)
 	}
@@ -147,12 +154,12 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 					{fileName}
 				</div>
 				<div>
-					<Line percent={percent} strokeWidth={1} strokeColor={status === "Error" ? "#FF0000" : status === "Converting" || status === "Complete" ? "#0000FF" : "#00FF00"} />
+					<Line percent={percent} strokeWidth={1} strokeColor={status === "Error" ? "#FF0000" : IsConversionRunning(status) ? "#0000FF" : "#00FF00"} />
 				</div>
 				<div>
 					{Math.round(percent)}
-					%
-					{status !== "Converting" ? status : converterStatus}
+					%&nbsp;
+					{status}
 					...
 				</div>
 				{status === "Error" && (
@@ -168,17 +175,17 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 }
 
 const UploadBooks = (props: Props) => {
-	const [fileUploadRows, setFileUploadRows] = useState<Map<string, UploadStatus>>(new Map([[uuid(), "Pending"]]))
+	const [fileUploadRows, setFileUploadRows] = useState<Map<string, UploadStatus>>(new Map([[uuid(), "Waiting"]]))
 	const onStatusChanged = useCallback((id: string, status: UploadStatus) => {
 		setFileUploadRows(prev => {
-			const prevStatus = prev.get(id) ?? "Pending"
+			const prevStatus = prev.get(id) ?? "Waiting"
 
 			prev.set(id, status)
 
-			if (prevStatus === "Pending" && status !== "Pending") {
-				prev.set(uuid(), "Pending")
+			if (prevStatus === "Waiting" && status !== "Waiting") {
+				prev.set(uuid(), "Waiting")
 			}
-			else if (status === "Complete" && prevStatus !== "Complete") {
+			else if (status === "Done" && prevStatus !== "Done") {
 				prev.delete(id)
 			}
 

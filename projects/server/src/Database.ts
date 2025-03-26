@@ -2,6 +2,7 @@ import * as sqlite from "sqlite"
 import sqlite3 from "sqlite3"
 import ServerSettings from "./ServerSettings.ts"
 import * as shared from "@books/shared"
+import path from "path"
 
 // TODO: save the book metadata to the database so we don't have to wait on the server to read all books on a restart
 // The server should still read the books but it shouldn't be blocking
@@ -12,7 +13,16 @@ class DatabaseClass extends sqlite.Database {
 	// private database: sqlite.Database
 
 	constructor() {
-		super({ filename: process.env.BOOKS_DB_LOCATION ?? "db.sqlite", driver: sqlite3.Database })
+		const dbLocationFlag = "--db-location"
+		const dbLocationIndex = process.argv.indexOf(dbLocationFlag)
+		const locationArg = dbLocationIndex !== -1 ? process.argv[dbLocationIndex + 1] : undefined
+
+		const dbLocation = path.resolve(locationArg ?? process.env.BOOKS_DB_LOCATION ?? "db.sqlite")
+
+		// eslint-disable-next-line no-console
+		console.log(`Using database located at: ${dbLocation}}`)
+
+		super({ filename: dbLocation, driver: sqlite3.Database })
 
 		void this.open()
 	}

@@ -401,7 +401,10 @@ server.post("/upload", { preHandler: validateRequest }, async (request, reply) =
 		}, 60000)
 	})
 
-	void reply.code(200).send(new shared.UploadResponse({ conversionId: id }))
+	// wait on the conversion process to start
+	await conversion.waitForUpdate(0, "Waiting")
+
+	void reply.code(200).send(new shared.UploadResponse({ conversionId: id, converterStatus: conversion.status }))
 })
 
 server.post<{ Body: shared.ConversionUpdateRequest }>("/conversionUpdate", { preHandler: validateRequest }, async request => {
