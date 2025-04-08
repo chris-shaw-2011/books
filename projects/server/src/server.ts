@@ -581,4 +581,16 @@ const start = async () => {
 	}
 }
 
-export default { start }
+const stop = async () => {
+	try {
+		server.log.info("Shutting down Fastify...")
+		await server.close()
+		server.log.info("Shutdown complete.")
+	}
+	catch (err) {
+		server.log.error("Error during shutdown", err)
+		process.exit(1)
+	}
+}
+
+export default { start, stop }

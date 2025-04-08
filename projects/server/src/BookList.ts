@@ -130,6 +130,16 @@ class BookList {
 	resumeUpdates() {
 		this.pauseSemaphore.release()
 	}
+
+	async shutdown() {
+		if (this.watcher) {
+			// eslint-disable-next-line no-console
+			console.log("Closing file watcher...")
+			await this.watcher.close()
+			// eslint-disable-next-line no-console
+			console.log("File watcher closed")
+		}
+	}
 }
 
 const bookList = new BookList()
