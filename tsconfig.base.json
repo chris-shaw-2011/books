@@ -17,5 +17,7 @@
 		"isolatedModules": true,
 		"allowImportingTsExtensions": true,
 		"noEmit": true,
+		"rewriteRelativeImportExtensions": true,
+		"erasableSyntaxOnly": true,
 	}
 }

@@ -13,4 +13,7 @@ export default [
 			// Server-specific rules here
 		},
 	},
+	{
+		ignores: ["fixPackageMain.js"],
+	},
 ]

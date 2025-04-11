@@ -25,11 +25,10 @@
 	"main": "./src/index.ts",
 	"scripts": {
 		"start": "node ./src/index.ts",
-		"start-production": "npm run install-prod-packages  && npm run start",
-		"build": "npm run copy-package && npm run copy-src",
-		"copy-package": "cpx \"./package.json\" \"../../bin/server/\"",
-		"copy-src": "cpx \"./src/**/*\" \"../../bin/server/src\"",
-		"install-prod-packages": "npm install --omit=dev"
+		"start-production": "node ./src/index.js",
+		"build": "tsc --project ./tsconfig.production.json && npm run copy-package && npm run copy-audible-hack",
+		"copy-package": "cpx \"./package.json\" \"../../bin/projects/server/\"",
+		"copy-audible-hack": "cpx \"./src/inAudible-NG/**/*\" \"../../bin/projects/server/src/inAudible-NG\""
 	},
 	"devDependencies": {
 		"@types/bcrypt": "^5.0.2",

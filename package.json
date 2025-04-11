@@ -1,6 +1,6 @@
 {
 	"name": "books-monorepo",
-	"version": "1.1.1",
+	"version": "1.1.2",
 	"engines": {
 		"npm": ">=10.9.2",
 		"node": ">=23.6.1"
@@ -12,14 +12,15 @@
 	"packageManager": "npm@10.9.2",
 	"scripts": {
 		"start": "concurrently \"npm run start-client\" \"npm run start-server\"",
-		"start-production": "npm run install-packages && npm run build && cpx projects/server/db.sqlite bin/server/ && cd bin/server && npm run start-production",
+		"start-production": "npm run build && cpx projects/server/db.sqlite bin/projects/server && cd bin && npm install --omit=dev && cd projects/server && npm run start-production",
 		"start-client": "npm start -w @books/client",
 		"start-server": "npm start -w @books/server",
 		"install-packages": "npm install",
-		"build": "npm run build-shared && npm run  build-client && npm run build-server",
+		"build": "npm run copy-package && npm run build-client && npm run build-shared && npm run build-server",
 		"build-client": "npm run build --workspace=@books/client",
 		"build-server": "npm run build --workspace=@books/server",
 		"build-shared": "npm run build --workspace=@books/shared",
+		"copy-package": "cpx \"./package.json\" \"./bin\"",
 		"lint": "eslint . --max-warnings 0 --report-unused-disable-directives-severity error && knip && npm run sherif",
 		"analyze": "source-map-explorer 'bin/client/*.js'",
 		"sherif": "sherif"

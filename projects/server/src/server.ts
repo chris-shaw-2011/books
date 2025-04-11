@@ -559,7 +559,7 @@ server.get<{ Params: Record<string, string> }>("/files/*", { preHandler: validat
 // This handles requests to the root of the site in production
 server.get<{ Params: Record<string, string> }>("/*", (request, reply) => {
 	let filePath = request.params["*"] || "index.html"
-	const rootPath = path.join(rootDir, "../../../bin/client")
+	const rootPath = path.join(rootDir, "../../../../bin/projects/client")
 
 	if (filePath.startsWith("invite/")) {
 		filePath = "index.html"

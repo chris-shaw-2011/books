@@ -11,7 +11,7 @@ const proxyOptions = {
 export default defineConfig({
 	plugins: [react()],
 	build: {
-		outDir: "../../bin/client",
+		outDir: "../../bin/projects/client",
 		emptyOutDir: true,
 		target: "esnext",
 	},

@@ -16,7 +16,7 @@
 				"../*/src"
 			],
 		},
-		"outDir": "../../bin/client",
+		"outDir": "../../bin/projects/client",
 		"module": "ESNext",
 		"moduleResolution": "Bundler",
 	},

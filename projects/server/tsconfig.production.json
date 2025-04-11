@@ -1,0 +1,14 @@
+{
+	"compilerOptions": {
+		"baseUrl": ".",
+		"outDir": "../../bin/projects/server/src",
+		"noEmit": false,
+		"sourceMap": true,
+	},
+	"extends": "./tsconfig.server.json",
+	"references": [
+		{
+			"path": "../shared/tsconfig.production.json"
+		}
+	]
+}

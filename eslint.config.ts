@@ -84,6 +84,7 @@ export default tseslint.config(
 			"node_modules/*",
 			"bin/*",
 			".vscode/*",
+			"projects/shared/fixPackageMain.js",
 		],
 	},
 )
