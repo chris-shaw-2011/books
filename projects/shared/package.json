@@ -5,8 +5,7 @@
 	"private": true,
 	"version": "1.0.0",
 	"scripts": {
-		"build": "npm run copy-package && npm run copy-src",
-		"copy-package": "cpx \"./package.json\" \"../../bin/shared\"",
-		"copy-src": "cpx \"../shared/src/**/*\" \"../../bin/shared/src/\""
+		"build": "tsc --project tsconfig.production.json && npm run copy-package",
+		"copy-package": "node ./fixPackageMain.js"
 	}
 }

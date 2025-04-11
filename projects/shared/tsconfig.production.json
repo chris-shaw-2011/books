@@ -1,0 +1,8 @@
+{
+	"compilerOptions": {
+		"noEmit": false,
+		"composite": true,
+		"outDir": "../../bin/projects/shared"
+	},
+	"extends": "./tsconfig.json",
+}
