@@ -1,7 +1,6 @@
 services:
   books-site:
-    image: "node:23"
-    user: "root"
+    container_name: books-site
     build: .
     environment:
       - NODE_ENV=production
