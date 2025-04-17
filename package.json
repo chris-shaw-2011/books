@@ -21,7 +21,10 @@
 		"build-server": "npm run build --workspace=@books/server",
 		"build-shared": "npm run build --workspace=@books/shared",
 		"copy-package": "cpx \"./package.json\" \"./bin\"",
-		"lint": "eslint . --max-warnings 0 --report-unused-disable-directives-severity error && knip && npm run sherif",
+		"lint": "eslint . --max-warnings 0 --report-unused-disable-directives-severity error && npm run lint-client && npm run lint-server && npm run lint-shared && knip && npm run sherif",
+		"lint-client": "npm run lint --workspace=@books/client",
+		"lint-server": "npm run lint --workspace=@books/server",
+		"lint-shared": "npm run lint --workspace=@books/shared",
 		"analyze": "source-map-explorer 'bin/client/*.js'",
 		"sherif": "sherif"
 	},

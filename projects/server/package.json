@@ -29,7 +29,8 @@
 		"start-production": "node ./src/index.js",
 		"build": "tsc --project ./tsconfig.production.json && npm run copy-package && npm run copy-audible-hack",
 		"copy-package": "cpx \"./package.json\" \"../../bin/projects/server/\"",
-		"copy-audible-hack": "cpx \"./src/inAudible-NG/**/*\" \"../../bin/projects/server/src/inAudible-NG\""
+		"copy-audible-hack": "cpx \"./src/inAudible-NG/**/*\" \"../../bin/projects/server/src/inAudible-NG\"",
+		"lint": "eslint . --max-warnings 0 --report-unused-disable-directives-severity error"
 	},
 	"devDependencies": {
 		"@types/bcrypt": "^5.0.2",

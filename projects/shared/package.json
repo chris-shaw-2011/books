@@ -6,6 +6,7 @@
 	"version": "1.0.0",
 	"scripts": {
 		"build": "tsc --project tsconfig.production.json && npm run copy-package",
-		"copy-package": "node ./fixPackageMain.js"
+		"copy-package": "node ./fixPackageMain.js",
+		"lint": "eslint . --max-warnings 0 --report-unused-disable-directives-severity error"
 	}
 }
