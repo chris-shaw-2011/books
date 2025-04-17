@@ -13,7 +13,7 @@
 			],
 			"program": "${workspaceFolder}/projects/server/src/index.ts",
 			"cwd": "${workspaceFolder}/projects/server",
-			"preLaunchTask": "npm: build - projects/client"
+			"preLaunchTask": "npm: build"
 		}
 	]
 }

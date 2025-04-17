@@ -9,6 +9,7 @@ export default class ConversionUpdateResponse extends ApiMessage {
 	errorMessage: string
 	converterStatus: ConverterStatus
 	book: Book
+	fileNames: string[]
 
 	constructor(json?: Partial<ConversionUpdateResponse>) {
 		super()
@@ -17,5 +18,6 @@ export default class ConversionUpdateResponse extends ApiMessage {
 		this.errorMessage = json?.errorMessage ?? ""
 		this.converterStatus = json?.converterStatus ?? "Waiting"
 		this.book = new Book(json?.book)
+		this.fileNames = json?.fileNames ?? []
 	}
 }

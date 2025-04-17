@@ -11,7 +11,9 @@ import styles from "./UploadBooks.module.scss"
 import BookLink from "./BookLink"
 import classnames from "classnames"
 import ModalDialog from "./components/ModalDialog"
+import type { JSX } from "react/jsx-runtime"
 
+// TODO: this needs refactored, it seems like there's too much going on in this component
 type UploadStatus = ConverterStatus | "Uploading" | "Editing" | "Done"
 
 interface Props {
@@ -28,7 +30,8 @@ interface FileUploadRowState {
 	percent: number,
 	conversionId: string,
 	errorMessage: string,
-	fileName: string,
+	uploadFileName: string,
+	workingFileNames: string[],
 }
 
 const ToConverterStatus = (status: UploadStatus): ConverterStatus => {
@@ -40,7 +43,48 @@ const ToConverterStatus = (status: UploadStatus): ConverterStatus => {
 	}
 }
 
-const IsConversionRunning = (status: UploadStatus) => (status === "Unzipping" || status === "Cracking" || status === "Converting")
+const IsConversionRunning = (status: UploadStatus) => (status === "Extracting" || status === "Cracking" || status === "Converting" || status === "Combining")
+
+const ProgressSection = ({ status, percent, uploadFileName, errorMessage, workingFileNames }: FileUploadRowState) => {
+	const percentTxt = `${Math.round(percent)}%`
+	const text = [percentTxt, status]
+	const fileNames: JSX.Element[] = []
+
+	if (workingFileNames.length === 1) {
+		text.push(workingFileNames[0])
+	}
+	else {
+		fileNames.push(...workingFileNames.map(n => (
+			<div key={n}>
+				<span style={{ visibility: "hidden" }}>{percentTxt}</span>
+				&nbsp;
+				{n}
+			</div>
+		)))
+	}
+
+	return (
+		<div>
+			<div>
+				{uploadFileName}
+			</div>
+			<div>
+				<Line percent={percent} strokeWidth={1} strokeColor={status === "Error" ? "#FF0000" : IsConversionRunning(status) ? "#0000FF" : "#00FF00"} />
+			</div>
+			<div>
+				{text.join(" ")}
+				{fileNames}
+			</div>
+			{status === "Error" && (
+				<div className={styles.error}>
+					<div>
+						{errorMessage}
+					</div>
+				</div>
+			)}
+		</div>
+	)
+}
 
 const FileUploadRow = (props: FileUploadRowProps) => {
 	const [uploadState, setUploadState] = useState<FileUploadRowState>({
@@ -48,17 +92,17 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 		percent: 0,
 		conversionId: "",
 		errorMessage: "",
-		fileName: "",
+		uploadFileName: "",
+		workingFileNames: [],
 	})
 	const status = uploadState.status
 	const percent = uploadState.percent
 	const conversionId = uploadState.conversionId
 	const { logOut } = useContext(AppContext)
-	const fileName = uploadState.fileName
 	const [editingBook, setEditingBook] = useState<Book>()
 	const onStatusChanged = props.onStatusChanged
 	const id = props.id
-
+	const workingFileNames = uploadState.workingFileNames
 	const uploadFile = (files: FileList | null) => {
 		if (!files?.length || !(files[0].name.endsWith(".aax") || files[0].name.endsWith(".zip"))) {
 			return
@@ -102,18 +146,27 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 		request.send(data)
 	}
 
+	// TODO: change this to useEffectEvent once that's no longer experimental: https://react.dev/reference/react/experimental_useEffectEvent
 	useEffect(() => {
+		const controller = new AbortController()
 		async function getConversionUpdate() {
-			const ret = await Api.conversionUpdate(conversionId, percent, ToConverterStatus(status))
+			const ret = await Api.conversionUpdate(conversionId, percent, ToConverterStatus(status), workingFileNames, controller.signal)
 
 			if (ret instanceof ConversionUpdateResponse) {
 				const newStatus: UploadStatus = ret.converterStatus === "Complete" ? "Editing" : ret.converterStatus
 
 				onStatusChanged(id, newStatus)
-				setUploadState({ percent: ret.conversionPercent, status: newStatus, conversionId, errorMessage: ret.errorMessage, fileName })
+				setUploadState(prev => ({ ...prev, percent: ret.conversionPercent, status: newStatus, errorMessage: ret.errorMessage, workingFileNames: ret.fileNames }))
 
 				if (newStatus === "Editing") {
 					setEditingBook(ret.book)
+				}
+
+				// Only call this method again if the conversion is still happening and nothing changed
+				// If anything changed the effect will be rebuilt and the api call will be made again automatically
+				// Without this check api calls are constantly created and cancelled
+				if (conversionId && IsConversionRunning(status) && newStatus === status && percent === ret.conversionPercent) {
+					void getConversionUpdate()
 				}
 			}
 			else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
@@ -127,7 +180,9 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 		if (conversionId && IsConversionRunning(status)) {
 			void getConversionUpdate()
 		}
-	}, [status, percent, setUploadState, conversionId, logOut, fileName, onStatusChanged, id])
+
+		return () => controller.abort()
+	}, [status, percent, conversionId, logOut, onStatusChanged, id, workingFileNames])
 
 	if (status === "Waiting") {
 		return (
@@ -148,29 +203,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 		)
 	}
 	else {
-		return (
-			<div>
-				<div>
-					{fileName}
-				</div>
-				<div>
-					<Line percent={percent} strokeWidth={1} strokeColor={status === "Error" ? "#FF0000" : IsConversionRunning(status) ? "#0000FF" : "#00FF00"} />
-				</div>
-				<div>
-					{Math.round(percent)}
-					%&nbsp;
-					{status}
-					...
-				</div>
-				{status === "Error" && (
-					<div className={styles.error}>
-						<div>
-							{uploadState.errorMessage}
-						</div>
-					</div>
-				)}
-			</div>
-		)
+		return <ProgressSection {...uploadState} />
 	}
 }
 
@@ -204,7 +237,7 @@ const UploadBooks = (props: Props) => {
 					<h5>Allowed Uploads</h5>
 					<ul>
 						<li>Books downloaded from audible (.aax)</li>
-						<li>Zip file containing mp3s of a book</li>
+						<li>Zip file containing multiple mp3 or aax files of a single book</li>
 					</ul>
 					<ListGroup>
 						{arr.map(v => <ListGroup.Item key={v[0]}><FileUploadRow onStatusChanged={onStatusChanged} id={v[0]} /></ListGroup.Item>)}

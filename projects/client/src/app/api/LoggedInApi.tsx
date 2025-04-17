@@ -18,7 +18,8 @@ class LoggedInApiClass extends BaseApi {
 
 	changeBookStatus = async (bookId: string, status: shared.Status) => this.fetch("/changeBookStatus", new shared.ChangeBookStatusRequest({ bookId, status }))
 
-	conversionUpdate = async (conversionId: string, knownPercent: number, knownConverterStatus: shared.ConverterStatus) => this.fetch("/conversionUpdate", new shared.ConversionUpdateRequest({ conversionId, knownPercent, knownConverterStatus }))
+	conversionUpdate = async (conversionId: string, knownPercent: number, knownConverterStatus: shared.ConverterStatus, knownWorkingFiles: string[], signal?: AbortSignal) =>
+		this.fetch("/conversionUpdate", new shared.ConversionUpdateRequest({ conversionId, knownPercent, knownConverterStatus, knownWorkingFiles }), signal)
 
 	updateBook = async (newBook: shared.Book, prevBook: shared.Book) => this.fetch("/updateBook", new shared.UpdateBookRequest({ newBook, prevBook }))
 
@@ -27,12 +28,13 @@ class LoggedInApiClass extends BaseApi {
 	changePassword = async (newPassword: string) => this.fetchWithType("/changePassword", shared.Token, new shared.ChangePasswordRequest({ newPassword }))
 
 	// TODO: update this method so it is a generic method where you specify the desired return type and update the jsonRet so it converts the result json to that type
-	fetch = async (url: string, jsonSend?: unknown) => {
+	fetch = async (url: string, jsonSend?: unknown, signal?: AbortSignal) => {
 		const headers = jsonSend ? { "Content-Type": "application/json" } : {}
 		const result = await fetch(url, {
 			method: "POST",
 			headers: headers,
 			body: jsonSend ? JSON.stringify(jsonSend) : "",
+			signal: signal ?? null,
 		})
 		const jsonRet = await result.json() as shared.ApiMessage
 

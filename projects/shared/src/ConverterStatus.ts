@@ -1,4 +1,4 @@
-const converterStatuses = ["Waiting", "Unzipping", "Cracking", "Converting", "Error", "Complete"] as const
+const converterStatuses = ["Waiting", "Extracting", "Cracking", "Converting", "Combining", "Error", "Complete"] as const
 
 export default converterStatuses
 export type ConverterStatus = typeof converterStatuses[number]

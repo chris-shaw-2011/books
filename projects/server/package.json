@@ -12,6 +12,7 @@
 		"dayjs": "^1.11.13",
 		"fastify": "^5.2.1",
 		"ffmpeg-ffprobe-static": "^6.1.2-rc.1",
+		"get-folder-size": "^5.0.0",
 		"music-metadata": "^11.0.0",
 		"node-id3": "^0.2.8",
 		"nodemailer": "^6.10.0",

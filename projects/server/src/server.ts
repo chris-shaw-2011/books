@@ -393,7 +393,7 @@ server.post("/upload", { preHandler: validateRequest }, async (request, reply) =
 	conversions.set(id, conversion)
 
 	// Start the conversion in the background
-	void conversion.convert(fileName, db.settings.uploadLocation, conversionMutex, rootDir).then(() => {
+	void conversion.convert(filePath, db.settings.uploadLocation, conversionMutex, rootDir).then(() => {
 		setTimeout(() => {
 			// eslint-disable-next-line no-console
 			console.log(`Removing conversion ${id}`)
@@ -402,11 +402,12 @@ server.post("/upload", { preHandler: validateRequest }, async (request, reply) =
 	})
 
 	// wait on the conversion process to start
-	await conversion.waitForUpdate(0, "Waiting")
+	await conversion.waitForUpdate(0, "Waiting", [])
 
 	void reply.code(200).send(new shared.UploadResponse({ conversionId: id, converterStatus: conversion.status }))
 })
 
+// TODO: change this to a websocket
 server.post<{ Body: shared.ConversionUpdateRequest }>("/conversionUpdate", { preHandler: validateRequest }, async request => {
 	const updateRequest = new shared.ConversionUpdateRequest(request.body)
 	const conversion = conversions.get(updateRequest.conversionId)
@@ -414,12 +415,13 @@ server.post<{ Body: shared.ConversionUpdateRequest }>("/conversionUpdate", { pre
 
 	if (conversion) {
 		if (conversion.status !== "Error") {
-			await conversion.waitForUpdate(updateRequest.knownPercent, updateRequest.knownConverterStatus)
+			await conversion.waitForUpdate(updateRequest.knownPercent, updateRequest.knownConverterStatus, updateRequest.knownWorkingFiles)
 		}
 
 		response.conversionPercent = conversion.percentComplete
 		response.errorMessage = conversion.errorMessage
 		response.converterStatus = conversion.status
+		response.fileNames = conversion.fileNames
 
 		if (conversion.status === "Complete") {
 			response.book = bookList.findBookByPath(conversion.convertedFilePath) as ServerBook

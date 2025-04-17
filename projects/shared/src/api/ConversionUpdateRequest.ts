@@ -7,6 +7,7 @@ export default class ConversionUpdateRequest extends ApiMessage {
 	knownPercent: number
 	knownConverterStatus: ConverterStatus
 	conversionId: string
+	knownWorkingFiles: string[]
 
 	constructor(json?: Partial<ConversionUpdateRequest>) {
 		super()
@@ -14,5 +15,6 @@ export default class ConversionUpdateRequest extends ApiMessage {
 		this.knownPercent = json?.knownPercent ?? 0
 		this.conversionId = json?.conversionId ?? ""
 		this.knownConverterStatus = json?.knownConverterStatus ?? "Waiting"
+		this.knownWorkingFiles = json?.knownWorkingFiles ?? []
 	}
 }

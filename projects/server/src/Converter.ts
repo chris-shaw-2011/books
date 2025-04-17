@@ -1,5 +1,5 @@
 import { Mutex } from "async-mutex"
-import { type ChildProcess, exec } from "child_process"
+import { type ChildProcess, exec, type ExecOptions } from "child_process"
 import { EventEmitter } from "events"
 import { ffprobePath, ffmpegPath } from "ffmpeg-ffprobe-static"
 import fs from "fs"
@@ -7,9 +7,14 @@ import { parseFile } from "music-metadata"
 import path from "path"
 import sanitize from "sanitize-filename"
 import unzipper from "unzipper"
-import { v4 as uuid } from "uuid"
 import { type ConverterStatus } from "@books/shared"
 import bookList from "./BookList.ts"
+import folderSize from "get-folder-size"
+import * as mm from "music-metadata"
+
+// Set this to true if you want to make sure no intermediate files are removed as things are converted
+// This is useful in debugging if you want to check various stages of the conversion
+const keepIntermediateFiles = false
 
 function toString(data: unknown) {
 	let ret = ""
@@ -42,13 +47,15 @@ export default class Converter {
 		this._status = "Waiting"
 	}
 
-	totalDuration = 0
+	totalDurations = new Map<string, number>()
 	_percentComplete = 0
 	eventEmitter = new EventEmitter()
 	errorMessage = ""
 	_convertedFilePath = ""
 
 	private _status: ConverterStatus
+	private _fileNames: string[] = []
+
 	get percentComplete() {
 		return this._percentComplete
 	}
@@ -63,16 +70,30 @@ export default class Converter {
 	}
 
 	set status(value: ConverterStatus) {
+		if (this._status != value) {
+			if (value === "Complete") {
+				this._percentComplete = 100
+			}
+			else {
+				this._percentComplete = 0
+				this._fileNames = []
+			}
+		}
+
 		this._status = value
 		this.eventEmitter.emit("update")
+	}
+
+	get fileNames() {
+		return this._fileNames
 	}
 
 	get convertedFilePath() {
 		return this._convertedFilePath
 	}
 
-	waitForUpdate = async (knownPercent: number, knownStatus: ConverterStatus) => {
-		if (knownPercent === this.percentComplete && this.status !== "Complete" && this.status !== "Error" && this.status === knownStatus) {
+	waitForUpdate = async (knownPercent: number, knownStatus: ConverterStatus, knownWorkingFiles: string[]) => {
+		if (knownPercent === this.percentComplete && this.status !== "Complete" && this.status !== "Error" && this.status === knownStatus && this.arraysEqual(this.fileNames, knownWorkingFiles)) {
 			const promise = new Promise<number>(resolve => {
 				this.eventEmitter.once("update", resolve)
 			})
@@ -88,12 +109,13 @@ export default class Converter {
 
 	parseData = (data: string, outputFile: string) => {
 		const str = data
+		const totalDuration = this.totalDurations.get(outputFile)
 
-		if (this.totalDuration === 0) {
+		if (totalDuration === undefined) {
 			const matches = /Duration: ([\d]{1,3}):([\d]{1,2})(?::([\d]{1,2}))?.*, start/.exec(str)
 
 			if (matches) {
-				this.totalDuration = this.durationToSeconds(matches)
+				this.totalDurations.set(outputFile, this.durationToSeconds(matches))
 			}
 		}
 		else {
@@ -102,7 +124,7 @@ export default class Converter {
 			if (matches) {
 				const completeDuration = this.durationToSeconds(matches)
 
-				this.percentComplete = Math.round(completeDuration / this.totalDuration * 100)
+				this.percentComplete = Math.round(completeDuration / totalDuration * 100)
 
 				// eslint-disable-next-line no-console
 				console.log(`${outputFile} - ${this.percentComplete}% complete`)
@@ -110,15 +132,68 @@ export default class Converter {
 		}
 	}
 
-	convert = async (fileName: string, baseFilePath: string, mutex: Mutex, rootDir: string) => {
+	convert = async (filePath: string, baseFilePath: string, mutex: Mutex, rootDir: string) => {
 		await mutex.acquire()
 		await bookList.pauseUpdates()
 
-		if (fileName.endsWith(".aax")) {
-			await this.convertAax(fileName, baseFilePath, rootDir)
+		let outputFilePath: string | undefined
+
+		if (filePath.toLowerCase().endsWith(".zip")) {
+			const unzipPath = filePath.substring(0, filePath.length - 4)
+			const files = await this.unzip(filePath, unzipPath)
+
+			await this.remove(filePath)
+
+			if (files.some(str => str.toLowerCase().endsWith(".mp3"))) {
+				outputFilePath = `${filePath}.mp3`
+
+				await this.combineFiles(files, outputFilePath, "mp3")
+			}
+			else {
+				// TODO: figure out how to run these in parallel rather than in serial
+				// Will have to make sure to update the UI so it shows the percentage of each file
+				const aaxFiles = files.filter(str => str.toLowerCase().endsWith(".aax"))
+
+				for (const file of aaxFiles) {
+					const convertedFileOutputPath = `${file}.m4b`
+					const coverPhotoOutputPath = `${file}.jpg`
+
+					await this.convertAax(file, convertedFileOutputPath, rootDir, coverPhotoOutputPath)
+
+					files.splice(files.indexOf(file), 1, convertedFileOutputPath, coverPhotoOutputPath)
+
+					await this.remove(file)
+				}
+
+				outputFilePath = `${filePath}.m4b`
+
+				await this.combineFiles(files, outputFilePath, "m4b")
+			}
+
+			await this.remove(unzipPath)
 		}
-		else if (fileName.endsWith(".zip")) {
-			await this.convertMp3(fileName, baseFilePath)
+		else if (filePath.toLowerCase().endsWith(".aax")) {
+			outputFilePath = `${filePath}.m4b`
+
+			await this.convertAax(filePath, outputFilePath, rootDir)
+		}
+
+		if (outputFilePath) {
+			const metadata = (await parseFile(outputFilePath, { skipCovers: true, skipPostHeaders: true, includeChapters: false }))
+			const extension = path.extname(outputFilePath)
+
+			if (metadata.common.title) {
+				const sanitized = sanitize(metadata.common.title.replace(/:/gi, " - "))
+				let desiredFilePath = path.join(baseFilePath, `${sanitized}${extension}`)
+
+				if (fs.existsSync(desiredFilePath)) {
+					desiredFilePath = path.join(baseFilePath, `${sanitized} - ${path.basename(outputFilePath)}`)
+				}
+
+				await fs.promises.rename(outputFilePath, desiredFilePath)
+
+				this._convertedFilePath = desiredFilePath
+			}
 		}
 
 		await bookList.fileAdded(this.convertedFilePath)
@@ -128,15 +203,18 @@ export default class Converter {
 		mutex.release()
 	}
 
-	private convertMp3 = async (fileName: string, baseFilePath: string) => {
-		this.status = "Unzipping"
+	private unzip = async (zipPath: string, unzipPath: string) => {
+		this.status = "Extracting"
 
-		const zipPath = path.join(baseFilePath, fileName)
-		const unzipPath = zipPath.replace(".zip", "")
 		const openFile = (await unzipper.Open.file(zipPath))
 		const files = openFile.files
 		const sizeToUnzip = files.map(f => f.uncompressedSize).reduce((totalSize: number, currSize) => totalSize + currSize)
-		let sizeUnzipped = 0
+		const unzippedFiles: string[] = []
+		const percentageUpdater = setInterval(() => {
+			void folderSize.loose(unzipPath).then(number => {
+				this.percentComplete = Math.round((number / sizeToUnzip) * 100)
+			})
+		}, 250)
 
 		await fs.promises.mkdir(unzipPath)
 
@@ -144,44 +222,40 @@ export default class Converter {
 		for (const file of files) {
 			const destPath = path.join(unzipPath, file.path)
 
+			this._fileNames = [path.basename(file.path)]
+
 			if (file.type === "Directory" && !fs.existsSync(destPath)) {
-				fs.mkdirSync(destPath)
+				await fs.promises.mkdir(destPath)
 			}
 			else {
 				const destParsed = path.parse(destPath)
 
 				if (!fs.existsSync(destParsed.dir)) {
-					fs.mkdirSync(destParsed.dir, { recursive: true })
+					await fs.promises.mkdir(destParsed.dir, { recursive: true })
 				}
 
-				await new Promise(resolve => file.stream().pipe(fs.createWriteStream(path.join(unzipPath, file.path))).on("finish", () => resolve("")))
-				sizeUnzipped += file.uncompressedSize
+				await new Promise(resolve => {
+					const unzipLoc = path.join(unzipPath, file.path)
 
-				this.percentComplete = Math.round((sizeUnzipped / sizeToUnzip) * 100)
+					unzippedFiles.push(unzipLoc)
+					file.stream().pipe(fs.createWriteStream(unzipLoc)).on("finish", () => resolve(""))
+				})
 			}
 		}
 
-		await fs.promises.unlink(zipPath)
+		clearInterval(percentageUpdater)
 
-		if (await this.combineMp3s(unzipPath, baseFilePath)) {
-			await fs.promises.rmdir(unzipPath, { recursive: true })
-		}
+		return unzippedFiles.sort()
 	}
 
-	private combineMp3s = async (currPath: string, baseFilePath: string): Promise<boolean> => {
-		this._percentComplete = 0
-		this.status = "Converting"
+	private combineFiles = async (unzippedFiles: string[], outputFilePath: string, fileExtension: string): Promise<boolean> => {
+		this.status = "Combining"
 
-		const paths = await fs.promises.readdir(currPath, { withFileTypes: true })
-
-		if (paths.length === 1 && paths[0].isDirectory()) {
-			return this.combineMp3s(path.join(currPath, paths[0].name), baseFilePath)
-		}
-
-		const mp3s = []
+		// TODO: can probably remove the fileExtension parameter from this since I think we can do the same thing for mp3 as m4b here
+		const files: string[] = []
 		let bestCover = ""
 		let bestCoverSize = 0
-		let outputName = ""
+		let outputTitle = ""
 		const addMetaData = (args: string[], key: string, value: string | number | undefined) => {
 			if (value !== undefined) {
 				if (typeof value === "number") {
@@ -193,82 +267,219 @@ export default class Converter {
 			}
 		}
 
-		for (const p of paths) {
-			if (p.isFile()) {
-				if (p.name.toLowerCase().endsWith(".mp3")) {
-					mp3s.push(p.name)
+		for (const file of unzippedFiles) {
+			if (file.toLowerCase().endsWith(fileExtension)) {
+				files.push(file)
 
-					if (!outputName) {
-						outputName = p.name.replace("-Part00.mp3", "").replace("-Part01.mp3", "")
-					}
+				if (!outputTitle) {
+					outputTitle = path.basename(file).replace("-Part00.mp3", "").replace("-Part01.mp3", "")
 				}
-				else if (p.name.toLowerCase().endsWith("jpg")) {
-					const size = (await fs.promises.stat(path.join(currPath, p.name))).size
+			}
+			else if (file.toLowerCase().endsWith("jpg")) {
+				const size = (await fs.promises.stat(file)).size
 
-					if (size > bestCoverSize) {
-						bestCover = p.name
-						bestCoverSize = size
-					}
+				if (size > bestCoverSize) {
+					bestCover = file
+					bestCoverSize = size
 				}
 			}
 		}
 
-		if (mp3s.length) {
-			const outputFileName = `${uuid()}.mp3`
-			const opt = { cwd: currPath, pipeStdio: true, metaDataOverrides: { title: outputName, coverPicturePath: bestCover } }
+		if (files.length) {
 			const args = ["-i"]
-			const metadata = opt.metaDataOverrides
-			const coverPicturePath = metadata.coverPicturePath ? metadata.coverPicturePath : ""
-			const outputFilePath = path.join(currPath, outputFileName)
+			const metadata = { title: outputTitle, artist: "", year: 0, comment: "", composer: "", genre: "" }
+			let concatFile = ""
+			let chaptersFile = ""
+			let coverPicturePath = bestCover ? bestCover : ""
+			let coverInput = 0
+			let chapterInput = 0
 
-			if (mp3s.length > 1) {
-				args.push(`"concat:${mp3s.join("|")}"`)
+			if (fileExtension === "m4b") {
+				let addedMetadata = false
+				const fileCommands: string[] = []
+				const chapters: Chapter[] = []
+
+				concatFile = `${outputFilePath}.concat.txt`
+
+				for (const file of files) {
+					const fileChapters = JSON.parse(await this.runFfprobe(file, ["-v", "error", "-print_format", "json", "-show_chapters", `"${file}"`])) as Chapters
+
+					if (chapters.length) {
+						let setChapterNames = false
+						const lastChapter = chapters[chapters.length - 1]
+						const updatedChapters = fileChapters.chapters.map((c, i) => {
+							if (i === 0 && c.tags.title.toLowerCase() === "chapter 1") {
+								setChapterNames = true
+							}
+
+							c.start += lastChapter.end
+							c.end += lastChapter.end
+							c.id += lastChapter.id + 1
+
+							if (setChapterNames) {
+								c.tags.title = `Chapter ${c.id + 1}`
+							}
+
+							return c
+						})
+
+						chapters.push(...updatedChapters)
+					}
+					else {
+						chapters.push(...fileChapters.chapters)
+					}
+
+					fileCommands.push(`file '${file}'`)
+
+					if (!addedMetadata) {
+						const fileMetadata = await mm.parseFile(file, { skipCovers: true, includeChapters: true })
+
+						if (fileMetadata.common.artists?.length) {
+							metadata.artist = fileMetadata.common.artists.join(", ")
+						}
+						else if (fileMetadata.common.artist) {
+							metadata.artist = fileMetadata.common.artist
+						}
+
+						if (fileMetadata.common.year) {
+							metadata.year = fileMetadata.common.year
+						}
+
+						if (fileMetadata.common.comment?.length && fileMetadata.common.comment[0].text) {
+							metadata.comment = fileMetadata.common.comment[0].text
+						}
+
+						if (fileMetadata.common.genre?.length) {
+							metadata.genre = fileMetadata.common.genre.map(g => g).join(", ")
+						}
+
+						if (!coverPicturePath && fileMetadata.common.picture?.length) {
+							coverPicturePath = `${outputFilePath}.jpg`
+
+							await fs.promises.writeFile(coverPicturePath, fileMetadata.common.picture[0].data)
+						}
+
+						if (fileMetadata.common.title) {
+							metadata.title = fileMetadata.common.title
+						}
+
+						addedMetadata = true
+					}
+				}
+
+				await fs.promises.writeFile(concatFile, fileCommands.join("\n"))
+
+				if (chapters.length) {
+					chaptersFile = `${outputFilePath}.chapters.ffmetadata`
+
+					const writeStream = fs.createWriteStream(chaptersFile)
+
+					writeStream.write(";FFMETADATA1\n")
+
+					for (const chapter of chapters) {
+						writeStream.write("[CHAPTER]\n")
+						writeStream.write(`TIMEBASE=${chapter.time_base}\n`)
+						writeStream.write(`START=${chapter.start}\n`)
+						writeStream.write(`END=${chapter.end}\n`)
+						writeStream.write(`title=${chapter.tags.title}\n`)
+					}
+
+					writeStream.close()
+				}
+			}
+
+			this._fileNames = files.map(f => path.basename(f))
+
+			if (files.length > 1) {
+				let outputDuration = 0
+
+				// When concatenating using the concat file the total duration of the output file won't be displayed in ffmpeg so in order to give the user progress feedback we need to calculate that here
+				for (const file of files) {
+					const metadata = await mm.parseFile(file, { skipCovers: true, includeChapters: false })
+
+					if (metadata.format.duration) {
+						outputDuration += metadata.format.duration
+					}
+				}
+
+				this.totalDurations.set(outputFilePath, outputDuration)
+
+				if (concatFile) {
+					args.unshift("-f", "concat", "-safe", "0")
+					args.push(`"${concatFile}"`)
+				}
+				else {
+					args.push(`"concat:${files.join("|")}"`)
+				}
 			}
 			else {
-				args.push(`"${mp3s[0]}"`)
+				args.push(`"${files[0]}"`)
 			}
 
 			if (coverPicturePath) {
 				args.push("-i", `"${coverPicturePath}"`)
+				coverInput = 1
+			}
+
+			if (chaptersFile) {
+				args.push("-i", `"${chaptersFile}"`)
+				chapterInput = coverInput ? 2 : 1
 			}
 
 			args.push("-map", "0:0")
 
 			if (coverPicturePath) {
-				args.push("-map", "1:0")
+				args.push("-map", `${coverInput}:0`)
 			}
 
 			args.push("-c", "copy", "-id3v2_version", "3")
 
-			/* addMetaData(args, "album", metadata.album)
-			addMetaData(args, "artist", metadata.artist)
-			addMetaData(args, "album_artist", metadata.albumArtist)
-			addMetaData(args, "grouping", metadata.grouping)
-			addMetaData(args, "composer", metadata.composer)
-			addMetaData(args, "date", metadata.year)
-			addMetaData(args, "track", metadata.trackNumber)
-			addMetaData(args, "comment", metadata.comment)
-			addMetaData(args, "genre", metadata.genre)
-			addMetaData(args, "copyright", metadata.copyright)
-			addMetaData(args, "description", metadata.description)
-			addMetaData(args, "synopsis", metadata.synopsis) */
-			addMetaData(args, "title", metadata.title)
+			if (chaptersFile) {
+				args.push("-map_chapters", `${chapterInput}`)
+			}
+
+			if (coverPicturePath && fileExtension === "m4b") {
+				args.push("-disposition:v:0", "attached_pic")
+			}
+
+			if (metadata.title) {
+				addMetaData(args, "title", metadata.title)
+			}
+
+			if (metadata.artist) {
+				addMetaData(args, "artist", metadata.artist)
+			}
+
+			if (metadata.year) {
+				addMetaData(args, "year", metadata.year)
+				addMetaData(args, "date", metadata.year.toString())
+			}
+
+			if (metadata.comment) {
+				addMetaData(args, "comment", metadata.comment)
+			}
+
+			if (metadata.composer) {
+				addMetaData(args, "composer", metadata.composer)
+			}
+
+			if (metadata.genre) {
+				addMetaData(args, "genre", metadata.genre)
+			}
 
 			args.push(`"${outputFilePath}"`)
 
-			if (!(await this.runFfmpeg(outputFilePath, args, currPath))) {
+			if (!(await this.runFfmpeg(outputFilePath, args))) {
 				return false
 			}
 
-			let finalFilePath = path.join(baseFilePath, `${outputName}.mp3`)
-
-			if (fs.existsSync(finalFilePath)) {
-				finalFilePath = path.join(baseFilePath, `${outputName}${uuid()}.mp3`)
+			if (concatFile) {
+				await this.remove(concatFile)
 			}
 
-			await fs.promises.rename(outputFilePath, finalFilePath)
-
-			this._convertedFilePath = finalFilePath
+			if (chaptersFile) {
+				await this.remove(chaptersFile)
+			}
 
 			return true
 		}
@@ -276,10 +487,7 @@ export default class Converter {
 		return false
 	}
 
-	private convertAax = async (fileName: string, baseFilePath: string, rootDir: string) => {
-		const outputFileName = `${fileName}.m4b`
-		const outputFilePath = path.join(baseFilePath, outputFileName)
-		const inputFilePath = path.join(baseFilePath, fileName)
+	private convertAax = async (inputFilePath: string, outputFilePath: string, rootDir: string, outputCoverPhotoPath?: string) => {
 		const encryptionKey = await this.crack(inputFilePath, rootDir)
 
 		if (!encryptionKey) {
@@ -287,54 +495,33 @@ export default class Converter {
 		}
 
 		this.status = "Converting"
+		this._fileNames = [path.basename(inputFilePath)]
 
-		const args = ["-activation_bytes", encryptionKey, "-i", `"${inputFilePath}"`, "-c", "copy", `"${outputFilePath}"`]
+		// TODO: this appears to cause chapters to be lost, at some point I should fix this up so I first get the chapters then skip the first 2 seconds
+		const args = ["-activation_bytes", encryptionKey,
+			"-ss", "00:00:02", // Skip the first 2 seconds so we don't have to hear "This is audible"
+			"-i", `"${inputFilePath}"`,
+			"-map", "0:a", "-c copy", `"${outputFilePath}"`, // copy the audio stream only to the m4b file
+		]
 
-		if (!(await this.runFfmpeg(outputFilePath, args, baseFilePath))) {
-			return
-		}
+		await this.runFfmpeg(outputFilePath, args)
 
-		await fs.promises.unlink(inputFilePath)
+		if (outputCoverPhotoPath) {
+			const args2 = ["-activation_bytes", encryptionKey, "-i", `"${inputFilePath}"`, "-map", "0:v:0", "-c:v", "mjpeg", `"${outputCoverPhotoPath}"`]
 
-		const metadata = (await parseFile(outputFilePath, { skipCovers: true, skipPostHeaders: true, includeChapters: false }))
-
-		if (metadata.common.title) {
-			const sanitized = sanitize(metadata.common.title.replace(/:/gi, " - "))
-			let desiredFilePath = path.join(baseFilePath, `${sanitized}.m4b`)
-
-			if (fs.existsSync(desiredFilePath)) {
-				desiredFilePath = path.join(baseFilePath, `${sanitized} - ${outputFileName}`)
-			}
-
-			await fs.promises.rename(outputFilePath, desiredFilePath)
-
-			this._convertedFilePath = desiredFilePath
+			await this.runFfmpeg(outputCoverPhotoPath, args2)
 		}
 	}
 
 	private crack = async (inputFilePath: string, rootDir: string) => {
 		this.status = "Cracking"
+		this._fileNames = [path.basename(inputFilePath)]
 
-		const ffprobe = exec(`${ffprobePath} "${inputFilePath}"`)
-		let probeOutput = ""
-
-		ffprobe.stdout?.on("data", data => probeOutput += toString(data))
-		ffprobe.stderr?.on("data", data => probeOutput += toString(data))
-
-		try {
-			await onExit(ffprobe)
-		}
-		catch {
-			this.errorMessage = probeOutput
-			this.status = "Error"
-
-			return ""
-		}
-
+		const probeOutput = await this.runFfprobe(inputFilePath, [`"${inputFilePath}"`])
 		const matches = /file checksum == (.*)/.exec(probeOutput)
 
 		if (!matches) {
-			this.errorMessage = `Couldn't find checksum from ffprobe
+			this.errorMessage += `Couldn't find checksum from ffprobe
 
          ${probeOutput}`
 			this.status = "Error"
@@ -344,34 +531,14 @@ export default class Converter {
 
 		const cwd = path.join(rootDir, "inAudible-NG")
 		const crackerPath = process.platform === "win32" ? path.join(cwd, "run", "rcrack.exe") : path.join(cwd, "rcrack")
-		const cmd = `"${crackerPath}" . -h ${matches[1]}`
-		let crackerOutput = `executing "${cmd} from workdir ${cwd}`
-		const cracker = exec(cmd, { cwd })
-
-		cracker.stdout?.on("data", data => crackerOutput += toString(data))
-		cracker.stderr?.on("data", data => crackerOutput += toString(data))
-
-		try {
-			await onExit(cracker)
-		}
-		catch (e) {
-			if (e instanceof Error) {
-				crackerOutput = `${e.message}\n\n${e.stack}\n\n${crackerOutput}`
-			}
-
-			this.errorMessage = crackerOutput
-			this.status = "Error"
-
-			return ""
-		}
-
+		const crackerOutput = await this.runProgram(crackerPath, `${inputFilePath}.rcrack.log`, [".", "-h", matches[1]])
 		const activationBytesMatches = /hex:(.*)/.exec(crackerOutput)
 
 		if (activationBytesMatches) {
 			return activationBytesMatches[1]
 		}
 		else {
-			this.errorMessage = `Couldn't find activation bytes in cracker output
+			this.errorMessage += `Couldn't find activation bytes in cracker output
 
          ${crackerOutput}
          `
@@ -381,32 +548,71 @@ export default class Converter {
 		}
 	}
 
-	private async runFfmpeg(outputFilePath: string, args: string[], workingDirectory: string) {
-		const logFile = `${outputFilePath}.ffmpeg.log`
-		const ffmpeg = exec(`${ffmpegPath} ${args.join(" ")}`, { cwd: workingDirectory })
+	private async runFfmpeg(outputFilePath: string, args: string[]) {
+		if (!ffmpegPath) {
+			throw Error("ffprobePath is null")
+		}
 
-		ffmpeg.stdout?.on("data", data => this.parseData(toString(data), outputFilePath))
-		ffmpeg.stderr?.on("data", data => this.parseData(toString(data), outputFilePath))
+		return this.runProgram(ffmpegPath, `${outputFilePath}.ffmpeg.log`, args, data => this.parseData(data, outputFilePath))
+	}
 
-		ffmpeg.stderr?.pipe(fs.createWriteStream(logFile))
+	private async runFfprobe(inputFilePath: string, args: string[]) {
+		if (!ffprobePath) {
+			throw Error("ffprobePath is null")
+		}
+
+		return await this.runProgram(ffprobePath, `${inputFilePath}.ffprobe.log`, args)
+	}
+
+	private async runProgram(programPath: string, logPath: string, args: string[], onData?: (data: string) => void, workingDirectory?: string) {
+		const cmd = `"${programPath}" ${args.join(" ")}`
+		const writeStream = fs.createWriteStream(logPath)
+		const execOptions: ExecOptions = workingDirectory ? { cwd: workingDirectory } : {}
+		const program = exec(cmd, execOptions)
+		let programOutput = ""
+		const dataCallback = (data: unknown) => {
+			const str = toString(data)
+
+			programOutput += str
+
+			if (onData) {
+				onData(str)
+			}
+		}
+
+		writeStream.write(`Executing command: ${cmd}`)
+
+		if (workingDirectory) {
+			writeStream.write(` from working directory ${workingDirectory}`)
+		}
+
+		writeStream.write("\n\n")
+
+		program.stdout?.on("data", dataCallback)
+		program.stdout?.pipe(writeStream)
+
+		program.stderr?.on("data", dataCallback)
+		program.stderr?.pipe(writeStream)
 
 		try {
-			await onExit(ffmpeg)
+			await onExit(program)
+
+			writeStream.close()
 		}
 		catch (e) {
+			writeStream.close()
+
 			if (e instanceof Error) {
-				this.errorMessage = `${e.message}\n\n${e.stack}\n\n`
+				this.errorMessage += `${e.message}\n\n${e.stack}\n\n`
 			}
 
-			this.errorMessage += await fs.promises.readFile(logFile, "utf8")
+			this.errorMessage += await fs.promises.readFile(logPath, "utf8")
 			this.status = "Error"
-
-			return false
 		}
 
-		await fs.promises.unlink(logFile)
+		await this.remove(logPath)
 
-		return true
+		return programOutput
 	}
 
 	private durationToSeconds(matches: RegExpMatchArray) {
@@ -424,4 +630,39 @@ export default class Converter {
 
 		return seconds
 	}
+
+	private async remove(path: string) {
+		// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+		if (!keepIntermediateFiles) {
+			await fs.promises.rm(path, { recursive: true })
+		}
+		else {
+			// eslint-disable-next-line no-console
+			console.warn(`Not removing ${path} because keepIntermediateFiles is true`)
+		}
+	}
+
+	private arraysEqual(a: string[], b: string[]) {
+		if (a.length !== b.length) {
+			return false
+		}
+
+		return a.every((val, index) => val === b[index])
+	}
+}
+
+interface ChapterTag {
+	title: string,
+}
+
+interface Chapter {
+	id: number,
+	time_base: string,
+	start: number,
+	end: number,
+	tags: ChapterTag,
+}
+
+interface Chapters {
+	chapters: Chapter[],
 }
