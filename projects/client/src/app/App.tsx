@@ -7,6 +7,7 @@ import Loading from "./Loading"
 import AppContext, { AppContextProvider } from "./context/AppContext"
 import Header from "./Header"
 import SetPassword from "./SetPassword"
+import { CookiesProvider } from "react-cookie"
 
 // TODO: see if there is some way for the css modules to generate type definitions so it can be verified all modules are used
 
@@ -34,12 +35,14 @@ const MainContent = () => {
 
 const App = () => (
 	<div className={styles.app}>
-		<AppContextProvider>
-			<Header />
-			<div className={styles.mainContent}>
-				<MainContent />
-			</div>
-		</AppContextProvider>
+		<CookiesProvider>
+			<AppContextProvider>
+				<Header />
+				<div className={styles.mainContent}>
+					<MainContent />
+				</div>
+			</AppContextProvider>
+		</CookiesProvider>
 	</div>
 )
 

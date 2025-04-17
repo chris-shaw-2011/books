@@ -10,12 +10,12 @@
 		"chokidar": "^4.0.2",
 		"cookie": "^1.0.2",
 		"dayjs": "^1.11.13",
-		"fastify": "^5.2.1",
+		"fastify": "^5.3.0",
 		"ffmpeg-ffprobe-static": "^6.1.2-rc.1",
 		"get-folder-size": "^5.0.0",
-		"music-metadata": "^11.0.0",
-		"node-id3": "^0.2.8",
-		"nodemailer": "^6.10.0",
+		"music-metadata": "^11.2.1",
+		"node-id3": "^0.2.9",
+		"nodemailer": "^6.10.1",
 		"sanitize-filename": "^1.6.3",
 		"sqlite": "^5.1.1",
 		"sqlite3": "^5.1.7",
@@ -34,7 +34,7 @@
 	},
 	"devDependencies": {
 		"@types/bcrypt": "^5.0.2",
-		"@types/node": "^22.13.9",
+		"@types/node": "^22.14.1",
 		"@types/nodemailer": "^6.4.17",
 		"@types/unzipper": "^0.10.11"
 	}

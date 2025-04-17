@@ -1,6 +1,6 @@
 import { NoopFunction, Token } from "@books/shared"
 import { createContext, useCallback, useMemo, useState } from "react"
-import { CookiesProvider, useCookies } from "react-cookie"
+import { useCookies } from "react-cookie"
 
 export type VisibleComponent = "Books" | "Settings" | "Users" | "ChangePassword" | "Upload"
 
@@ -72,11 +72,9 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 	}, [setCookies, setLoginMessage, inviteUserId])
 
 	return (
-		<CookiesProvider>
-			<AppContext.Provider value={{ searchWords, searchChanged, visibleComponent, setVisibleComponent, logOut, token, loginMessage, inviteUserId, onLogin }}>
-				{children}
-			</AppContext.Provider>
-		</CookiesProvider>
+		<AppContext.Provider value={{ searchWords, searchChanged, visibleComponent, setVisibleComponent, logOut, token, loginMessage, inviteUserId, onLogin }}>
+			{children}
+		</AppContext.Provider>
 	)
 }
 
