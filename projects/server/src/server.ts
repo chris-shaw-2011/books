@@ -35,6 +35,7 @@ const conversionMutex = new Mutex()
 const server = Fastify({ logger: true, bodyLimit: 10_000_000_000 })
 const getAllUsers = async () => await db.all<shared.User[]>("SELECT id, email, isAdmin, lastLogIn FROM user")
 const getUserById = async (userId: string) => await db.get<ServerUser>("SELECT * FROM user WHERE id = ?", userId)
+const rootPath = path.join(rootDir, "../../../../bin/projects/client")
 const validatePassword = async (email: string, password: string, reply: FastifyReply) => {
 	const dbUser = await db.get<ServerUser>("SELECT id, email, hash, isAdmin, lastLogIn FROM user WHERE email = ?", email)
 
@@ -99,10 +100,16 @@ const validateAdminRequest = (request: FastifyRequest, reply: FastifyReply, done
 
 server.addHook("preValidation", (request, _, done) => {
 	const cookies = cookie.parse(request.headers.cookie ?? "")
-	const userToken = ServerToken.fromJSON(db.settings.checksumSecret, cookies.loginCookie)
 
-	if (userToken !== undefined) {
-		request.userToken = userToken
+	try {
+		const userToken = ServerToken.fromJSON(db.settings.checksumSecret, cookies.loginCookie)
+
+		if (userToken !== undefined) {
+			request.userToken = userToken
+		}
+	}
+	catch {
+		// Don't worry about an error here
 	}
 
 	done()
@@ -153,7 +160,7 @@ server.post("/books", { preHandler: validateRequest }, async request => {
 
 	if (!db.settings.baseBooksPath || !db.settings.inviteEmail || !db.settings.inviteEmailPassword || !db.settings.uploadLocation) {
 		if (token.user.isAdmin) {
-			return new shared.SettingsRequired({ message: "You must specify a setting", settings: db.settings })
+			return new shared.Books({ missingSettings: true })
 		}
 		else {
 			return new shared.AccessDenied("Some settings are missing, but they must be specified by an administrator")
@@ -558,19 +565,27 @@ server.get<{ Params: Record<string, string> }>("/files/*", { preHandler: validat
 	}
 })
 
+server.get<{ Params: Record<string, string> }>("/invite/*", async (_, reply) => {
+	await reply.sendFile("index.html", rootPath)
+})
+
+server.get<{ Params: Record<string, string> }>("/assets/admin/*", { preHandler: validateAdminRequest }, async (request, reply) => {
+	const pathname = new URL(request.raw.url ?? "", "http://dummy").pathname
+
+	await reply.sendFile(pathname, rootPath)
+})
+
+server.get<{ Params: Record<string, string> }>("/assets/authenticated/*", { preHandler: validateRequest }, async (request, reply) => {
+	const pathname = new URL(request.raw.url ?? "", "http://dummy").pathname
+
+	await reply.sendFile(pathname, rootPath)
+})
+
 // This handles requests to the root of the site in production
-server.get<{ Params: Record<string, string> }>("/*", (request, reply) => {
-	let filePath = request.params["*"] || "index.html"
-	const rootPath = path.join(rootDir, "../../../../bin/projects/client")
+server.get<{ Params: Record<string, string> }>("/*", async (request, reply) => {
+	const filePath = request.params["*"]
 
-	if (filePath.startsWith("invite/")) {
-		filePath = "index.html"
-	}
-
-	// eslint-disable-next-line no-console
-	console.log({ filePath, fullPath: rootPath })
-
-	void reply.sendFile(filePath, rootPath)
+	await reply.sendFile(filePath, rootPath)
 })
 
 const start = async () => {

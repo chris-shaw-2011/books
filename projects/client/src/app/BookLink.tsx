@@ -1,10 +1,10 @@
 import classnames from "classnames"
 import { useContext, useState, useEffect } from "react"
-import AppContext from "./context/AppContext"
+import AppContext, { handleDynamicImportFailure } from "./context/AppContext"
 import LoggedInAppContext from "./context/LoggedInAppContext"
 import { Dropdown, DropdownButton } from "react-bootstrap"
 import Highlighter from "react-highlight-words"
-import { AccessDenied, Books, Unauthorized, Book, type Status, UpdateBookResponse, Directory, StatusValues } from "@books/shared"
+import { Book, type Status, Directory, StatusValues } from "@books/shared"
 import Api from "./api/LoggedInApi"
 import Loading from "./Loading"
 import Textbox from "./components/Textbox"
@@ -20,6 +20,9 @@ import FolderClosed from "./svg/FolderClosed"
 import Button from "./components/Button"
 import SearchContext from "./context/AppContext"
 import ActionButtons from "./components/ActionButtons"
+
+// TODO: Allow normal users to edit books if it's in the Uploads folder
+const AdminApi = async () => (await import("./api/AdminApi").catch(handleDynamicImportFailure)).default
 
 const sanitize = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
 
@@ -198,17 +201,9 @@ const BookLink = (props: BookProps) => {
 
 		setChangingStatus(true)
 
-		const ret = await Api.changeBookStatus(props.book.id, status)
+		const ret = await Api.changeBookStatus(props.book.id, status, logOut)
 
-		if (ret instanceof Books) {
-			updateBooks(ret.directory)
-		}
-		else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
-			logOut(ret.message)
-		}
-		else {
-			logOut("Something unexpected happened")
-		}
+		updateBooks(ret.directory)
 	}
 	const bookClicked = (e: React.MouseEvent<HTMLAnchorElement>) => {
 		e.stopPropagation()
@@ -236,22 +231,13 @@ const BookLink = (props: BookProps) => {
 
 			setEditingState({ status: "Saving" })
 
-			const ret = await Api.updateBook(newBook, props.book)
+			const ret = await (await AdminApi()).updateBook(newBook, props.book, logOut)
 
-			if (ret instanceof UpdateBookResponse) {
-				updateBooks(ret.books.directory)
+			updateBooks(ret.books.directory)
+			setEditingState({ status: "ReadOnly" })
 
-				setEditingState({ status: "ReadOnly" })
-
-				if (props.onEditComplete) {
-					props.onEditComplete()
-				}
-			}
-			else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
-				logOut(ret.message)
-			}
-			else {
-				logOut("Something unexpected happened")
+			if (props.onEditComplete) {
+				props.onEditComplete()
 			}
 		}
 	}
@@ -264,17 +250,9 @@ const BookLink = (props: BookProps) => {
 	}
 	const alertMessage = editingState.alertMessage
 	const addNewFolder = async (path: string, folderName: string) => {
-		const ret = await Api.addFolder(path, folderName)
+		const ret = await (await AdminApi()).addFolder(path, folderName, logOut)
 
-		if (ret instanceof Books) {
-			updateBooks(ret.directory)
-		}
-		else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
-			logOut(ret.message)
-		}
-		else {
-			logOut("Something unexpected happened")
-		}
+		updateBooks(ret.directory)
 	}
 	const searchWords = searchContext.searchWords
 	const editClick = (e: React.MouseEvent) => {

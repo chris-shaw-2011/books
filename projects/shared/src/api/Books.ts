@@ -7,11 +7,13 @@ export default class Books extends ApiMessage {
 
 	directory: Directory
 	bookStatuses: BookStatuses
+	missingSettings: boolean
 
 	constructor(json?: Partial<Books>) {
 		super()
 
 		this.bookStatuses = new BookStatuses(json?.bookStatuses)
 		this.directory = new Directory(json?.directory, this.bookStatuses)
+		this.missingSettings = json?.missingSettings ?? false
 	}
 }

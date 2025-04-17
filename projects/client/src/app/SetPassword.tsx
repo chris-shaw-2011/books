@@ -1,5 +1,4 @@
 import { useContext, useEffect, useState } from "react"
-import { AccessDenied, Unauthorized, UserResponse } from "@books/shared"
 import Api from "./api/Api"
 import Loading from "./Loading"
 import AppContext from "./context/AppContext"
@@ -15,17 +14,9 @@ const SetPassword = ({ onClose }: Props) => {
 
 	useEffect(() => {
 		async function getUser() {
-			const ret = await Api.user(inviteUserId)
+			const ret = await Api.user(inviteUserId, logOut)
 
-			if (ret instanceof UserResponse) {
-				setUser(ret.user)
-			}
-			else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
-				logOut(ret.message)
-			}
-			else {
-				logOut("Received an unexpected response")
-			}
+			setUser(ret.user)
 		}
 
 		void getUser()

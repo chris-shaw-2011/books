@@ -1,18 +1,17 @@
-import { useContext, useEffect, useState } from "react"
-import { AccessDenied, Books, SettingsRequired, Unauthorized, Token, Book, type Status, Directory, StatusValues } from "@books/shared"
+import { lazy, Suspense, useContext, useEffect, useState } from "react"
+import { Token, Book, type Status, Directory, StatusValues } from "@books/shared"
 import Api from "./api/LoggedInApi"
 import ChangePassword from "./ChangePassword"
-// TODO: move the below import to the admin file
-import EditSettings from "./EditSettings"
 import Loading from "./Loading"
 import LoggedInAppContext from "./context/LoggedInAppContext"
 import UploadBooks from "./UploadBooks"
-// TODO: move the below import to the admin file
-import UserList from "./UserList"
 import ItemListTabContent from "./ItemListTabContent"
 import Styles from "./Authenticated.module.scss"
 import classNames from "classnames"
-import AppContext from "./context/AppContext"
+import AppContext, { handleDynamicImportFailure } from "./context/AppContext"
+
+const EditSettings = lazy(() => import("./EditSettings").catch(handleDynamicImportFailure))
+const UserList = lazy(() => import("./UserList").catch(handleDynamicImportFailure))
 
 interface Props {
 	token: Token,
@@ -117,20 +116,12 @@ const Authenticated = ({ token }: Props) => {
 	// TODO: figure out why this is called twice
 	useEffect(() => {
 		async function getBooks() {
-			const ret = await Api.books(token)
+			const ret = await Api.books(logOut)
 
-			if (ret instanceof Books) {
-				setState(ret.directory)
-			}
-			else if (ret instanceof SettingsRequired) {
+			setState(ret.directory)
+
+			if (ret.missingSettings) {
 				setVisibleComponent("Settings")
-				setState(new Directory())
-			}
-			else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
-				logOut(ret.message)
-			}
-			else {
-				logOut("Something unexpected happened")
 			}
 		}
 
@@ -152,9 +143,17 @@ const Authenticated = ({ token }: Props) => {
 						case "ChangePassword":
 							return <ChangePassword onClose={viewBooks} />
 						case "Settings":
-							return <EditSettings onSettingsSaved={viewBooks} onClose={viewBooks} />
+							return (
+								<Suspense fallback={<Loading />}>
+									<EditSettings onSettingsSaved={viewBooks} onClose={viewBooks} />
+								</Suspense>
+							)
 						case "Users":
-							return <UserList onClose={viewBooks} />
+							return (
+								<Suspense fallback={<Loading />}>
+									<UserList onClose={viewBooks} />
+								</Suspense>
+							)
 						case "Upload":
 							return <UploadBooks onClose={viewBooks} />
 						default:

@@ -1,4 +1,4 @@
-import { useContext, useState } from "react"
+import { lazy, Suspense, useContext, useState } from "react"
 import DownArrow from "./svg/DownArrow"
 import SelectList, { SelectListItem } from "./components/SelectList"
 import styles from "./Navigation.module.scss"
@@ -7,9 +7,10 @@ import useOnclickOutside from "react-cool-onclickoutside"
 import Upload from "./svg/Upload"
 import Lock from "./svg/Lock"
 import LogOut from "./svg/LogOut"
-import AppContext, { type VisibleComponent } from "./context/AppContext"
-// TODO: move this component to the admin js file and use suspense to only load it when the user is an admin
-import AdminNavOptions from "./AdminNavOptions"
+import AppContext, { handleDynamicImportFailure, type VisibleComponent } from "./context/AppContext"
+import Loading from "./Loading"
+
+const AdminNavOptions = lazy(() => import("./AdminNavOptions").catch(handleDynamicImportFailure))
 
 const Navigation = () => {
 	const [open, setOpen] = useState(false)
@@ -38,7 +39,9 @@ const Navigation = () => {
 					Upload Books
 				</SelectListItem>
 				{appContext.token?.user.isAdmin && (
-					<AdminNavOptions setVisibleComponent={setVisibleComponent} />
+					<Suspense fallback={<Loading />}>
+						<AdminNavOptions setVisibleComponent={setVisibleComponent} />
+					</Suspense>
 				)}
 				<hr />
 				<SelectListItem onClick={e => { setVisibleComponent(e, "ChangePassword") }}>

@@ -1,15 +1,16 @@
 import { useContext, useEffect, useState } from "react"
 import { Modal } from "react-bootstrap"
 import Alert from "./components/Alert"
-import { AccessDenied, SettingsRequired, SettingsUpdateResponse, Unauthorized, Settings, NoopFunction } from "@books/shared"
-import Api from "./api/LoggedInApi"
+import { Settings, NoopFunction } from "@books/shared"
 import Loading from "./Loading"
 import LoggedInAppContext from "./context/LoggedInAppContext"
 import OverlayComponent from "./components/OverlayComponent"
 import TextboxField from "./components/TextboxField"
 import ModalDialog from "./components/ModalDialog"
 import ActionButtons from "./components/ActionButtons"
-import AppContext from "./context/AppContext"
+import AppContext, { handleDynamicImportFailure } from "./context/AppContext"
+
+const AdminApi = async () => (await import("./api/AdminApi").catch(handleDynamicImportFailure)).default
 
 interface Props {
 	onSettingsSaved: () => void,
@@ -35,17 +36,9 @@ const EditSettings = (props: Props) => {
 
 	useEffect(() => {
 		async function getSettings() {
-			const ret = await Api.settings(token)
+			const ret = await (await AdminApi()).settings(logOut)
 
-			if (ret instanceof SettingsRequired) {
-				setSettings(ret.settings)
-			}
-			else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
-				logOut(ret.message)
-			}
-			else {
-				logOut("Received an unexpected response")
-			}
+			setSettings(ret.settings)
 		}
 
 		void getSettings()
@@ -59,24 +52,14 @@ const EditSettings = (props: Props) => {
 		event.stopPropagation()
 
 		if (form.checkValidity()) {
-			const ret = await Api.updateSettings(settings)
+			const ret = await (await AdminApi()).updateSettings(settings, logOut)
 
-			if (ret instanceof SettingsUpdateResponse) {
-				if (ret.successful) {
-					props.onSettingsSaved()
-					return
-				}
-				else {
-					setMessage(ret.message)
-				}
-			}
-			else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
-				logOut(ret.message)
+			if (ret.successful) {
+				props.onSettingsSaved()
 				return
 			}
 			else {
-				logOut("Received an unexpected response")
-				return
+				setMessage(ret.message)
 			}
 		}
 
@@ -125,7 +108,7 @@ const EditSettings = (props: Props) => {
 							onChange={e => onChange({ inviteEmail: e.currentTarget.value || "" })}
 						/>
 						<TextboxField
-							label="Invite Email Address"
+							label="Invite Email Address Password"
 							type="password"
 							placeholder="Enter Invite Email Password"
 							required={true}

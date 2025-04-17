@@ -2,7 +2,7 @@ import { Alert } from "react-bootstrap"
 import ActionButtons from "./ActionButtons"
 import OverlayComponent from "./OverlayComponent"
 import TextboxField from "./TextboxField"
-import { AccessDenied, Token, Unauthorized, User } from "@books/shared"
+import { Token, User } from "@books/shared"
 import { useContext, useState } from "react"
 import AppContext from "../context/AppContext"
 import styles from "./PasswordChange.module.scss"
@@ -12,7 +12,7 @@ interface Props {
 	user: User,
 	actionButtonText: string,
 	changeHappeningText: string,
-	apiCall: (newPassword: string, userId: string) => Promise<AccessDenied | Unauthorized | Token | undefined>,
+	apiCall: (newPassword: string, userId: string, onFailure: (message?: string) => void) => Promise<Token>,
 }
 
 const PasswordChange = ({ onClose, user, actionButtonText, changeHappeningText, apiCall }: Props) => {
@@ -40,17 +40,9 @@ const PasswordChange = ({ onClose, user, actionButtonText, changeHappeningText, 
 				setPasswordsMatch(true)
 				setState(s => ({ ...s, changingPasswords: true }))
 
-				const ret = await apiCall(state.password, user.id)
+				const ret = await apiCall(state.password, user.id, logOut)
 
-				if (ret instanceof Token) {
-					onLogin(ret)
-				}
-				else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
-					logOut(ret.message)
-				}
-				else {
-					logOut("Something unexpected happened")
-				}
+				onLogin(ret)
 
 				return
 			}

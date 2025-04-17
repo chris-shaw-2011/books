@@ -1,103 +1,15 @@
-import * as shared from "@books/shared"
-import BaseApi from "./BaseApi"
-import FetchAborted from "./FetchAborted"
+import { Books, ChangeBookStatusRequest, ChangePasswordRequest, ConversionUpdateRequest, ConversionUpdateResponse, Token, type ConverterStatus, type Status } from "@books/shared"
+import { ApiClass } from "./Api"
 
-// TODO: split this up so it has an admin version and a non admin version
-// TODO: this should inherit from Api.tsx
-class LoggedInApiClass extends BaseApi {
-	books = async (token: shared.Token) => this.fetch("/books", token)
+export class LoggedInApiClass extends ApiClass {
+	books = async (onFailure: (message?: string) => void) => this.callApi("/books", Books, onFailure)
 
-	updateSettings = async (settings: shared.Settings) => this.fetch("/updateSettings", new shared.SettingsUpdate({ settings }))
+	changeBookStatus = async (bookId: string, status: Status, onFailure: (message?: string) => void) => await this.callApi("/changeBookStatus", Books, onFailure, new ChangeBookStatusRequest({ bookId, status }))
 
-	settings = async (token: shared.Token) => this.fetch("/settings", token)
+	conversionUpdate = async (conversionId: string, knownPercent: number, knownConverterStatus: ConverterStatus, knownWorkingFiles: string[], onFailure: (message?: string) => void, signal?: AbortSignal) =>
+		this.callApi("/conversionUpdate", ConversionUpdateResponse, onFailure, new ConversionUpdateRequest({ conversionId, knownPercent, knownConverterStatus, knownWorkingFiles }), signal)
 
-	users = async () => this.fetch("/users")
-
-	addUser = async (user: shared.User) => this.fetch("/addUser", new shared.AddUserRequest({ user }))
-
-	deleteUser = async (userId: string) => this.fetch("/deleteUser", new shared.DeleteUserRequest({ userId }))
-
-	changeBookStatus = async (bookId: string, status: shared.Status) => this.fetch("/changeBookStatus", new shared.ChangeBookStatusRequest({ bookId, status }))
-
-	conversionUpdate = async (conversionId: string, knownPercent: number, knownConverterStatus: shared.ConverterStatus, knownWorkingFiles: string[], signal?: AbortSignal) =>
-		this.fetch("/conversionUpdate", new shared.ConversionUpdateRequest({ conversionId, knownPercent, knownConverterStatus, knownWorkingFiles }), signal)
-
-	updateBook = async (newBook: shared.Book, prevBook: shared.Book) => this.fetch("/updateBook", new shared.UpdateBookRequest({ newBook, prevBook }))
-
-	addFolder = async (path: string, folderName: string) => this.fetch("/addFolder", new shared.AddFolderRequest({ path, folderName }))
-
-	changePassword = async (newPassword: string) => this.fetchWithType("/changePassword", shared.Token, new shared.ChangePasswordRequest({ newPassword }))
-
-	// TODO: update this method so it is a generic method where you specify the desired return type and update the jsonRet so it converts the result json to that type
-	fetch = async (url: string, jsonSend?: unknown, signal?: AbortSignal) => {
-		const headers = jsonSend ? { "Content-Type": "application/json" } : {}
-
-		let result: Response
-		try {
-			result = await fetch(url, {
-				method: "POST",
-				headers: headers,
-				body: jsonSend ? JSON.stringify(jsonSend) : "",
-				signal: signal ?? null,
-			})
-		}
-		catch (e) {
-			if (e instanceof Error) {
-				if (e.name === "AbortError") {
-					return new FetchAborted(e)
-				}
-			}
-
-			throw e
-		}
-
-		const jsonRet = await result.json() as shared.ApiMessage
-
-		return this.parseJson(jsonRet)
-	}
-
-	// TODO: this should probably be moved to the ApiMessage class as a static function
-	parseJson(json?: shared.ApiMessage) {
-		if (!json) {
-			return undefined
-		}
-		else if (json.type === "AccessDenied") {
-			return new shared.AccessDenied(json as shared.AccessDenied)
-		}
-		else if (json.type === "Unauthorized") {
-			return new shared.Unauthorized(json as shared.Unauthorized)
-		}
-		else if (json.type === "Token") {
-			return new shared.Token(json as shared.Token)
-		}
-		else if (json.type === "Books") {
-			return new shared.Books(json as shared.Books)
-		}
-		else if (json.type === "SettingsRequired") {
-			return new shared.SettingsRequired(json as shared.SettingsRequired)
-		}
-		else if (json.type === "SettingsUpdateResponse") {
-			return new shared.SettingsUpdateResponse(json as shared.SettingsUpdateResponse)
-		}
-		else if (json.type === "UserListResponse") {
-			return new shared.UserListResponse(json as shared.UserListResponse)
-		}
-		else if (json.type === "ConversionUpdateResponse") {
-			return new shared.ConversionUpdateResponse(json as shared.ConversionUpdateResponse)
-		}
-		else if (json.type === "UploadResponse") {
-			return new shared.UploadResponse(json as shared.UploadResponse)
-		}
-		else if (json.type === "UpdateBookResponse") {
-			return new shared.UpdateBookResponse(json as shared.UpdateBookResponse)
-		}
-		else if (json.type === "AddUserResponse") {
-			return new shared.AddUserResponse(json as shared.AddUserResponse)
-		}
-		else {
-			throw Error(`Unknown ApiMessageType: ${json.type}`)
-		}
-	}
+	changePassword = async (newPassword: string, onFailure: (message?: string) => void) => this.callApi("/changePassword", Token, onFailure, new ChangePasswordRequest({ newPassword }))
 }
 
 const LoggedInApi = new LoggedInApiClass()

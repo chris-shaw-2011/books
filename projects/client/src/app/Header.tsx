@@ -1,11 +1,9 @@
 import { lazy, Suspense, useContext } from "react"
-import AppContext from "./context/AppContext"
+import AppContext, { handleDynamicImportFailure } from "./context/AppContext"
 import styles from "./Header.module.scss"
 import Textbox from "./components/Textbox"
 
-const Navigation = lazy(() => import(/*
-	webpackChunkName: "authenticated" */
-	"./Navigation"))
+const Navigation = lazy(() => import("./Navigation").catch(handleDynamicImportFailure))
 
 const Header = () => {
 	const appContext = useContext(AppContext)

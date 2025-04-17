@@ -2,7 +2,7 @@ import { Line } from "rc-progress"
 import { useContext, useEffect, useState, useCallback } from "react"
 import { ListGroup, Modal } from "react-bootstrap"
 import { v4 as uuid } from "uuid"
-import { AccessDenied, ConversionUpdateResponse, Unauthorized, UploadResponse, type ConverterStatus, ConverterStatuses, Book, ApiMessage } from "@books/shared"
+import { UploadResponse, type ConverterStatus, ConverterStatuses, Book, ApiMessage } from "@books/shared"
 import Api from "./api/LoggedInApi"
 import AppContext from "./context/AppContext"
 import OverlayComponent from "./components/OverlayComponent"
@@ -126,23 +126,10 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 		}
 		request.onreadystatechange = () => {
 			if (request.readyState === XMLHttpRequest.DONE) {
-				if (request.responseText) {
-					const ret = Api.parseJson(JSON.parse(request.responseText) as ApiMessage)
+				const ret = Api.handleApiResponse(JSON.parse(request.responseText) as ApiMessage, UploadResponse, logOut)
 
-					if (ret instanceof UploadResponse) {
-						onStatusChanged(id, ret.converterStatus)
-						setUploadState(prev => ({ ...prev, conversionId: ret.conversionId, percent: 0, status: ret.converterStatus }))
-					}
-					else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
-						logOut(ret.message)
-					}
-					else {
-						logOut("Received an unexpected response")
-					}
-				}
-				else {
-					logOut("Received an unexpected response")
-				}
+				onStatusChanged(id, ret.converterStatus)
+				setUploadState(prev => ({ ...prev, conversionId: ret.conversionId, percent: 0, status: ret.converterStatus }))
 			}
 		}
 		request.send(data)
@@ -152,30 +139,26 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 	useEffect(() => {
 		const controller = new AbortController()
 		async function getConversionUpdate() {
-			const ret = await Api.conversionUpdate(conversionId, percent, ToConverterStatus(status), workingFileNames, controller.signal)
+			const ret = await Api.conversionUpdate(conversionId, percent, ToConverterStatus(status), workingFileNames, logOut, controller.signal)
 
-			if (ret instanceof ConversionUpdateResponse) {
-				const newStatus: UploadStatus = ret.converterStatus === "Complete" ? "Editing" : ret.converterStatus
-
-				onStatusChanged(id, newStatus)
-				setUploadState(prev => ({ ...prev, percent: ret.conversionPercent, status: newStatus, errorMessage: ret.errorMessage, workingFileNames: ret.fileNames }))
-
-				if (newStatus === "Editing") {
-					setEditingBook(ret.book)
-				}
-
-				// Only call this method again if the conversion is still happening and nothing changed
-				// If anything changed the effect will be rebuilt and the api call will be made again automatically
-				// Without this check api calls are constantly created and cancelled
-				if (conversionId && IsConversionRunning(status) && newStatus === status && percent === ret.conversionPercent) {
-					void getConversionUpdate()
-				}
+			if (ret instanceof FetchAborted) {
+				return
 			}
-			else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
-				logOut(ret.message)
+
+			const newStatus: UploadStatus = ret.converterStatus === "Complete" ? "Editing" : ret.converterStatus
+
+			onStatusChanged(id, newStatus)
+			setUploadState(prev => ({ ...prev, percent: ret.conversionPercent, status: newStatus, errorMessage: ret.errorMessage, workingFileNames: ret.fileNames }))
+
+			if (newStatus === "Editing") {
+				setEditingBook(ret.book)
 			}
-			else if (!(ret instanceof FetchAborted)) {
-				logOut("Received an unexpected response")
+
+			// Only call this method again if the conversion is still happening and nothing changed
+			// If anything changed the effect will be rebuilt and the api call will be made again automatically
+			// Without this check api calls are constantly created and cancelled
+			if (conversionId && IsConversionRunning(status) && newStatus === status && percent === ret.conversionPercent) {
+				void getConversionUpdate()
 			}
 		}
 

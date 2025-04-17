@@ -1,8 +1,10 @@
 import { NoopFunction, Token } from "@books/shared"
 import { createContext, useCallback, useMemo, useState } from "react"
 import { useCookies } from "react-cookie"
+import Cookies from "universal-cookie"
 
 export type VisibleComponent = "Books" | "Settings" | "Users" | "ChangePassword" | "Upload"
+const cookieName = "loginCookie"
 
 interface AppContext {
 	logOut: (message?: string) => void,
@@ -28,16 +30,29 @@ const AppContext = createContext<AppContext>({
 	onLogin: NoopFunction,
 })
 
+export const handleDynamicImportFailure = (e: unknown) => {
+	new Cookies().remove(cookieName)
+
+	window.location.reload()
+
+	throw e
+}
+
 export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 	const [loginMessage, setLoginMessage] = useState("")
 	const [inviteUserId, setInviteUserId] = useState(window.location.pathname.includes("/invite/") ? window.location.pathname.replace("/invite/", "") : "")
-	const [cookies, setCookies] = useCookies(["loginCookie"], { doNotParse: true })
+	const [cookies, setCookies] = useCookies([cookieName], { doNotParse: true })
 	const [searchWords, setSearchWords] = useState<readonly string[]>([])
 	const [visibleComponent, setVisibleComponent] = useState<VisibleComponent>("Books")
 	const loginCookie = cookies.loginCookie as string | undefined
 	const token = useMemo(() => {
 		if (loginCookie) {
-			return Token.fromJSON(loginCookie)
+			try {
+				return Token.fromJSON(loginCookie)
+			}
+			catch {
+				return undefined
+			}
 		}
 
 		return undefined
@@ -48,7 +63,7 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 			setInviteUserId("")
 		}
 
-		setCookies("loginCookie", "", { maxAge: 0, path: "/", sameSite: "strict" })
+		setCookies(cookieName, "", { maxAge: 0, path: "/", sameSite: "strict" })
 		setLoginMessage(message ?? "")
 	}, [setCookies, setLoginMessage, inviteUserId])
 	const searchChanged = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,7 +81,7 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 			window.history.replaceState({}, document.title, "/")
 			setInviteUserId("")
 		}
-		setCookies("loginCookie", JSON.stringify(t), { maxAge: 12 * 30 * 24 * 60 * 60, path: "/", sameSite: "strict" })
+		setCookies(cookieName, JSON.stringify(t), { maxAge: 12 * 30 * 24 * 60 * 60, path: "/", sameSite: "strict" })
 		setLoginMessage("")
 		setVisibleComponent("Books")
 	}, [setCookies, setLoginMessage, inviteUserId])

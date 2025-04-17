@@ -1,6 +1,5 @@
 import { useContext, useState } from "react"
 import Alert from "./components/Alert"
-import { Token } from "@books/shared"
 import Api from "./api/Api"
 import Loading from "./Loading"
 import TextboxField from "./components/TextboxField"
@@ -21,15 +20,9 @@ const LogIn = () => {
 
 		if (form.checkValidity()) {
 			setLogInState({ loggingIn: true, failedMessage: "" })
-			const ret = await Api.auth(email, password)
+			const ret = await Api.auth(email, password, m => setLogInState({ loggingIn: false, failedMessage: m ?? "" }))
 
-			if (ret instanceof Token) {
-				onLogin(ret)
-				return
-			}
-			else {
-				setLogInState({ loggingIn: false, failedMessage: ret.message })
-			}
+			onLogin(ret)
 		}
 	}
 

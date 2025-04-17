@@ -1,10 +1,9 @@
 import moment from "dayjs"
 import { useCallback, useContext, useEffect, useState } from "react"
 import { Modal, ModalFooter, ModalTitle, Table } from "react-bootstrap"
-import { AccessDenied, Unauthorized, UserListResponse, User, AddUserResponse } from "@books/shared"
-import Api from "./api/LoggedInApi"
+import { UserListResponse, User, AddUserResponse } from "@books/shared"
 import Loading from "./Loading"
-import AppContext from "./context/AppContext"
+import AppContext, { handleDynamicImportFailure } from "./context/AppContext"
 import OverlayComponent from "./components/OverlayComponent"
 import TextboxField from "./components/TextboxField"
 import CheckboxField from "./components/CheckboxField"
@@ -14,6 +13,8 @@ import ModalDialog from "./components/ModalDialog"
 import styles from "./UserList.module.scss"
 import ActionButtons from "./components/ActionButtons"
 import LoggedInAppContext from "./context/LoggedInAppContext"
+
+const AdminApi = async () => (await import("./api/AdminApi").catch(handleDynamicImportFailure)).default
 
 interface Props {
 	onClose: () => void,
@@ -29,19 +30,25 @@ interface AddingUserState {
 interface UserActionsProps {
 	loggedInUserId: string,
 	user: User,
-	handleUserListResponse: (ret: unknown) => void,
+	logOut: (message?: string) => void,
+	handleUserListResponse: (ret: UserListResponse | AddUserResponse) => void,
 }
 
 type UserStatus = "Active" | "ConfirmingDelete" | "Deleting"
 type AddingUserStatus = "NotAdding" | "EnteringData" | "Saving"
 const defaultAddingUserState: AddingUserState = { email: "", isAdmin: false, status: "NotAdding", message: "" }
 
-const UserActions = ({ loggedInUserId, user, handleUserListResponse }: UserActionsProps) => {
+const UserActions = ({ loggedInUserId, user, handleUserListResponse, logOut }: UserActionsProps) => {
 	const [userStatus, setUserStatus] = useState<UserStatus>("Active")
 	const confirmDeleteClicked = () => {
 		setUserStatus("Deleting")
+		const apiCall = async () => {
+			const resp = await (await AdminApi()).deleteUser(user.id, logOut)
 
-		void Api.deleteUser(user.id).then(ret => handleUserListResponse(ret))
+			handleUserListResponse(resp)
+		}
+
+		void apiCall()
 	}
 
 	if (user.id === loggedInUserId) {
@@ -72,20 +79,9 @@ const UserList = (props: Props) => {
 	const mergeAddingUserState = (obj: Partial<AddingUserState>) => {
 		setAddingUserState(s => ({ ...s, ...obj }))
 	}
-	const handleUserListResponse = useCallback((ret: unknown) => {
-		if (ret instanceof UserListResponse) {
-			setUsers({ users: ret.users, message: ret.message })
-		}
-		else if (ret instanceof AddUserResponse) {
-			setUsers({ users: ret.users, message: "" })
-		}
-		else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
-			logOut(ret.message)
-		}
-		else {
-			logOut("Something unexpected happened")
-		}
-	}, [logOut])
+	const handleUserListResponse = useCallback((ret: UserListResponse | AddUserResponse) => {
+		setUsers({ users: ret.users, message: ret.message })
+	}, [])
 	const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
 		const form = event.currentTarget
 
@@ -95,24 +91,22 @@ const UserList = (props: Props) => {
 		if (form.checkValidity()) {
 			mergeAddingUserState({ status: "Saving" })
 
-			const ret = await Api.addUser(new User({ email: addingUserState.email, isAdmin: addingUserState.isAdmin }))
+			const ret = await (await AdminApi()).addUser(new User({ email: addingUserState.email, isAdmin: addingUserState.isAdmin }), logOut)
 
 			handleUserListResponse(ret)
 
-			if (ret instanceof AddUserResponse) {
-				if (!ret.successful) {
-					mergeAddingUserState({ message: ret.message, status: "EnteringData" })
-				}
-				else {
-					setAddingUserState(defaultAddingUserState)
-				}
+			if (!ret.successful) {
+				mergeAddingUserState({ message: ret.message, status: "EnteringData" })
+			}
+			else {
+				setAddingUserState(defaultAddingUserState)
 			}
 		}
 	}
 	const cancelAddUser = () => setAddingUserState(defaultAddingUserState)
 	useEffect(() => {
 		async function getUsers() {
-			const ret = await Api.users()
+			const ret = await (await AdminApi()).users(logOut)
 
 			handleUserListResponse(ret)
 		}
@@ -166,7 +160,7 @@ const UserList = (props: Props) => {
 								<td>{u.email}</td>
 								<td>{u.isAdmin ? "Yes" : "No"}</td>
 								<td>{u.lastLogin !== undefined ? moment(u.lastLogin).format("MM/D/YYYY, h:mm:ss a") : "Never"}</td>
-								<td><UserActions loggedInUserId={token.user.id} user={u} handleUserListResponse={handleUserListResponse} /></td>
+								<td><UserActions loggedInUserId={token.user.id} user={u} handleUserListResponse={handleUserListResponse} logOut={logOut} /></td>
 							</tr>
 						))}
 					</tbody>
