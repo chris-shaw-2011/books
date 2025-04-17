@@ -1,5 +1,6 @@
 import * as shared from "@books/shared"
 import BaseApi from "./BaseApi"
+import FetchAborted from "./FetchAborted"
 
 // TODO: split this up so it has an admin version and a non admin version
 // TODO: this should inherit from Api.tsx
@@ -30,12 +31,26 @@ class LoggedInApiClass extends BaseApi {
 	// TODO: update this method so it is a generic method where you specify the desired return type and update the jsonRet so it converts the result json to that type
 	fetch = async (url: string, jsonSend?: unknown, signal?: AbortSignal) => {
 		const headers = jsonSend ? { "Content-Type": "application/json" } : {}
-		const result = await fetch(url, {
-			method: "POST",
-			headers: headers,
-			body: jsonSend ? JSON.stringify(jsonSend) : "",
-			signal: signal ?? null,
-		})
+
+		let result: Response
+		try {
+			result = await fetch(url, {
+				method: "POST",
+				headers: headers,
+				body: jsonSend ? JSON.stringify(jsonSend) : "",
+				signal: signal ?? null,
+			})
+		}
+		catch (e) {
+			if (e instanceof Error) {
+				if (e.name === "AbortError") {
+					return new FetchAborted(e)
+				}
+			}
+
+			throw e
+		}
+
 		const jsonRet = await result.json() as shared.ApiMessage
 
 		return this.parseJson(jsonRet)

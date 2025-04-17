@@ -12,7 +12,9 @@ import BookLink from "./BookLink"
 import classnames from "classnames"
 import ModalDialog from "./components/ModalDialog"
 import type { JSX } from "react/jsx-runtime"
+import FetchAborted from "./api/FetchAborted"
 
+// TODO: make it so if you close the modal you can re open it and see where it's at
 // TODO: this needs refactored, it seems like there's too much going on in this component
 type UploadStatus = ConverterStatus | "Uploading" | "Editing" | "Done"
 
@@ -172,7 +174,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 			else if (ret instanceof Unauthorized || ret instanceof AccessDenied) {
 				logOut(ret.message)
 			}
-			else {
+			else if (!(ret instanceof FetchAborted)) {
 				logOut("Received an unexpected response")
 			}
 		}
