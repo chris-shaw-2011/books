@@ -25,3 +25,4 @@ yarn-error.log*
 /dist
 db.sqlite
 .eslintcache
+docker-compose.override.yml

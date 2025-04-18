@@ -32,7 +32,7 @@ const rootDir = __dirname
 const getNewExpiration = () => dayjs().add(24, "hours")
 const conversions = new Map<string, Converter>()
 const conversionMutex = new Mutex()
-const server = Fastify({ logger: true, bodyLimit: 10_000_000_000 })
+const server = Fastify({ logger: false, bodyLimit: 10_000_000_000 })
 const getAllUsers = async () => await db.all<shared.User[]>("SELECT id, email, isAdmin, lastLogIn FROM user")
 const getUserById = async (userId: string) => await db.get<ServerUser>("SELECT * FROM user WHERE id = ?", userId)
 const rootPath = path.join(rootDir, "../../../../bin/projects/client")

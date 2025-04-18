@@ -531,7 +531,7 @@ export default class Converter {
 
 		const cwd = path.join(rootDir, "inAudible-NG")
 		const crackerPath = process.platform === "win32" ? path.join(cwd, "run", "rcrack.exe") : path.join(cwd, "rcrack")
-		const crackerOutput = await this.runProgram(crackerPath, `${inputFilePath}.rcrack.log`, [".", "-h", matches[1]])
+		const crackerOutput = await this.runProgram(crackerPath, `${inputFilePath}.rcrack.log`, [".", "-h", matches[1]], undefined, cwd)
 		const activationBytesMatches = /hex:(.*)/.exec(crackerOutput)
 
 		if (activationBytesMatches) {
@@ -573,6 +573,7 @@ export default class Converter {
 		const dataCallback = (data: unknown) => {
 			const str = toString(data)
 
+			writeStream.write(str)
 			programOutput += str
 
 			if (onData) {
@@ -589,10 +590,7 @@ export default class Converter {
 		writeStream.write("\n\n")
 
 		program.stdout?.on("data", dataCallback)
-		program.stdout?.pipe(writeStream)
-
 		program.stderr?.on("data", dataCallback)
-		program.stderr?.pipe(writeStream)
 
 		try {
 			await onExit(program)
