@@ -25,7 +25,13 @@ class BookList {
 		console.log(`Loading books from ${db.settings.baseBooksPath}`)
 		this.books = new ServerDirectory()
 
-		await this.books.loadBooks()
+		try {
+			await this.books.loadBooks()
+		}
+		catch (e) {
+			// eslint-disable-next-line no-console
+			console.error("An error occurred while loading the books", e)
+		}
 
 		// eslint-disable-next-line no-console
 		console.log(`${this.books.bookCount()} Books loaded`)
