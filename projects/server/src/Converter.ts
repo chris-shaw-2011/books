@@ -153,16 +153,20 @@ export default class Converter {
 				// TODO: figure out how to run these in parallel rather than in serial
 				// Will have to make sure to update the UI so it shows the percentage of each file
 				const aaxFiles = files.filter(str => str.toLowerCase().endsWith(".aax"))
+				let fileNumber = 0
 
 				for (const file of aaxFiles) {
 					const convertedFileOutputPath = `${file}.m4b`
 					const coverPhotoOutputPath = `${file}.jpg`
 
-					await this.convertAax(file, convertedFileOutputPath, rootDir, coverPhotoOutputPath)
+					// Strip the last 20 seconds of all files but the last one because audible adds the unecessary audio:
+					// "This audio book has been broken into multiple parts to make the download faster. You have reached the end of a part but not the end of the complete audio book, so please check your library for the next part of this audio book"
+					await this.convertAax(file, convertedFileOutputPath, rootDir, coverPhotoOutputPath, fileNumber !== aaxFiles.length - 1 ? 20 : undefined)
 
 					files.splice(files.indexOf(file), 1, convertedFileOutputPath, coverPhotoOutputPath)
 
 					await this.remove(file)
+					++fileNumber
 				}
 
 				outputFilePath = `${filePath}.m4b`
@@ -487,8 +491,9 @@ export default class Converter {
 		return false
 	}
 
-	private convertAax = async (inputFilePath: string, outputFilePath: string, rootDir: string, outputCoverPhotoPath?: string) => {
+	private convertAax = async (inputFilePath: string, outputFilePath: string, rootDir: string, outputCoverPhotoPath?: string, skipSecondsFromEnd?: number) => {
 		const encryptionKey = await this.crack(inputFilePath, rootDir)
+		let outputDuration = 0
 
 		if (!encryptionKey) {
 			return
@@ -497,12 +502,32 @@ export default class Converter {
 		this.status = "Converting"
 		this._fileNames = [path.basename(inputFilePath)]
 
-		// TODO: this appears to cause chapters to be lost, at some point I should fix this up so I first get the chapters then skip the first 2 seconds
+		if (skipSecondsFromEnd) {
+			const probeArgs = [
+				"-activation_bytes", encryptionKey,
+				"-v", "error",
+				"-show_entries",
+				"format=duration",
+				"-of", "csv=p=0",
+				`"${inputFilePath}"`,
+			]
+			outputDuration = parseFloat(await this.runFfprobe(inputFilePath, probeArgs)) - skipSecondsFromEnd - 2
+		}
+
 		const args = ["-activation_bytes", encryptionKey,
 			"-ss", "00:00:02", // Skip the first 2 seconds so we don't have to hear "This is audible"
-			"-i", `"${inputFilePath}"`,
-			"-map", "0:a", "-c copy", `"${outputFilePath}"`, // copy the audio stream only to the m4b file
 		]
+
+		args.push(
+			"-i", `"${inputFilePath}"`,
+			"-map", "0:a", "-c copy", // copy the audio stream only to the m4b file
+		)
+
+		if (outputDuration) {
+			args.push("-to", outputDuration.toString())
+		}
+
+		args.push(`"${outputFilePath}"`)
 
 		await this.runFfmpeg(outputFilePath, args)
 
