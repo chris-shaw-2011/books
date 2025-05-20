@@ -1,10 +1,9 @@
 import { NoopFunction, Token } from "@books/shared"
 import { createContext, useCallback, useMemo, useState } from "react"
 import { useCookies } from "react-cookie"
-import Cookies from "universal-cookie"
+import { cookieName } from "../shared/Methods"
 
 export type VisibleComponent = "Books" | "Settings" | "Users" | "ChangePassword" | "Upload"
-const cookieName = "loginCookie"
 
 interface AppContext {
 	logOut: (message?: string) => void,
@@ -29,14 +28,6 @@ const AppContext = createContext<AppContext>({
 	inviteUserId: "",
 	onLogin: NoopFunction,
 })
-
-export const handleDynamicImportFailure = (e: unknown) => {
-	new Cookies().remove(cookieName)
-
-	window.location.reload()
-
-	throw e
-}
 
 export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 	const [loginMessage, setLoginMessage] = useState("")

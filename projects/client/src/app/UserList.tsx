@@ -3,7 +3,7 @@ import { useCallback, useContext, useEffect, useState } from "react"
 import { Modal, ModalFooter, ModalTitle, Table } from "react-bootstrap"
 import { UserListResponse, User, AddUserResponse } from "@books/shared"
 import Loading from "./Loading"
-import AppContext, { handleDynamicImportFailure } from "./context/AppContext"
+import AppContext from "./context/AppContext"
 import OverlayComponent from "./components/OverlayComponent"
 import TextboxField from "./components/TextboxField"
 import CheckboxField from "./components/CheckboxField"
@@ -13,6 +13,7 @@ import ModalDialog from "./components/ModalDialog"
 import styles from "./UserList.module.scss"
 import ActionButtons from "./components/ActionButtons"
 import LoggedInAppContext from "./context/LoggedInAppContext"
+import { handleDynamicImportFailure } from "./shared/Methods"
 
 const AdminApi = async () => (await import("./api/AdminApi").catch(handleDynamicImportFailure)).default
 

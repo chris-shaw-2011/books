@@ -4,10 +4,11 @@ import LogIn from "./LogIn"
 import styles from "./App.module.scss"
 import "./styles.scss"
 import Loading from "./Loading"
-import AppContext, { AppContextProvider, handleDynamicImportFailure } from "./context/AppContext"
+import AppContext, { AppContextProvider } from "./context/AppContext"
 import Header from "./Header"
 import SetPassword from "./SetPassword"
 import { CookiesProvider } from "react-cookie"
+import { handleDynamicImportFailure } from "./shared/Methods"
 
 // TODO: see if there is some way for the css modules to generate type definitions so it can be verified all modules are used
 

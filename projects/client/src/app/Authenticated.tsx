@@ -8,7 +8,8 @@ import UploadBooks from "./UploadBooks"
 import ItemListTabContent from "./ItemListTabContent"
 import Styles from "./Authenticated.module.scss"
 import classNames from "classnames"
-import AppContext, { handleDynamicImportFailure } from "./context/AppContext"
+import AppContext from "./context/AppContext"
+import { handleDynamicImportFailure } from "./shared/Methods"
 
 const EditSettings = lazy(() => import("./EditSettings").catch(handleDynamicImportFailure))
 const UserList = lazy(() => import("./UserList").catch(handleDynamicImportFailure))

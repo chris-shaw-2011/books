@@ -8,7 +8,8 @@ import OverlayComponent from "./components/OverlayComponent"
 import TextboxField from "./components/TextboxField"
 import ModalDialog from "./components/ModalDialog"
 import ActionButtons from "./components/ActionButtons"
-import AppContext, { handleDynamicImportFailure } from "./context/AppContext"
+import AppContext from "./context/AppContext"
+import { handleDynamicImportFailure } from "./shared/Methods"
 
 const AdminApi = async () => (await import("./api/AdminApi").catch(handleDynamicImportFailure)).default
 

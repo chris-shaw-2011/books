@@ -7,8 +7,9 @@ import useOnclickOutside from "react-cool-onclickoutside"
 import Upload from "./svg/Upload"
 import Lock from "./svg/Lock"
 import LogOut from "./svg/LogOut"
-import AppContext, { handleDynamicImportFailure, type VisibleComponent } from "./context/AppContext"
+import AppContext, { type VisibleComponent } from "./context/AppContext"
 import Loading from "./Loading"
+import { handleDynamicImportFailure } from "./shared/Methods"
 
 const AdminNavOptions = lazy(() => import("./AdminNavOptions").catch(handleDynamicImportFailure))
 

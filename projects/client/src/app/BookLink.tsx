@@ -1,6 +1,6 @@
 import classnames from "classnames"
 import { useContext, useState, useEffect } from "react"
-import AppContext, { handleDynamicImportFailure } from "./context/AppContext"
+import AppContext from "./context/AppContext"
 import LoggedInAppContext from "./context/LoggedInAppContext"
 import { Dropdown, DropdownButton } from "react-bootstrap"
 import Highlighter from "react-highlight-words"
@@ -20,6 +20,7 @@ import FolderClosed from "./svg/FolderClosed"
 import Button from "./components/Button"
 import SearchContext from "./context/AppContext"
 import ActionButtons from "./components/ActionButtons"
+import { handleDynamicImportFailure } from "./shared/Methods"
 
 // TODO: Allow normal users to edit books if it's in the Uploads folder
 const AdminApi = async () => (await import("./api/AdminApi").catch(handleDynamicImportFailure)).default

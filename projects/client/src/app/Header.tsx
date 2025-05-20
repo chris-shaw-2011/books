@@ -1,7 +1,8 @@
 import { lazy, Suspense, useContext } from "react"
-import AppContext, { handleDynamicImportFailure } from "./context/AppContext"
+import AppContext from "./context/AppContext"
 import styles from "./Header.module.scss"
 import Textbox from "./components/Textbox"
+import { handleDynamicImportFailure } from "./shared/Methods"
 
 const Navigation = lazy(() => import("./Navigation").catch(handleDynamicImportFailure))
 
