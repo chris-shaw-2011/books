@@ -23,15 +23,17 @@ interface ChildItemProps {
 
 interface FolderStore {
 	openFolders: Record<string, boolean>,
-	toggleFolder: (path: string) => void,
+	toggleFolder: (e: React.MouseEvent<HTMLDivElement, MouseEvent>, path: string) => void,
 }
 
 const useFolderStore = create<FolderStore>(set => ({
 	openFolders: {},
-	toggleFolder: id =>
+	toggleFolder: (e, id) => {
+		e.stopPropagation()
 		set(state => ({
 			openFolders: { ...state.openFolders, [id]: !state.openFolders[id] },
-		})),
+		}))
+	}
 }))
 
 const ChildItems = (props: ChildItemProps) => (
@@ -48,7 +50,7 @@ const DirectoryLink = (props: DirectoryProps) => {
 	const toggleFolder = useFolderStore(state => state.toggleFolder)
 
 	return (
-		<div style={props.style} className={classnames("directory", "item", props.className)} onClick={() => toggleFolder(id)}>
+		<div style={props.style} className={classnames("directory", "item", props.className)} onClick={e => toggleFolder(e, id)}>
 			<div className={classnames("inner", itemStyles.inner)}>
 				{isOpen ? <FolderOpen /> : <FolderClosed />}
 				<Highlighter searchWords={[...searchWords]} textToHighlight={props.directory.name} />

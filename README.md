@@ -1,47 +1,90 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
-## Available Scripts
+# Books Monorepo
 
-In the project directory, you can run:
+## Overview
 
-### `npm start`
+This application is an audiobook management platform. It allows users to organize, track, and convert audiobooks, manage user accounts, and interact with their audiobook library through a modern web interface. The backend provides APIs for book management, conversion, and user authentication, while the frontend offers a responsive UI for browsing and managing books.
 
-Runs the app in the development mode.<br />
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## Features
 
-The page will reload if you make edits.<br />
-You will also see any lint errors in the console.
+- Manage a library of audiobooks (add, edit, delete)
+- Track read/unread status and metadata for each book
+- Upload and convert audiobook files (e.g., zip of mp3s to m4b)
+- Automatic metadata extraction and modification
+- User authentication and account management
+- Settings management via web interface
+- Dockerized deployment for easy setup
+- Fast, modern React frontend (Vite)
+- RESTful Fastify backend
+- Shared TypeScript types for type safety across client and server
 
-### `npm test`
+This is a monorepo for a full-stack audiobook management application, including a React client (Vite), Fastify server, and shared TypeScript types.
 
-Launches the test runner in the interactive watch mode.<br />
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Structure
 
-### `npm run build`
+- `projects/client`: React frontend (Vite)
+- `projects/server`: Fastify backend
+- `projects/shared`: Shared TypeScript types and utilities
+- `bin/`: Production build output
 
-Builds the app for production to the `build` folder.<br />
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Getting Started
 
-The build is minified and the filenames include the hashes.<br />
-Your app is ready to be deployed!
+### Prerequisites
+- Node.js >= 24.0.2
+- npm >= 10.9.2
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Install dependencies
 
-### `npm run eject`
+```sh
+npm install
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+### Development
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Start both client and server:
 
-Instead, it will copy all the configuration files and the transitive dependencies (Webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+```sh
+npm start
+```
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+Client: [http://localhost:3000](http://localhost:3000)
+Server: [http://localhost:3001](http://localhost:3001)
 
-## Learn More
+### Build for Production
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```sh
+npm run build
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Lint
+
+```sh
+npm run lint
+```
+
+### Docker
+
+To run the server in Docker:
+
+```sh
+docker-compose up --build
+```
+
+## Scripts
+
+- `npm start` - Start client and server in development
+- `npm run build` - Build all packages for production
+- `npm run lint` - Run lint checks
+- `npm run analyze` - Analyze client bundle size
+
+## Todo
+Add manage users page<br />
+Reset password<br />
+Persist read books<br />
+Allow upload of zip of mp3s<br />
+Modification of metadata<br />
+Modify settings via web interface<br />
+Automatic download of all books in an audible account and convert to m4b<br />
 
 ## Todo
 Add manage users page<br />
