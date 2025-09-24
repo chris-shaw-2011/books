@@ -10,7 +10,17 @@ export default class UpdateBookRequest extends ApiMessage {
 	constructor(json?: Partial<UpdateBookRequest>) {
 		super()
 
-		this.newBook = new Book(json?.newBook)
+		// Trim any spaces when doing an UpdateBookRequest
+		let trimmedNewBook = json?.newBook
+
+		if (trimmedNewBook) {
+			trimmedNewBook = Object.fromEntries(
+				Object.entries(trimmedNewBook)
+					.map(([key, value]) => [key, typeof value === "string" ? value.trim() : value]),
+			) as typeof trimmedNewBook
+		}
+
+		this.newBook = new Book(trimmedNewBook)
 		this.prevBook = new Book(json?.prevBook)
 	}
 }
