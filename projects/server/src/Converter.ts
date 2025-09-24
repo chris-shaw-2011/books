@@ -201,7 +201,7 @@ export default class Converter {
 		}
 
 		await bookList.fileAdded(this.convertedFilePath)
-		bookList.resumeUpdates()
+		await bookList.resumeUpdates()
 
 		this.status = "Complete"
 		mutex.release()

@@ -479,7 +479,7 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 		await bookList.pauseUpdates()
 
 		// Check to see if the file needs renamed
-		if (book.fullPath.toLowerCase() !== newPath.toLowerCase()) {
+		if (book.fullPath !== newPath) {
 			if (fs.existsSync(newPath)) {
 				return new shared.UpdateBookResponse({ message: `File ${newPath} already exists` })
 			}
@@ -498,7 +498,7 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 
 		// TODO: change this to use taglib: https://github.com/benrr101/node-taglib-sharp#readme
 		if (extension === ".mp3") {
-			const tags = await NodeID3.Promise.read(book.fullPath)
+			const tags = await NodeID3.Promise.read(newPath)
 
 			tags.title = newBook.name.trim()
 			tags.artist = newBook.author.trim().split(", ").map(v => v.trim()).join("/")
@@ -539,11 +539,17 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 		}
 	}
 	finally {
-		bookList.resumeUpdates()
+		await bookList.resumeUpdates()
 	}
+
+	// eslint-disable-next-line no-console
+	console.log(`Finished updating book ${newBook.name}, retrieving list of all books to return to client`)
 
 	const books = await bookList.allBooks()
 	const statuses = await db.statusesForUser(token.user.id)
+
+	// eslint-disable-next-line no-console
+	console.log(`Returning list of books to client`)
 
 	return new shared.UpdateBookResponse({ books: new shared.Books({ bookStatuses: statuses, directory: books }) })
 })

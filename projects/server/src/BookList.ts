@@ -3,7 +3,8 @@ import fs from "fs"
 import path from "path"
 import db from "./Database.ts"
 import ServerDirectory from "./ServerDirectory.ts"
-import { Mutex, Semaphore } from "async-mutex"
+import { Mutex, Semaphore, type SemaphoreInterface } from "async-mutex"
+import { setTimeout } from "timers/promises"
 
 class BookList {
 	private books = new ServerDirectory()
@@ -11,9 +12,10 @@ class BookList {
 	private mutex = new Mutex()
 	private pauseSemaphore = new Semaphore(10)
 	private loading = false
+	private pauseReleaser?: SemaphoreInterface.Releaser
 
 	async loadBooks() {
-		await this.mutex.acquire()
+		const releaser = await this.mutex.acquire()
 		this.loading = true
 
 		if (this.watcher) {
@@ -72,39 +74,58 @@ class BookList {
 			binaryInterval: 60000,
 		})
 			.on("add", addPath => {
+				// eslint-disable-next-line no-console
+				console.log(`file added event: ${addPath}`)
+
 				void this.pauseSemaphore.runExclusive(async () => {
 					await this.fileAdded(addPath)
 				})
 			})
 			.on("addDir", addPath => {
+				// eslint-disable-next-line no-console
+				console.log(`directory added event: ${addPath}`)
+
 				void this.pauseSemaphore.runExclusive(async () => {
 					await this.fileAdded(addPath)
 				})
 			})
 			.on("unlink", delPath => {
+				// eslint-disable-next-line no-console
+				console.log(`file removed event: ${delPath}`)
+
 				void this.pauseSemaphore.runExclusive(async () => {
 					await this.deleteBook(delPath)
 				})
 			})
 
 		this.loading = false
-		this.mutex.release()
+		releaser()
 	}
 
 	public async deleteBook(delPath: string) {
 		// eslint-disable-next-line no-console
-		console.log(`file removed: ${delPath}`)
+		console.log(`file removed: ${delPath} - queued`)
 
-		await this.mutex.acquire()
+		const releaser = await this.mutex.acquire()
+
+		// eslint-disable-next-line no-console
+		console.log(`file removed: ${delPath} - processing`)
+
 		this.books.deleteBook(path.parse(delPath))
-		this.mutex.release()
+		releaser()
+
+		// eslint-disable-next-line no-console
+		console.log(`file removed: ${delPath} - done`)
 	}
 
 	public async fileAdded(addPath: string) {
 		// eslint-disable-next-line no-console
-		console.log(`file added: ${addPath}`)
+		console.log(`file added: ${addPath} - queued`)
 
-		await this.mutex.acquire()
+		const releaser = await this.mutex.acquire()
+
+		// eslint-disable-next-line no-console
+		console.log(`file added: ${addPath} - processing`)
 
 		const dir = this.books.findClosestDirectory(addPath)
 
@@ -112,7 +133,10 @@ class BookList {
 
 		dir.sortItems(true)
 
-		this.mutex.release()
+		releaser()
+
+		// eslint-disable-next-line no-console
+		console.log(`file added: ${addPath} - done`)
 	}
 
 	public findBookByPath(bookPath: string) {
@@ -130,11 +154,24 @@ class BookList {
 	}
 
 	public async pauseUpdates() {
-		await this.pauseSemaphore.acquire()
+		[, this.pauseReleaser] = await this.pauseSemaphore.acquire()
 	}
 
-	resumeUpdates() {
-		this.pauseSemaphore.release()
+	async resumeUpdates() {
+		if (!this.pauseReleaser) {
+			// eslint-disable-next-line no-console
+			console.error("resumeUpdates called without a matching pauseUpdates")
+
+			return
+		}
+
+		this.pauseReleaser()
+
+		// Make sure other threads can run before continuing
+		await setTimeout(1)
+
+		// Make sure any file changes that happened while paused are processed now
+		await this.pauseSemaphore.runExclusive(() => Promise.resolve(), undefined, -1)
 	}
 
 	async shutdown() {
@@ -142,6 +179,7 @@ class BookList {
 			// eslint-disable-next-line no-console
 			console.log("Closing file watcher...")
 			await this.watcher.close()
+
 			// eslint-disable-next-line no-console
 			console.log("File watcher closed")
 		}
