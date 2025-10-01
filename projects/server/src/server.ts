@@ -391,9 +391,14 @@ server.post("/upload", { preHandler: validateRequest }, async (request, reply) =
 		return
 	}
 
-	const fileName = `${id}${path.extname(file.filename)}`
-	const filePath = path.join(db.settings.uploadLocation, fileName)
+	let fileName = file.filename
+	let filePath = path.join(db.settings.uploadLocation, fileName)
 	const conversion = new Converter()
+
+	while (fs.existsSync(filePath)) {
+		fileName = `${id}-${fileName}`
+		filePath = path.join(db.settings.uploadLocation, fileName)
+	}
 
 	await pump(file.file, fs.createWriteStream(filePath))
 
