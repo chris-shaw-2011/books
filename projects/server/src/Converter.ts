@@ -177,9 +177,16 @@ export default class Converter {
 			await this.remove(unzipPath)
 		}
 		else if (filePath.toLowerCase().endsWith(".aax")) {
+			const coverPhotoOutputPath = `${filePath}.jpg`
+			const intermediateOutputPath = `${filePath}-intermediate.m4b`
+
 			outputFilePath = `${filePath}.m4b`
 
-			await this.convertAax(filePath, outputFilePath, rootDir)
+			await this.convertAax(filePath, intermediateOutputPath, rootDir, coverPhotoOutputPath)
+			await this.combineFiles([intermediateOutputPath, coverPhotoOutputPath], outputFilePath, "m4b")
+			await this.remove(intermediateOutputPath)
+			await this.remove(coverPhotoOutputPath)
+			await this.remove(filePath)
 		}
 
 		if (outputFilePath) {
@@ -376,19 +383,15 @@ export default class Converter {
 				if (chapters.length) {
 					chaptersFile = `${outputFilePath}.chapters.ffmetadata`
 
-					const writeStream = fs.createWriteStream(chaptersFile)
-
-					writeStream.write(";FFMETADATA1\n")
+					await fs.promises.appendFile(chaptersFile, ";FFMETADATA1\n")
 
 					for (const chapter of chapters) {
-						writeStream.write("[CHAPTER]\n")
-						writeStream.write(`TIMEBASE=${chapter.time_base}\n`)
-						writeStream.write(`START=${chapter.start}\n`)
-						writeStream.write(`END=${chapter.end}\n`)
-						writeStream.write(`title=${chapter.tags.title}\n`)
+						await fs.promises.appendFile(chaptersFile, "[CHAPTER]\n")
+						await fs.promises.appendFile(chaptersFile, `TIMEBASE=${chapter.time_base}\n`)
+						await fs.promises.appendFile(chaptersFile, `START=${chapter.start}\n`)
+						await fs.promises.appendFile(chaptersFile, `END=${chapter.end}\n`)
+						await fs.promises.appendFile(chaptersFile, `title=${chapter.tags.title}\n`)
 					}
-
-					writeStream.close()
 				}
 			}
 
@@ -594,6 +597,7 @@ export default class Converter {
 		const writeStream = fs.createWriteStream(logPath)
 		const execOptions: ExecOptions = workingDirectory ? { cwd: workingDirectory } : {}
 		const program = exec(cmd, execOptions)
+		let errorOccured = false
 		let programOutput = ""
 		const dataCallback = (data: unknown) => {
 			const str = toString(data)
@@ -620,22 +624,34 @@ export default class Converter {
 		try {
 			await onExit(program)
 
-			writeStream.close()
+			writeStream.end("\n\nProcess complete")
 		}
 		catch (e) {
-			writeStream.close()
+			let errMsg = "\\n\nProcess threw an error:"
 
 			if (e instanceof Error) {
-				this.errorMessage += `${e.message}\n\n${e.stack}\n\n`
+				errMsg += `\n\n${e.message}\n\n${e.stack}`
 			}
 
-			this.errorMessage += await fs.promises.readFile(logPath, "utf8")
-			this.status = "Error"
+			writeStream.end(errMsg)
+			errorOccured = true
 		}
 
-		await this.remove(logPath)
+		return new Promise<string>((resolve, reject) => {
+			writeStream.close(() => {
+				if (errorOccured) {
+					this.errorMessage += fs.readFileSync(logPath, "utf8")
+					this.status = "Error"
 
-		return programOutput
+					reject(new Error(this.errorMessage))
+				}
+				else {
+					resolve(programOutput)
+				}
+			})
+		}).finally(() => {
+			void this.remove(logPath)
+		})
 	}
 
 	private durationToSeconds(matches: RegExpMatchArray) {

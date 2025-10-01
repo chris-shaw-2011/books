@@ -400,13 +400,18 @@ server.post("/upload", { preHandler: validateRequest }, async (request, reply) =
 	conversions.set(id, conversion)
 
 	// Start the conversion in the background
-	void conversion.convert(filePath, db.settings.uploadLocation, conversionMutex, rootDir).then(() => {
-		setTimeout(() => {
+	conversion.convert(filePath, db.settings.uploadLocation, conversionMutex, rootDir)
+		.catch((reason: unknown) => {
 			// eslint-disable-next-line no-console
-			console.log(`Removing conversion ${id}`)
-			conversions.delete(id)
-		}, 60000)
-	})
+			console.error(`Conversion ${id} failed:`, reason)
+		})
+		.finally(() => {
+			setTimeout(() => {
+				// eslint-disable-next-line no-console
+				console.log(`Removing conversion ${id}`)
+				conversions.delete(id)
+			}, 60000)
+		})
 
 	// wait on the conversion process to start
 	await conversion.waitForUpdate(0, "Waiting", [])
