@@ -26,19 +26,20 @@
 		"lint-server": "npm run lint --workspace=@books/server",
 		"lint-shared": "npm run lint --workspace=@books/shared",
 		"analyze": "source-map-explorer 'bin/client/*.js'",
+		"knip": "knip",
 		"sherif": "sherif"
 	},
 	"type": "module",
 	"devDependencies": {
-		"@eslint/js": "^9.36.0",
-		"@stylistic/eslint-plugin": "^5.4.0",
+		"@eslint/js": "^9.39.1",
+		"@stylistic/eslint-plugin": "^5.7.1",
 		"concurrently": "^9.2.1",
 		"cpx2": "^8.0.0",
-		"eslint": "^9.36.0",
-		"knip": "^5.63.1",
-		"sherif": "^1.6.1",
+		"eslint": "^9.39.2",
+		"knip": "^5.82.1",
+		"sherif": "^1.10.0",
 		"source-map-explorer": "^2.5.3",
-		"typescript": "^5.9.2",
-		"typescript-eslint": "^8.44.0"
+		"typescript": "^5.9.3",
+		"typescript-eslint": "^8.53.1"
 	}
 }

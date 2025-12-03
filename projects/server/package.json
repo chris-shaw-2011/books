@@ -3,19 +3,19 @@
 	"type": "module",
 	"dependencies": {
 		"@books/shared": "file:../shared",
-		"@fastify/multipart": "^9.2.1",
-		"@fastify/static": "^8.2.0",
+		"@fastify/multipart": "^9.4.0",
+		"@fastify/static": "^9.0.0",
 		"async-mutex": "^0.5.0",
 		"bcrypt": "^6.0.0",
-		"chokidar": "^4.0.3",
-		"cookie": "^1.0.2",
-		"dayjs": "^1.11.18",
-		"fastify": "^5.6.0",
+		"chokidar": "^5.0.0",
+		"cookie": "^1.1.1",
+		"dayjs": "^1.11.19",
+		"fastify": "^5.7.1",
 		"ffmpeg-ffprobe-static": "^6.1.2-rc.1",
 		"get-folder-size": "^5.0.0",
-		"music-metadata": "^11.9.0",
+		"music-metadata": "^11.10.6",
 		"node-id3": "^0.2.9",
-		"nodemailer": "^7.0.6",
+		"nodemailer": "^7.0.12",
 		"sanitize-filename": "^1.6.3",
 		"sqlite": "^5.1.1",
 		"sqlite3": "^5.1.7",
@@ -34,8 +34,8 @@
 	},
 	"devDependencies": {
 		"@types/bcrypt": "^6.0.0",
-		"@types/node": "^24.5.2",
-		"@types/nodemailer": "^7.0.1",
+		"@types/node": "^25.0.10",
+		"@types/nodemailer": "^7.0.5",
 		"@types/unzipper": "^0.10.11"
 	}
 }

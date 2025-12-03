@@ -620,8 +620,8 @@ const stop = async () => {
 		await server.close()
 		server.log.info("Shutdown complete.")
 	}
-	catch (err) {
-		server.log.error("Error during shutdown", err)
+	catch {
+		server.log.error("Error during shutdown")
 		process.exit(1)
 	}
 }

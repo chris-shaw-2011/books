@@ -4,6 +4,8 @@
 		"outDir": "../../bin/projects/server/src",
 		"noEmit": false,
 		"sourceMap": true,
+		"declaration": true,
+		"declarationMap": true,
 	},
 	"extends": "./tsconfig.server.json",
 	"references": [

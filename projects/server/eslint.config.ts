@@ -6,7 +6,6 @@ export default [
 		files: ["src/**/*.ts"],
 		languageOptions: {
 			parserOptions: {
-				project: ["tsconfig.json", "../shared/tsconfig.json"],
 				projectService: true,
 			},
 		},

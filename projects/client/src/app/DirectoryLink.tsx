@@ -23,7 +23,7 @@ interface ChildItemProps {
 
 interface FolderStore {
 	openFolders: Record<string, boolean>,
-	toggleFolder: (e: React.MouseEvent<HTMLDivElement, MouseEvent>, path: string) => void,
+	toggleFolder: (e: React.MouseEvent, path: string) => void,
 }
 
 const useFolderStore = create<FolderStore>(set => ({
@@ -33,7 +33,7 @@ const useFolderStore = create<FolderStore>(set => ({
 		set(state => ({
 			openFolders: { ...state.openFolders, [id]: !state.openFolders[id] },
 		}))
-	}
+	},
 }))
 
 const ChildItems = (props: ChildItemProps) => (

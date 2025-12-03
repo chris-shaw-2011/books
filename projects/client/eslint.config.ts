@@ -14,9 +14,6 @@ export default [
 		...reactPlugin.configs.flat["jsx-runtime"],
 		languageOptions: {
 			...reactPlugin.configs.flat.recommended.languageOptions,
-			parserOptions: {
-				project: ["tsconfig.json", "../shared/tsconfig.json"],
-			},
 			globals: {
 				...globals.serviceworker,
 				...globals.browser,
