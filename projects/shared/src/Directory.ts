@@ -15,8 +15,6 @@ export default class Directory extends Item {
 		this.hasBooks = json?.hasBooks ?? false
 		this.items = []
 
-		let upload: Date | number | undefined
-
 		json?.items?.forEach(i => {
 			const newUpload = i.uploadTime
 
@@ -32,15 +30,13 @@ export default class Directory extends Item {
 				this.items.push(dir)
 			}
 
-			if (sortOrder === "Uploaded - Ascending" && (!upload || newUpload < this.uploadTime)) {
-				upload = newUpload
+			if (sortOrder === "Uploaded - Ascending" && (newUpload < this.uploadTime)) {
+				this.uploadTime = newUpload
 			}
-			else if (sortOrder === "Uploaded - Descending" && (!upload || newUpload > this.uploadTime)) {
-				upload = newUpload
+			else if (sortOrder === "Uploaded - Descending" && (newUpload > this.uploadTime)) {
+				this.uploadTime = newUpload
 			}
 		})
-
-		this.uploadTime = new Date(upload ?? this.uploadTime)
 
 		if (sortOrder) {
 			switch (sortOrder) {
