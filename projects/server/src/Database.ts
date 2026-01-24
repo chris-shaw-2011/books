@@ -5,6 +5,7 @@ import * as shared from "@books/shared"
 import path from "path"
 
 // TODO: save the book metadata to the database so we don't have to wait on the server to read all books on a restart
+// TODO: update this to better-sqlite-3
 // The server should still read the books but it shouldn't be blocking
 // This todo has a dependency on enabling a websocket to notify on book updates
 class DatabaseClass extends sqlite.Database {
