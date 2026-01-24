@@ -1,5 +1,5 @@
 import { Line } from "rc-progress"
-import { useContext, useEffect, useState, useCallback } from "react"
+import { useContext, useEffect, useState, useCallback, useEffectEvent } from "react"
 import { ListGroup, Modal } from "react-bootstrap"
 import { v4 as uuid } from "uuid"
 import { UploadResponse, type ConverterStatus, ConverterStatuses, Book, ApiMessage } from "@books/shared"
@@ -134,40 +134,32 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 		}
 		request.send(data)
 	}
+	const getConversionUpdate = useEffectEvent(async (controller: AbortController) => {
+		const ret = await Api.conversionUpdate(conversionId, percent, ToConverterStatus(status), workingFileNames, logOut, controller.signal)
 
-	// TODO: change this to useEffectEvent once that's no longer experimental: https://react.dev/reference/react/experimental_useEffectEvent
-	useEffect(() => {
-		const controller = new AbortController()
-		async function getConversionUpdate() {
-			const ret = await Api.conversionUpdate(conversionId, percent, ToConverterStatus(status), workingFileNames, logOut, controller.signal)
-
-			if (ret instanceof FetchAborted) {
-				return
-			}
-
-			const newStatus: UploadStatus = ret.converterStatus === "Complete" ? "Editing" : ret.converterStatus
-
-			onStatusChanged(id, newStatus)
-			setUploadState(prev => ({ ...prev, percent: ret.conversionPercent, status: newStatus, errorMessage: ret.errorMessage, workingFileNames: ret.fileNames }))
-
-			if (newStatus === "Editing") {
-				setEditingBook(ret.book)
-			}
-
-			// Only call this method again if the conversion is still happening and nothing changed
-			// If anything changed the effect will be rebuilt and the api call will be made again automatically
-			// Without this check api calls are constantly created and cancelled
-			if (conversionId && IsConversionRunning(status) && newStatus === status && percent === ret.conversionPercent) {
-				void getConversionUpdate()
-			}
+		if (ret instanceof FetchAborted) {
+			return
 		}
 
+		const newStatus: UploadStatus = ret.converterStatus === "Complete" ? "Editing" : ret.converterStatus
+
+		onStatusChanged(id, newStatus)
+		setUploadState(prev => ({ ...prev, percent: ret.conversionPercent, status: newStatus, errorMessage: ret.errorMessage, workingFileNames: ret.fileNames }))
+
+		if (newStatus === "Editing") {
+			setEditingBook(ret.book)
+		}
+	})
+
+	useEffect(() => {
+		const controller = new AbortController()
+
 		if (conversionId && IsConversionRunning(status)) {
-			void getConversionUpdate()
+			void getConversionUpdate(controller)
 		}
 
 		return () => controller.abort()
-	}, [status, percent, conversionId, logOut, onStatusChanged, id, workingFileNames])
+	}, [status, percent, conversionId, id, workingFileNames])
 
 	if (status === "Waiting") {
 		return (
