@@ -1,12 +1,12 @@
 import baseConfig from "../../eslint.config.ts"
 import reactHooks from "eslint-plugin-react-hooks"
-// import reactCompiler from "eslint-plugin-react-compiler"
 import reactPlugin from "eslint-plugin-react"
 import reactRefresh from "eslint-plugin-react-refresh"
 import globals from "globals"
 
 export default [
 	...baseConfig,
+	reactHooks.configs.flat["recommended-latest"],
 	reactRefresh.configs.recommended,
 	{
 		files: ["src/**/*.{js,mjs,cjs,jsx,mjsx,ts,tsx,mtsx}"],
@@ -19,10 +19,7 @@ export default [
 				...globals.browser,
 			},
 		},
-		plugins: { "react-hooks": reactHooks },
 		rules: {
-			"react-hooks/rules-of-hooks": "error",
-			"react-hooks/exhaustive-deps": "warn",
 			"@stylistic/jsx-max-props-per-line": [
 				"error", {
 					maximum: 1,
@@ -36,6 +33,4 @@ export default [
 			],
 		},
 	},
-	// TODO: uncomment when this is fixed: https://github.com/eslint/eslint/issues/19413
-	// reactCompiler.configs.recommended,
 ]
