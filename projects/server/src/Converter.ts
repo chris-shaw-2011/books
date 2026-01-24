@@ -11,6 +11,7 @@ import { type ConverterStatus } from "@books/shared"
 import bookList from "./BookList.ts"
 import folderSize from "get-folder-size"
 import * as mm from "music-metadata"
+import { setTimeout as promiseSetTimeout } from "timers/promises"
 
 // Set this to true if you want to make sure no intermediate files are removed as things are converted
 // This is useful in debugging if you want to check various stages of the conversion
@@ -187,6 +188,13 @@ export default class Converter {
 			await this.remove(intermediateOutputPath)
 			await this.remove(coverPhotoOutputPath)
 			await this.remove(filePath)
+		}
+		else if (filePath.toLowerCase().endsWith(".mp3")) {
+			// TODO: update the UloadBooks.tsx so it properly handles an upload going to complete right away and remove all this unecessary code and delay
+			outputFilePath = filePath
+			this.status = "Converting"
+			// wait one second so that the front end gets the conversion update
+			await promiseSetTimeout(1000)
 		}
 
 		if (outputFilePath) {

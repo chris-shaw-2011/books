@@ -395,6 +395,10 @@ server.post("/upload", { preHandler: validateRequest }, async (request, reply) =
 	let filePath = path.join(db.settings.uploadLocation, fileName)
 	const conversion = new Converter()
 
+	if (!shared.canBeUploaded(fileName)) {
+		return
+	}
+
 	while (fs.existsSync(filePath)) {
 		fileName = `${id}-${fileName}`
 		filePath = path.join(db.settings.uploadLocation, fileName)

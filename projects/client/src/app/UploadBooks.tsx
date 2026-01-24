@@ -2,7 +2,7 @@ import { Line } from "rc-progress"
 import { useContext, useEffect, useState, useCallback, useEffectEvent } from "react"
 import { ListGroup, Modal } from "react-bootstrap"
 import { v4 as uuid } from "uuid"
-import { UploadResponse, type ConverterStatus, ConverterStatuses, Book, ApiMessage } from "@books/shared"
+import { UploadResponse, type ConverterStatus, ConverterStatuses, Book, ApiMessage, AllowedUploadFileExtensions, canBeUploaded } from "@books/shared"
 import Api from "./api/LoggedInApi"
 import AppContext from "./context/AppContext"
 import OverlayComponent from "./components/OverlayComponent"
@@ -106,7 +106,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 	const id = props.id
 	const workingFileNames = uploadState.workingFileNames
 	const uploadFile = (files: FileList | null) => {
-		if (!files?.length || !(files[0].name.endsWith(".aax") || files[0].name.endsWith(".zip"))) {
+		if (!files?.length || !canBeUploaded(files[0].name)) {
 			return
 		}
 
@@ -166,7 +166,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 			<div>
 				<form>
 					<div>
-						<input type="file" required={true} placeholder="Specify File" accept=".aax,.zip" onChange={e => { uploadFile(e.currentTarget.files) }} />
+						<input type="file" required={true} placeholder="Specify File" accept={AllowedUploadFileExtensions.join(",")} onChange={e => { uploadFile(e.currentTarget.files) }} />
 					</div>
 				</form>
 			</div>
@@ -215,6 +215,7 @@ const UploadBooks = (props: Props) => {
 					<ul>
 						<li>Books downloaded from audible (.aax)</li>
 						<li>Zip file containing multiple mp3 or aax files of a single book</li>
+						<li>A single mp3 file</li>
 					</ul>
 					<ListGroup>
 						{arr.map(v => <ListGroup.Item key={v[0]}><FileUploadRow onStatusChanged={onStatusChanged} id={v[0]} /></ListGroup.Item>)}
