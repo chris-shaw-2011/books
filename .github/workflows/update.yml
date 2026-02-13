@@ -12,10 +12,13 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Prepare build
         uses: ./.github/actions/prepare-build
-        with:
-          fetch-depth: "0"
 
       - name: Compare bin with latest release
         id: compare
