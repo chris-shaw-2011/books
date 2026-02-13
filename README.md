@@ -39,7 +39,7 @@ This is a monorepo for a full-stack audiobook management application, including 
 Pull only the latest `docker-compose.yml` from the remote repo:
 
 ```sh
-git fetch origin && git checkout origin/main -- docker-compose.yml
+git fetch origin && git checkout origin/HEAD -- docker-compose.yml
 ```
 
 Start the container:
