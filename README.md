@@ -32,6 +32,21 @@ This is a monorepo for a full-stack audiobook management application, including 
 ### Prerequisites
 - Node.js >= 24.0.2
 - npm >= 10.9.2
+- Docker + Docker Compose (for containerized run)
+
+### Run with Docker (Published Image)
+
+Pull only the latest `docker-compose.yml` from the remote repo:
+
+```sh
+git fetch origin && git checkout origin/main -- docker-compose.yml
+```
+
+Start the container:
+
+```sh
+docker compose up -d
+```
 
 ### Install dependencies
 
@@ -67,7 +82,7 @@ npm run lint
 To run the server in Docker:
 
 ```sh
-docker-compose up --build
+docker compose up -d
 ```
 
 ## Scripts
@@ -94,4 +109,3 @@ Allow upload of zip of mp3s<br />
 Modification of metadata<br />
 Modify settings via web interface<br />
 Automatic download of all books in an audible account and convert to m4b<br />
-

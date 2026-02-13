@@ -1,0 +1,14 @@
+FROM node:lts-slim
+
+ARG APP_VERSION=dev
+LABEL org.opencontainers.image.version=$APP_VERSION
+ENV APP_VERSION=$APP_VERSION
+
+WORKDIR /home/node/app
+COPY bin ./bin
+
+WORKDIR /home/node/app/bin
+RUN npm install --omit=dev
+
+WORKDIR /home/node/app/bin/projects/server
+ENTRYPOINT ["node", "./src/index.js"]
