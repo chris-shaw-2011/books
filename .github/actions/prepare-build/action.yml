@@ -1,0 +1,33 @@
+name: Prepare Build
+description: Checkout code, setup Node, install dependencies, and build the project.
+
+inputs:
+  node-version:
+    description: Node.js version for setup-node.
+    required: false
+    default: lts/*
+  fetch-depth:
+    description: Checkout fetch-depth.
+    required: false
+    default: "1"
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: ${{ inputs.fetch-depth }}
+
+    - name: Setup node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install packages
+      shell: bash
+      run: npm install
+
+    - name: Build
+      shell: bash
+      run: npm run build

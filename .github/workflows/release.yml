@@ -14,19 +14,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-
-      - name: Install packages
-        run: npm install
-
-      - name: Build
-        run: npm run build
+      - name: Prepare build
+        uses: ./.github/actions/prepare-build
 
       - name: Tar
         uses: a7ul/tar-action@v1.2.0
