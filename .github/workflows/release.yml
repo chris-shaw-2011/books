@@ -1,8 +1,10 @@
 name: Release
 
 on:
-  - workflow_dispatch
-  - push
+  workflow_dispatch:
+  push:
+  schedule:
+    - cron: "0 3 * * *"
 
 permissions:
   contents: write
@@ -54,24 +56,109 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push container image
+      - name: Resolve next image version
+        id: image-version
+        env:
+          IMAGE_NAME: ${{ steps.image-name.outputs.value }}
+          BASE_VERSION: ${{ steps.package-version.outputs.current-version }}
+        run: |
+          set -euo pipefail
+
+          latest_version=""
+          if docker pull "${IMAGE_NAME}:latest" >/dev/null 2>&1; then
+            latest_version="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "${IMAGE_NAME}:latest" || true)"
+          fi
+
+          escaped_base="${BASE_VERSION//./\\.}"
+          next_suffix=0
+          if [[ "${latest_version}" =~ ^${escaped_base}\.([0-9]+)$ ]]; then
+            next_suffix=$((BASH_REMATCH[1] + 1))
+          fi
+
+          echo "value=${BASE_VERSION}.${next_suffix}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve base image digest
+        id: base-digest
+        run: |
+          set -euo pipefail
+
+          docker pull node:lts-slim >/dev/null
+          digest="$(docker inspect --format '{{ index .RepoDigests 0 }}' node:lts-slim | cut -d'@' -f2)"
+          echo "value=${digest}" >> "$GITHUB_OUTPUT"
+
+      - name: Build candidate container image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: Dockerfile.release
-          push: true
+          push: false
+          load: true
           build-args: |
-            APP_VERSION=${{ steps.package-version.outputs.current-version }}
-          tags: |
-            ${{ steps.image-name.outputs.value }}:${{ steps.package-version.outputs.current-version }}
-            ${{ steps.image-name.outputs.value }}:latest
+            APP_VERSION=${{ steps.image-version.outputs.value }}
+          tags: books-candidate:${{ github.sha }}
           labels: |
-            org.opencontainers.image.version=${{ steps.package-version.outputs.current-version }}
+            org.opencontainers.image.version=${{ steps.image-version.outputs.value }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.base.digest=${{ steps.base-digest.outputs.value }}
+
+      - name: Compare candidate with latest image
+        id: compare
+        env:
+          IMAGE_NAME: ${{ steps.image-name.outputs.value }}
+          CANDIDATE_IMAGE: books-candidate:${{ github.sha }}
+          CANDIDATE_BASE_DIGEST: ${{ steps.base-digest.outputs.value }}
+          CANDIDATE_REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          changed=true
+          reason="no previous image"
+
+          if docker image inspect "${IMAGE_NAME}:latest" >/dev/null 2>&1; then
+            candidate_deps_hash="$(docker run --rm "${CANDIDATE_IMAGE}" sh -lc 'cd /home/node/app/bin && npm ls --omit=dev --all --json --silent 2>/dev/null || true' | jq -S . | sha256sum | awk '{print $1}')"
+            previous_deps_hash="$(docker run --rm "${IMAGE_NAME}:latest" sh -lc 'cd /home/node/app/bin && npm ls --omit=dev --all --json --silent 2>/dev/null || true' | jq -S . | sha256sum | awk '{print $1}')"
+
+            previous_base_digest="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.base.digest" }}' "${IMAGE_NAME}:latest" || true)"
+            previous_revision="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "${IMAGE_NAME}:latest" || true)"
+
+            if [ "${candidate_deps_hash}" = "${previous_deps_hash}" ] \
+              && [ "${CANDIDATE_BASE_DIGEST}" = "${previous_base_digest}" ] \
+              && [ "${CANDIDATE_REVISION}" = "${previous_revision}" ]; then
+              changed=false
+              reason="base image, dependencies, and source revision are unchanged"
+            else
+              reason="base image, dependencies, or source revision changed"
+            fi
+          fi
+
+          echo "changed=${changed}" >> "$GITHUB_OUTPUT"
+          echo "reason=${reason}" >> "$GITHUB_OUTPUT"
+
+      - name: Skip push summary
+        if: steps.compare.outputs.changed != 'true'
+        run: |
+          echo "Skipping push: ${{ steps.compare.outputs.reason }}"
+
+      - name: Push new container image
+        if: steps.compare.outputs.changed == 'true'
+        env:
+          IMAGE_NAME: ${{ steps.image-name.outputs.value }}
+          IMAGE_VERSION: ${{ steps.image-version.outputs.value }}
+          CANDIDATE_IMAGE: books-candidate:${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          docker tag "${CANDIDATE_IMAGE}" "${IMAGE_NAME}:${IMAGE_VERSION}"
+          docker tag "${CANDIDATE_IMAGE}" "${IMAGE_NAME}:latest"
+
+          docker push "${IMAGE_NAME}:${IMAGE_VERSION}"
+          docker push "${IMAGE_NAME}:latest"
 
       - name: Package release
+        if: steps.compare.outputs.changed == 'true'
         uses: softprops/action-gh-release@v2
         with:
           files: |
             transpiled.tar.gz
-          tag_name: ${{ steps.package-version.outputs.current-version }}
+          tag_name: ${{ steps.image-version.outputs.value }}
           make_latest: true
