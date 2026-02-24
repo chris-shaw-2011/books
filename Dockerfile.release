@@ -1,14 +1,17 @@
-FROM node:lts-slim
+FROM node:current-slim
 
 ARG APP_VERSION=dev
 LABEL org.opencontainers.image.version=$APP_VERSION
 ENV APP_VERSION=$APP_VERSION
+ENV NODE_ENV=production
 
 WORKDIR /home/node/app
-COPY bin ./bin
+COPY --chown=node:node bin ./bin
 
-WORKDIR /home/node/app/bin
-RUN npm install --omit=dev
+# Build output should already contain production dependencies.
+RUN test -d /home/node/app/bin/node_modules || (echo "Missing /home/node/app/bin/node_modules. Run release build first." && exit 1)
+
+USER node
 
 WORKDIR /home/node/app/bin/projects/server
 ENTRYPOINT ["node", "./src/index.js"]

@@ -2,6 +2,12 @@ name: Build Container
 
 on:
   workflow_call:
+    inputs:
+      new_release_created:
+        description: True when invoked after creating a new GitHub release.
+        required: false
+        type: boolean
+        default: false
   workflow_dispatch:
   schedule:
     - cron: "0 3 * * *"
@@ -17,6 +23,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Resolve release-created flag
+        id: release-created
+        env:
+          INPUT_NEW_RELEASE_CREATED: ${{ inputs.new_release_created }}
+        run: |
+          set -euo pipefail
+
+          echo "Event: ${GITHUB_EVENT_NAME}"
+          echo "Input new_release_created: ${INPUT_NEW_RELEASE_CREATED:-<unset>}"
+
+          flag="false"
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_call" ] && [ "${INPUT_NEW_RELEASE_CREATED}" = "true" ]; then
+            flag="true"
+          fi
+
+          echo "Resolved release-created flag: ${flag}"
+          echo "value=${flag}" >> "$GITHUB_OUTPUT"
+
       - name: Download latest release artifact
         id: release
         env:
@@ -24,107 +48,94 @@ jobs:
         run: |
           set -euo pipefail
 
-          found=true
-          reason="ready"
-
+          echo "Fetching latest release for ${GITHUB_REPOSITORY}"
           release_json="$(curl -fsSL \
             -H "Authorization: Bearer ${GITHUB_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest" || true)"
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest")"
 
-          if [ -z "${release_json}" ] || ! echo "${release_json}" | jq -e '.id' >/dev/null 2>&1; then
-            found=false
-            reason="no latest release found"
-          else
-            release_tag="$(echo "${release_json}" | jq -r '.tag_name // empty')"
-            base_version="${release_tag#v}"
-            if ! [[ "${base_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              found=false
-              reason="invalid latest release tag_name"
-            else
-              echo "base-version=${base_version}" >> "$GITHUB_OUTPUT"
-
-              asset_api_url="$(echo "${release_json}" | jq -r '.assets[]? | select(.name == "transpiled.tar.gz") | .url' | head -n 1)"
-              if [ -z "${asset_api_url}" ] || [ "${asset_api_url}" = "null" ]; then
-                found=false
-                reason="latest release missing transpiled.tar.gz"
-              else
-                curl -fsSL \
-                  -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                  -H "Accept: application/octet-stream" \
-                  "${asset_api_url}" \
-                  -o /tmp/transpiled.tar.gz
-
-                rm -rf ./bin
-                tar -xzf /tmp/transpiled.tar.gz -C .
-
-                if [ ! -d ./bin ]; then
-                  found=false
-                  reason="release archive does not contain ./bin"
-                fi
-              fi
-            fi
+          if ! echo "${release_json}" | jq -e '.id' >/dev/null 2>&1; then
+            echo "No latest release found."
+            exit 1
           fi
 
-          echo "found=${found}" >> "$GITHUB_OUTPUT"
-          echo "reason=${reason}" >> "$GITHUB_OUTPUT"
+          release_tag="$(echo "${release_json}" | jq -r '.tag_name // empty')"
+          release_version="${release_tag#v}"
+          echo "Latest release tag: ${release_tag}"
+          echo "Normalized release version: ${release_version}"
+          if ! [[ "${release_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid latest release tag_name: ${release_tag}"
+            exit 1
+          fi
+          echo "version=${release_version}" >> "$GITHUB_OUTPUT"
 
-      - name: Skip build summary
-        if: steps.release.outputs.found != 'true'
-        run: |
-          echo "Skipping container build: ${{ steps.release.outputs.reason }}"
+          asset_api_url="$(echo "${release_json}" | jq -r '.assets[]? | select(.name == "transpiled.tar.gz") | .url' | head -n 1)"
+          if [ -z "${asset_api_url}" ] || [ "${asset_api_url}" = "null" ]; then
+            echo "Latest release is missing transpiled.tar.gz."
+            exit 1
+          fi
+          echo "Found transpiled.tar.gz asset. Downloading."
+
+          curl -fsSL \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/octet-stream" \
+            "${asset_api_url}" \
+            -o /tmp/transpiled.tar.gz
+
+          rm -rf ./bin
+          tar -xzf /tmp/transpiled.tar.gz -C .
+
+          if [ ! -d ./bin ]; then
+            echo "Release archive does not contain ./bin."
+            exit 1
+          fi
+          echo "Release artifact extracted into ./bin"
 
       - name: Normalize image name
-        if: steps.release.outputs.found == 'true'
         id: image-name
         run: echo "value=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
-        if: steps.release.outputs.found == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
-        if: steps.release.outputs.found == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Resolve next image version
-        if: steps.release.outputs.found == 'true'
-        id: image-version
+      - name: Read latest uploaded container metadata
+        id: latest-image
         env:
           IMAGE_NAME: ${{ steps.image-name.outputs.value }}
-          BASE_VERSION: ${{ steps.release.outputs.base-version }}
         run: |
           set -euo pipefail
 
-          latest_version=""
+          found=false
+          version=""
+          layers=""
+
           if docker pull "${IMAGE_NAME}:latest" >/dev/null 2>&1; then
-            latest_version="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "${IMAGE_NAME}:latest" || true)"
+            found=true
+            version="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "${IMAGE_NAME}:latest" || true)"
+            layers="$(docker inspect --format '{{json .RootFS.Layers}}' "${IMAGE_NAME}:latest" || true)"
           fi
 
-          escaped_base="${BASE_VERSION//./\\.}"
-          next_suffix=0
-          if [[ "${latest_version}" =~ ^${escaped_base}\.([0-9]+)$ ]]; then
-            next_suffix=$((BASH_REMATCH[1] + 1))
+          if [ "${found}" = "true" ]; then
+            layers_hash="$(printf '%s' "${layers}" | sha256sum | awk '{print $1}')"
+            echo "Previous latest image found: ${IMAGE_NAME}:latest"
+            echo "Previous version label: ${version}"
+            echo "Previous layers hash: ${layers_hash}"
+          else
+            echo "No previous latest image found at ${IMAGE_NAME}:latest"
           fi
 
-          echo "value=${BASE_VERSION}.${next_suffix}" >> "$GITHUB_OUTPUT"
+          echo "found=${found}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "layers=${layers}" >> "$GITHUB_OUTPUT"
 
-      - name: Resolve base image digest
-        if: steps.release.outputs.found == 'true'
-        id: base-digest
-        run: |
-          set -euo pipefail
-
-          docker pull node:lts-slim >/dev/null
-          digest="$(docker inspect --format '{{ index .RepoDigests 0 }}' node:lts-slim | cut -d'@' -f2)"
-          echo "value=${digest}" >> "$GITHUB_OUTPUT"
-
-      - name: Build candidate container image
-        if: steps.release.outputs.found == 'true'
+      - name: Build probe image from Dockerfile
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -132,66 +143,118 @@ jobs:
           push: false
           load: true
           build-args: |
-            APP_VERSION=${{ steps.image-version.outputs.value }}
-          tags: books-candidate:${{ github.sha }}
-          labels: |
-            org.opencontainers.image.version=${{ steps.image-version.outputs.value }}
-            org.opencontainers.image.base.digest=${{ steps.base-digest.outputs.value }}
-            org.opencontainers.image.release.version=${{ steps.release.outputs.base-version }}
+            APP_VERSION=probe
+          tags: books-probe:${{ github.sha }}
 
-      - name: Compare candidate with latest image
-        if: steps.release.outputs.found == 'true'
-        id: compare
+      - name: Inspect probe image
+        id: probe
         env:
-          IMAGE_NAME: ${{ steps.image-name.outputs.value }}
-          BASE_VERSION: ${{ steps.release.outputs.base-version }}
-          CANDIDATE_IMAGE: books-candidate:${{ github.sha }}
-          CANDIDATE_BASE_DIGEST: ${{ steps.base-digest.outputs.value }}
+          PROBE_IMAGE: books-probe:${{ github.sha }}
         run: |
           set -euo pipefail
 
-          changed=true
-          reason="no previous image"
+          layers="$(docker inspect --format '{{json .RootFS.Layers}}' "${PROBE_IMAGE}")"
+          layers_hash="$(printf '%s' "${layers}" | sha256sum | awk '{print $1}')"
+          echo "Probe image built: ${PROBE_IMAGE}"
+          echo "Probe layers hash: ${layers_hash}"
+          echo "layers=${layers}" >> "$GITHUB_OUTPUT"
 
-          if docker image inspect "${IMAGE_NAME}:latest" >/dev/null 2>&1; then
-            previous_release_version="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.release.version" }}' "${IMAGE_NAME}:latest" || true)"
+      - name: Decide whether to build and what version to use
+        id: decision
+        env:
+          RELEASE_CREATED: ${{ steps.release-created.outputs.value }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          PREVIOUS_FOUND: ${{ steps.latest-image.outputs.found }}
+          PREVIOUS_VERSION: ${{ steps.latest-image.outputs.version }}
+          PREVIOUS_LAYERS: ${{ steps.latest-image.outputs.layers }}
+          PROBE_LAYERS: ${{ steps.probe.outputs.layers }}
+        run: |
+          set -euo pipefail
 
-            if [ "${previous_release_version}" != "${BASE_VERSION}" ]; then
-              changed=true
-              reason="latest release version changed"
+          should_build=false
+          target_version=""
+          reason=""
+
+          echo "Decision inputs:"
+          echo "  release_created=${RELEASE_CREATED}"
+          echo "  release_version=${RELEASE_VERSION}"
+          echo "  previous_found=${PREVIOUS_FOUND}"
+          echo "  previous_version=${PREVIOUS_VERSION}"
+
+          prev_layers_hash="$(printf '%s' "${PREVIOUS_LAYERS}" | sha256sum | awk '{print $1}')"
+          probe_layers_hash="$(printf '%s' "${PROBE_LAYERS}" | sha256sum | awk '{print $1}')"
+          echo "  previous_layers_hash=${prev_layers_hash}"
+          echo "  probe_layers_hash=${probe_layers_hash}"
+
+          if [ "${RELEASE_CREATED}" = "true" ]; then
+            should_build=true
+            target_version="${RELEASE_VERSION}"
+            reason="new release created"
+          else
+            if [ "${PREVIOUS_FOUND}" = "true" ] && [ -n "${PREVIOUS_LAYERS}" ] && [ "${PREVIOUS_LAYERS}" = "${PROBE_LAYERS}" ]; then
+              should_build=false
+              reason="runtime image layers unchanged"
             else
-              candidate_deps_hash="$(docker run --rm --entrypoint sh "${CANDIDATE_IMAGE}" -lc 'cd /home/node/app/bin && npm ls --omit=dev --all --json --silent 2>/dev/null || true' | jq -S . | sha256sum | awk '{print $1}')"
-              previous_deps_hash="$(docker run --rm --entrypoint sh "${IMAGE_NAME}:latest" -lc 'cd /home/node/app/bin && npm ls --omit=dev --all --json --silent 2>/dev/null || true' | jq -S . | sha256sum | awk '{print $1}')"
-              previous_base_digest="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.base.digest" }}' "${IMAGE_NAME}:latest" || true)"
+              escaped_release="${RELEASE_VERSION//./\\.}"
+              next_patch=1
 
-              if [ "${candidate_deps_hash}" = "${previous_deps_hash}" ] && [ "${CANDIDATE_BASE_DIGEST}" = "${previous_base_digest}" ]; then
-                changed=false
-                reason="release version, dependencies, and base image digest are unchanged"
+              if [[ "${PREVIOUS_VERSION}" =~ ^${escaped_release}\.([0-9]+)$ ]]; then
+                next_patch=$((BASH_REMATCH[1] + 1))
+              elif [ "${PREVIOUS_VERSION}" = "${RELEASE_VERSION}" ]; then
+                next_patch=1
+              fi
+
+              should_build=true
+              target_version="${RELEASE_VERSION}.${next_patch}"
+
+              if [ "${PREVIOUS_FOUND}" != "true" ]; then
+                reason="no previous uploaded image"
               else
-                reason="dependencies or base image digest changed"
+                reason="runtime image layers changed"
               fi
             fi
           fi
 
-          echo "changed=${changed}" >> "$GITHUB_OUTPUT"
+          echo "Decision result:"
+          echo "  should_build=${should_build}"
+          echo "  target_version=${target_version}"
+          echo "  reason=${reason}"
+
+          echo "should-build=${should_build}" >> "$GITHUB_OUTPUT"
+          echo "target-version=${target_version}" >> "$GITHUB_OUTPUT"
           echo "reason=${reason}" >> "$GITHUB_OUTPUT"
 
-      - name: Skip push summary
-        if: steps.release.outputs.found == 'true' && steps.compare.outputs.changed != 'true'
-        run: |
-          echo "Skipping push: ${{ steps.compare.outputs.reason }}"
+      - name: Build candidate image
+        if: steps.decision.outputs.should-build == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.release
+          push: false
+          load: true
+          build-args: |
+            APP_VERSION=${{ steps.decision.outputs.target-version }}
+          tags: books-candidate:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.decision.outputs.target-version }}
+            org.opencontainers.image.release.version=${{ steps.release.outputs.version }}
+            org.opencontainers.image.release.created=${{ steps.release-created.outputs.value }}
 
-      - name: Push new container image
-        if: steps.release.outputs.found == 'true' && steps.compare.outputs.changed == 'true'
+      - name: Push container image
+        if: steps.decision.outputs.should-build == 'true'
         env:
           IMAGE_NAME: ${{ steps.image-name.outputs.value }}
-          IMAGE_VERSION: ${{ steps.image-version.outputs.value }}
+          TARGET_VERSION: ${{ steps.decision.outputs.target-version }}
           CANDIDATE_IMAGE: books-candidate:${{ github.sha }}
         run: |
           set -euo pipefail
 
-          docker tag "${CANDIDATE_IMAGE}" "${IMAGE_NAME}:${IMAGE_VERSION}"
+          echo "Pushing tags:"
+          echo "  ${IMAGE_NAME}:${TARGET_VERSION}"
+          echo "  ${IMAGE_NAME}:latest"
+
+          docker tag "${CANDIDATE_IMAGE}" "${IMAGE_NAME}:${TARGET_VERSION}"
           docker tag "${CANDIDATE_IMAGE}" "${IMAGE_NAME}:latest"
 
-          docker push "${IMAGE_NAME}:${IMAGE_VERSION}"
+          docker push "${IMAGE_NAME}:${TARGET_VERSION}"
           docker push "${IMAGE_NAME}:latest"

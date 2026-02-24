@@ -22,3 +22,12 @@ runs:
     - name: Build
       shell: bash
       run: npm run build
+
+    - name: Bundle production dependencies into bin
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        cp ./package-lock.json ./bin/package-lock.json
+        cd ./bin
+        npm ci --omit=dev

@@ -44,4 +44,6 @@ jobs:
   build-container:
     needs: build
     uses: ./.github/workflows/build-container.yml
+    with:
+      new_release_created: true
     secrets: inherit
