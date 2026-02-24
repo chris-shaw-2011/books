@@ -9,7 +9,7 @@
 		"./projects/*"
 	],
 	"private": true,
-	"packageManager": "npm@10.9.2",
+	"packageManager": "npm@11.10.1",
 	"scripts": {
 		"start": "concurrently \"npm run start-client\" \"npm run start-server\"",
 		"start-production": "npm run build && cpx projects/server/db.sqlite bin/projects/server && cd bin && npm install --omit=dev && cd projects/server && npm run start-production",
@@ -31,15 +31,15 @@
 	},
 	"type": "module",
 	"devDependencies": {
-		"@eslint/js": "^9.39.1",
-		"@stylistic/eslint-plugin": "^5.7.1",
+		"@eslint/js": "^9.39.3",
+		"@stylistic/eslint-plugin": "^5.9.0",
 		"concurrently": "^9.2.1",
 		"cpx2": "^8.0.0",
-		"eslint": "^9.39.2",
-		"knip": "^5.82.1",
+		"eslint": "^9.39.3",
+		"knip": "^5.85.0",
 		"sherif": "^1.10.0",
 		"source-map-explorer": "^2.5.3",
 		"typescript": "^5.9.3",
-		"typescript-eslint": "^8.53.1"
+		"typescript-eslint": "^8.56.1"
 	}
 }

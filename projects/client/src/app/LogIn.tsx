@@ -12,7 +12,7 @@ const LogIn = () => {
 	const [email, setEmail] = useState("")
 	const [password, setPassword] = useState("")
 	const [logInState, setLogInState] = useState({ loggingIn: false, failedMessage: "" })
-	const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+	const handleSubmit = async (event: React.SyntheticEvent<HTMLFormElement, SubmitEvent>) => {
 		const form = event.currentTarget
 
 		event.preventDefault()

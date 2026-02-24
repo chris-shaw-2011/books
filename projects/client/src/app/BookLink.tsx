@@ -213,7 +213,7 @@ const BookLink = (props: BookProps) => {
 			e.preventDefault()
 		}
 	}
-	const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+	const handleSubmit = async (event: React.SyntheticEvent<HTMLFormElement, SubmitEvent>) => {
 		const form = event.currentTarget
 
 		event.preventDefault()

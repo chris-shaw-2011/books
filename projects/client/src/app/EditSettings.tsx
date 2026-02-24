@@ -45,7 +45,7 @@ const EditSettings = (props: Props) => {
 		void getSettings()
 	}, [logOut, token])
 
-	const handleSubmit = async (event: React.FormEvent<HTMLFormElement>, settings: Settings) => {
+	const handleSubmit = async (event: React.SyntheticEvent<HTMLFormElement, SubmitEvent>, settings: Settings) => {
 		setSaving(true)
 		const form = event.currentTarget
 
