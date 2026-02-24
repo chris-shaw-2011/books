@@ -34,7 +34,7 @@ jobs:
           echo "Input new_release_created: ${INPUT_NEW_RELEASE_CREATED:-<unset>}"
 
           flag="false"
-          if [ "${GITHUB_EVENT_NAME}" = "workflow_call" ] && [ "${INPUT_NEW_RELEASE_CREATED}" = "true" ]; then
+          if [ "${INPUT_NEW_RELEASE_CREATED:-false}" = "true" ]; then
             flag="true"
           fi
 
@@ -105,6 +105,64 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Resolve base image reference from Dockerfile.release
+        id: base-image
+        run: |
+          set -euo pipefail
+
+          base_ref="$(awk '
+            BEGIN { IGNORECASE=1 }
+            /^[[:space:]]*FROM[[:space:]]+/ {
+              line = $0
+              sub(/^[[:space:]]*FROM[[:space:]]+/, "", line)
+              n = split(line, parts, /[[:space:]]+/)
+              image = ""
+              for (i = 1; i <= n; i++) {
+                token = parts[i]
+                if (token ~ /^--/) {
+                  continue
+                }
+                image = token
+                break
+              }
+              if (image != "") {
+                last = image
+              }
+            }
+            END {
+              if (last != "") {
+                print last
+              }
+            }
+          ' Dockerfile.release)"
+
+          if [ -z "${base_ref}" ]; then
+            echo "Failed to parse base image from Dockerfile.release"
+            exit 1
+          fi
+
+          echo "Resolved base image reference: ${base_ref}"
+          echo "ref=${base_ref}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve current base image digest
+        id: current-base
+        env:
+          BASE_IMAGE_REF: ${{ steps.base-image.outputs.ref }}
+        run: |
+          set -euo pipefail
+
+          inspect_output="$(docker buildx imagetools inspect "${BASE_IMAGE_REF}")"
+          base_digest="$(printf '%s\n' "${inspect_output}" | awk '/^[[:space:]]*Digest:/ {print $2; exit}')"
+
+          if [ -z "${base_digest}" ]; then
+            echo "Failed to resolve digest for base image ${BASE_IMAGE_REF}"
+            exit 1
+          fi
+
+          echo "Current base image reference: ${BASE_IMAGE_REF}"
+          echo "Current base image digest: ${base_digest}"
+          echo "digest=${base_digest}" >> "$GITHUB_OUTPUT"
+
       - name: Read latest uploaded container metadata
         id: latest-image
         env:
@@ -114,50 +172,29 @@ jobs:
 
           found=false
           version=""
-          layers=""
+          base_digest=""
+          release_version=""
 
           if docker pull "${IMAGE_NAME}:latest" >/dev/null 2>&1; then
             found=true
             version="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "${IMAGE_NAME}:latest" || true)"
-            layers="$(docker inspect --format '{{json .RootFS.Layers}}' "${IMAGE_NAME}:latest" || true)"
+            base_digest="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.base.digest" }}' "${IMAGE_NAME}:latest" || true)"
+            release_version="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.release.version" }}' "${IMAGE_NAME}:latest" || true)"
           fi
 
           if [ "${found}" = "true" ]; then
-            layers_hash="$(printf '%s' "${layers}" | sha256sum | awk '{print $1}')"
             echo "Previous latest image found: ${IMAGE_NAME}:latest"
             echo "Previous version label: ${version}"
-            echo "Previous layers hash: ${layers_hash}"
+            echo "Previous release version label: ${release_version}"
+            echo "Previous base digest label: ${base_digest}"
           else
             echo "No previous latest image found at ${IMAGE_NAME}:latest"
           fi
 
           echo "found=${found}" >> "$GITHUB_OUTPUT"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "layers=${layers}" >> "$GITHUB_OUTPUT"
-
-      - name: Build probe image from Dockerfile
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile.release
-          push: false
-          load: true
-          build-args: |
-            APP_VERSION=probe
-          tags: books-probe:${{ github.sha }}
-
-      - name: Inspect probe image
-        id: probe
-        env:
-          PROBE_IMAGE: books-probe:${{ github.sha }}
-        run: |
-          set -euo pipefail
-
-          layers="$(docker inspect --format '{{json .RootFS.Layers}}' "${PROBE_IMAGE}")"
-          layers_hash="$(printf '%s' "${layers}" | sha256sum | awk '{print $1}')"
-          echo "Probe image built: ${PROBE_IMAGE}"
-          echo "Probe layers hash: ${layers_hash}"
-          echo "layers=${layers}" >> "$GITHUB_OUTPUT"
+          echo "base-digest=${base_digest}" >> "$GITHUB_OUTPUT"
+          echo "release-version=${release_version}" >> "$GITHUB_OUTPUT"
 
       - name: Decide whether to build and what version to use
         id: decision
@@ -166,8 +203,9 @@ jobs:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
           PREVIOUS_FOUND: ${{ steps.latest-image.outputs.found }}
           PREVIOUS_VERSION: ${{ steps.latest-image.outputs.version }}
-          PREVIOUS_LAYERS: ${{ steps.latest-image.outputs.layers }}
-          PROBE_LAYERS: ${{ steps.probe.outputs.layers }}
+          PREVIOUS_BASE_DIGEST: ${{ steps.latest-image.outputs.base-digest }}
+          PREVIOUS_RELEASE_VERSION: ${{ steps.latest-image.outputs.release-version }}
+          CURRENT_BASE_DIGEST: ${{ steps.current-base.outputs.digest }}
         run: |
           set -euo pipefail
 
@@ -180,20 +218,21 @@ jobs:
           echo "  release_version=${RELEASE_VERSION}"
           echo "  previous_found=${PREVIOUS_FOUND}"
           echo "  previous_version=${PREVIOUS_VERSION}"
-
-          prev_layers_hash="$(printf '%s' "${PREVIOUS_LAYERS}" | sha256sum | awk '{print $1}')"
-          probe_layers_hash="$(printf '%s' "${PROBE_LAYERS}" | sha256sum | awk '{print $1}')"
-          echo "  previous_layers_hash=${prev_layers_hash}"
-          echo "  probe_layers_hash=${probe_layers_hash}"
+          echo "  previous_release_version=${PREVIOUS_RELEASE_VERSION}"
+          echo "  previous_base_digest=${PREVIOUS_BASE_DIGEST}"
+          echo "  current_base_digest=${CURRENT_BASE_DIGEST}"
 
           if [ "${RELEASE_CREATED}" = "true" ]; then
             should_build=true
             target_version="${RELEASE_VERSION}"
             reason="new release created"
           else
-            if [ "${PREVIOUS_FOUND}" = "true" ] && [ -n "${PREVIOUS_LAYERS}" ] && [ "${PREVIOUS_LAYERS}" = "${PROBE_LAYERS}" ]; then
+            if [ "${PREVIOUS_FOUND}" = "true" ] \
+              && [ "${PREVIOUS_RELEASE_VERSION}" = "${RELEASE_VERSION}" ] \
+              && [ -n "${PREVIOUS_BASE_DIGEST}" ] \
+              && [ "${PREVIOUS_BASE_DIGEST}" = "${CURRENT_BASE_DIGEST}" ]; then
               should_build=false
-              reason="runtime image layers unchanged"
+              reason="base image digest unchanged for latest release"
             else
               escaped_release="${RELEASE_VERSION//./\\.}"
               next_patch=1
@@ -209,8 +248,12 @@ jobs:
 
               if [ "${PREVIOUS_FOUND}" != "true" ]; then
                 reason="no previous uploaded image"
+              elif [ "${PREVIOUS_RELEASE_VERSION}" != "${RELEASE_VERSION}" ]; then
+                reason="latest release has no corresponding container tag yet"
+              elif [ -z "${PREVIOUS_BASE_DIGEST}" ]; then
+                reason="previous image missing base digest label"
               else
-                reason="runtime image layers changed"
+                reason="base image digest changed"
               fi
             fi
           fi
@@ -239,6 +282,8 @@ jobs:
             org.opencontainers.image.version=${{ steps.decision.outputs.target-version }}
             org.opencontainers.image.release.version=${{ steps.release.outputs.version }}
             org.opencontainers.image.release.created=${{ steps.release-created.outputs.value }}
+            org.opencontainers.image.base.name=${{ steps.base-image.outputs.ref }}
+            org.opencontainers.image.base.digest=${{ steps.current-base.outputs.digest }}
 
       - name: Push container image
         if: steps.decision.outputs.should-build == 'true'
