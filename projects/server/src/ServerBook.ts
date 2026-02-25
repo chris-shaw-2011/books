@@ -1,6 +1,9 @@
 import { Book, type Status } from "@books/shared"
+import { execFile } from "child_process"
+import { ffmpegPath } from "ffmpeg-ffprobe-static"
 import * as mm from "music-metadata"
 import fs from "fs"
+import NodeID3 from "node-id3"
 import ServerDirectory from "./ServerDirectory.ts"
 import path from "path"
 
@@ -23,6 +26,54 @@ export default class ServerBook extends Book {
 			this.fullPath = json.fullPath
 			this.parent = json.parent
 			this.photoPath = json.photoPath
+		}
+	}
+
+	private async extractCoverFromAttachedPicture(fullPath: string) {
+		const ffmpegBinary = ffmpegPath
+
+		if (!ffmpegBinary) {
+			return false
+		}
+
+		try {
+			// Some audio files have invalid id3 tags that music-metadata can't parse but ffmpeg can so we fall back to ffmpeg to try and get cover images
+			await new Promise<void>((resolve, reject) => {
+				execFile(
+					ffmpegBinary,
+					["-y", "-v", "error", "-i", fullPath, "-map", "0:v:0", "-frames:v", "1", "-c:v", "copy", this.photoPath],
+					(error: Error | null) => {
+						if (error) {
+							reject(error)
+						}
+						else {
+							resolve()
+						}
+					},
+				)
+			})
+
+			const photoStats = await fs.promises.stat(this.photoPath).catch(() => undefined)
+
+			if (!photoStats || photoStats.size === 0) {
+				await fs.promises.rm(this.photoPath, { force: true })
+
+				return false
+			}
+
+			// If ffmpeg found an image and we're dealing with an mp3, write the extracted image to the id3 tag so that the mp3 has a proper cover photo
+			if (path.extname(fullPath).toLowerCase() === ".mp3") {
+				await NodeID3.Promise.update({
+					image: this.photoPath,
+				}, fullPath)
+			}
+
+			return true
+		}
+		catch {
+			await fs.promises.rm(this.photoPath, { force: true })
+
+			return false
 		}
 	}
 
@@ -56,8 +107,13 @@ export default class ServerBook extends Book {
 		this.narrator = tags.composer?.length ? tags.composer.join(", ") : ""
 		this.genre = tags.genre?.length ? tags.genre.join(", ") : ""
 
-		if (tags.picture?.length && !fs.existsSync(this.photoPath)) {
-			fs.writeFileSync(this.photoPath, new Uint8Array(tags.picture[0].data))
+		if (!fs.existsSync(this.photoPath)) {
+			if (tags.picture?.length) {
+				await fs.promises.writeFile(this.photoPath, tags.picture[0].data)
+			}
+			else {
+				await this.extractCoverFromAttachedPicture(fullPath)
+			}
 		}
 
 		this.id = bookUri
