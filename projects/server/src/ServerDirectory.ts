@@ -89,7 +89,7 @@ export default class ServerDirectory extends Directory {
 			const fullPath = path.join(currPath, p.name)
 
 			if (p.isDirectory()) {
-				if (!updatePathFullPath || ServerDirectory.isPartialPathMatch(fullPath, updatePathFullPath)) {
+				if (!updatePathFullPath || ServerDirectory.isPartialPathMatch(updatePathFullPath, fullPath)) {
 					const dir = new ServerDirectory()
 
 					dir.name = p.name
