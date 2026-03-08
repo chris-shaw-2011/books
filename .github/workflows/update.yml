@@ -70,6 +70,8 @@ jobs:
       - name: Bump & Push patch version
         if: steps.compare.outputs.changed == 'true'
         id: bump
+        env:
+          RELEASE_TRIGGER_TOKEN: ${{ secrets.RELEASE_TRIGGER_TOKEN }}
         run: |
           set -euo pipefail
 
@@ -99,5 +101,10 @@ jobs:
             exit 0
           fi
 
+          if [ -z "${RELEASE_TRIGGER_TOKEN:-}" ]; then
+            echo "::error::Missing secret RELEASE_TRIGGER_TOKEN. Set a PAT/app token with repo write access so this push triggers the Release workflow."
+            exit 1
+          fi
+
           git commit -m "chore: bump version to ${new_version}"
-          git push origin HEAD:${GITHUB_REF_NAME}
+          git push "https://x-access-token:${RELEASE_TRIGGER_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"
