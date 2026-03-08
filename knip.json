@@ -3,9 +3,8 @@
 	"workspaces": {
 		"projects/client": {
 			"entry": [
-				"src/index.tsx",
 				"src/app/AdminNavOptions.tsx",
-				"src/app/api/AdminApi.tsx",
+				"src/app/api/AdminApi.ts",
 				"src/app/Authenticated.tsx",
 				"src/app/EditSettings.tsx",
 				"src/app/Navigation.tsx",
