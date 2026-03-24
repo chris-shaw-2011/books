@@ -1,7 +1,13 @@
 {
+	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
-		"baseUrl": ".",
-		"rootDir": "../../",
+		"lib": [
+			"ESNext"
+		],
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext"
 	},
-	"extends": "./tsconfig.server.json",
+	"include": [
+		"src/**/*.ts"
+	]
 }

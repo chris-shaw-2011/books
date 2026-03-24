@@ -264,7 +264,7 @@ const BookLink = (props: BookProps) => {
 
 	useEffect(() => {
 		if (showPathOptions) {
-			document.getElementsByClassName(styles.folderList)[0].getElementsByClassName(styles.selected)[0].scrollIntoView({ behavior: "auto", block: "nearest" })
+			document.getElementsByClassName(styles.folderList)[0]?.getElementsByClassName(styles.selected)[0]?.scrollIntoView({ behavior: "auto", block: "nearest" })
 		}
 	}, [showPathOptions])
 

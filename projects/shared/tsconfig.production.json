@@ -1,8 +1,10 @@
 {
 	"compilerOptions": {
 		"noEmit": false,
+		"allowImportingTsExtensions": false,
+		"rewriteRelativeImportExtensions": true,
 		"composite": true,
 		"outDir": "../../bin/projects/shared"
 	},
-	"extends": "./tsconfig.json",
+	"extends": "./tsconfig.json"
 }

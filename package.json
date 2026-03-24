@@ -21,25 +21,21 @@
 		"build-server": "npm run build --workspace=@books/server",
 		"build-shared": "npm run build --workspace=@books/shared",
 		"copy-package": "cpx \"./package.json\" \"./bin\"",
-		"lint": "eslint . --max-warnings 0 --report-unused-disable-directives-severity error && npm run lint-client && npm run lint-server && npm run lint-shared && knip && npm run sherif",
-		"lint-client": "npm run lint --workspace=@books/client",
-		"lint-server": "npm run lint --workspace=@books/server",
-		"lint-shared": "npm run lint --workspace=@books/shared",
+		"lint": "npm run lint:root && npm run lint:workspaces",
+		"lint:root": "eslint . --ignore-pattern \"projects/**\"",
+		"lint:workspaces": "npm run lint --workspaces --if-present",
+		"lint:fix": "npm run lint:fix:root && npm run lint:fix --workspaces --if-present",
+		"lint:fix:root": "eslint . --fix --ignore-pattern \"projects/**\"",
 		"analyze": "source-map-explorer 'bin/client/*.js'",
-		"knip": "knip",
+		"knip": "knip --config knip.config.ts --reporter compact",
 		"sherif": "sherif"
 	},
 	"type": "module",
 	"devDependencies": {
-		"@eslint/js": "^9.39.3",
-		"@stylistic/eslint-plugin": "^5.10.0",
+		"@chris-shaw-2011/lint": "^1.0.0",
 		"concurrently": "^9.2.1",
 		"cpx2": "^8.0.0",
-		"eslint": "^9.39.3",
-		"knip": "^5.86.0",
-		"sherif": "^1.10.0",
 		"source-map-explorer": "^2.5.3",
-		"typescript": "^5.9.3",
-		"typescript-eslint": "^8.56.1"
+		"typescript": "^5.9.3"
 	}
 }

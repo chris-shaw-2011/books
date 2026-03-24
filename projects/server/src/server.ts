@@ -33,7 +33,7 @@ const getNewExpiration = () => dayjs().add(24, "hours")
 const conversions = new Map<string, Converter>()
 const conversionMutex = new Mutex()
 const server = Fastify({ logger: false, bodyLimit: 10_000_000_000 })
-const getAllUsers = async () => await db.all<shared.User[]>("SELECT id, email, isAdmin, lastLogIn FROM user")
+const getAllUsers = async (): Promise<shared.User[]> => (await db.all("SELECT id, email, isAdmin, lastLogIn FROM user")).map((user: Partial<shared.User>) => new shared.User(user))
 const getUserById = async (userId: string) => await db.get<ServerUser>("SELECT * FROM user WHERE id = ?", userId)
 const rootPath = path.join(rootDir, "../../../../bin/projects/client")
 const validatePassword = async (email: string, password: string, reply: FastifyReply) => {
@@ -569,7 +569,7 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 })
 
 server.get<{ Params: Record<string, string> }>("/files/*", { preHandler: validateRequest }, (request, reply) => {
-	const filePath = request.params["*"]
+	const filePath = request.params["*"] ?? ""
 
 	if (filePath.endsWith(".jpg")) {
 		reply.sendFile(filePath, db.settings.baseBooksPath)
@@ -603,7 +603,7 @@ server.get<{ Params: Record<string, string> }>("/assets/authenticated/*", { preH
 
 // This handles requests to the root of the site in production
 server.get<{ Params: Record<string, string> }>("/*", async (request, reply) => {
-	const filePath = request.params["*"]
+	const filePath = request.params["*"] ?? ""
 
 	await reply.sendFile(filePath, rootPath)
 })

@@ -1,13 +1,18 @@
 {
-	"compilerOptions": {
-		"declaration": true,
-		"sourceMap": true,
-	},
 	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"lib": [
+			"ESNext",
+			"DOM"
+		],
+		"types": [
+			"node"
+		],
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext"
+	},
 	"include": [
-		"src/**/*",
-	],
-	"exclude": [
-		"fixPackageMain.ts",
-	],
+		"src/**/*.ts",
+		"fixPackageMain.ts"
+	]
 }

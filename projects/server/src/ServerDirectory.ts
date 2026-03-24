@@ -50,18 +50,13 @@ export default class ServerDirectory extends Directory {
 	deleteBook(fullPath: path.ParsedPath) {
 		const bookFullPath = path.join(fullPath.dir, fullPath.base)
 		let closestDir = this.findClosestDirectory(fullPath.dir)
+		const itemMatchingPathIndex = closestDir.items.findIndex(i => i.fullPath == bookFullPath)
 
-		for (let index = 0; index < closestDir.items.length; ++index) {
-			const item = closestDir.items[index]
+		if (itemMatchingPathIndex !== -1) {
+			// eslint-disable-next-line no-console
+			console.log(`Removing book ${bookFullPath}`)
 
-			if (item.fullPath === bookFullPath) {
-				// eslint-disable-next-line no-console
-				console.log(`Removing book ${item.fullPath}`)
-
-				closestDir.items.splice(index, 1)
-
-				break
-			}
+			closestDir.items.splice(itemMatchingPathIndex, 1)
 		}
 
 		while (closestDir.parent && closestDir.items.length === 0) {

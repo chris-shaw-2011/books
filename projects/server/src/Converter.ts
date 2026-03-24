@@ -322,10 +322,11 @@ export default class Converter {
 
 				for (const file of files) {
 					const fileChapters = JSON.parse(await this.runFfprobe(file, ["-v", "error", "-print_format", "json", "-show_chapters", `"${file}"`])) as Chapters
+					// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+					const lastChapter = chapters.findLast(() => true)
 
-					if (chapters.length) {
+					if (lastChapter) {
 						let setChapterNames = false
-						const lastChapter = chapters[chapters.length - 1]
 						const updatedChapters = fileChapters.chapters.map((c, i) => {
 							if (i === 0 && c.tags.title.toLowerCase() === "chapter 1") {
 								setChapterNames = true
@@ -364,15 +365,13 @@ export default class Converter {
 							metadata.year = fileMetadata.common.year
 						}
 
-						if (fileMetadata.common.comment?.length && fileMetadata.common.comment[0].text) {
-							metadata.comment = fileMetadata.common.comment[0].text
-						}
+						metadata.comment = fileMetadata.common.comment?.[0]?.text ?? metadata.comment
 
 						if (fileMetadata.common.genre?.length) {
 							metadata.genre = fileMetadata.common.genre.map(g => g).join(", ")
 						}
 
-						if (!coverPicturePath && fileMetadata.common.picture?.length) {
+						if (!coverPicturePath && fileMetadata.common.picture?.[0]) {
 							coverPicturePath = `${outputFilePath}.jpg`
 
 							await fs.promises.writeFile(coverPicturePath, fileMetadata.common.picture[0].data)
@@ -555,8 +554,9 @@ export default class Converter {
 
 		const probeOutput = await this.runFfprobe(inputFilePath, [`"${inputFilePath}"`])
 		const matches = /file checksum == (.*)/.exec(probeOutput)
+		const match = matches ? matches[1] : undefined
 
-		if (!matches) {
+		if (!match) {
 			this.errorMessage += `Couldn't find checksum from ffprobe
 
          ${probeOutput}`
@@ -567,7 +567,7 @@ export default class Converter {
 
 		const cwd = path.join(rootDir, "inAudible-NG")
 		const crackerPath = process.platform === "win32" ? path.join(cwd, "run", "rcrack.exe") : path.join(cwd, "rcrack")
-		const crackerOutput = await this.runProgram(crackerPath, `${inputFilePath}.rcrack.log`, [".", "-h", matches[1]], undefined, cwd)
+		const crackerOutput = await this.runProgram(crackerPath, `${inputFilePath}.rcrack.log`, [".", "-h", match], undefined, cwd)
 		const activationBytesMatches = /hex:(.*)/.exec(crackerOutput)
 
 		if (activationBytesMatches) {

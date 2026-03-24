@@ -1,16 +1,5 @@
-import baseConfig from "../../eslint.config.ts"
+import config from "@chris-shaw-2011/lint"
 
 export default [
-	...baseConfig,
-	{
-		files: ["src/**/*.ts"],
-		languageOptions: {
-			parserOptions: {
-				projectService: true,
-			},
-		},
-		rules: {
-			// Server-specific rules here
-		},
-	},
+	...config,
 ]

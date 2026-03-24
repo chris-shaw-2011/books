@@ -23,10 +23,14 @@
 	},
 	"scripts": {
 		"start": "vite",
-		"build": "npm run build-tsc && npm run build-vite",
+		"build": "npm run scss-types && npm run build-tsc && npm run build-vite",
 		"build-tsc": "tsc -b",
 		"build-vite": "vite build",
-		"lint": "eslint . --max-warnings 0 --report-unused-disable-directives-severity error"
+		"lint": "npm run scss-types:check && eslint .",
+		"lint:fix": "npm run scss-types && eslint . --fix",
+		"scss-types": "typed-scss-modules \"src/app/**/*.module.scss\" --exportType default --nameFormat none --quoteType double --outputFolder .generated --updateStaleOnly --logLevel error",
+		"scss-types:check": "typed-scss-modules \"src/app/**/*.module.scss\" --exportType default --nameFormat none --quoteType double --outputFolder .generated --listDifferent --logLevel error",
+		"scss-types:watch": "typed-scss-modules \"src/app/**/*.module.scss\" --exportType default --nameFormat none --quoteType double --outputFolder .generated --updateStaleOnly --watch --logLevel error"
 	},
 	"proxy": "http://localhost:3001",
 	"devDependencies": {
@@ -34,10 +38,7 @@
 		"@types/react-dom": "^19.2.3",
 		"@types/react-highlight-words": "^0.20.1",
 		"@vitejs/plugin-react": "^5.1.4",
-		"eslint-plugin-react": "^7.37.5",
-		"eslint-plugin-react-hooks": "^7.0.1",
-		"eslint-plugin-react-refresh": "^0.5.2",
-		"globals": "^17.4.0",
+		"typed-scss-modules": "^8.1.1",
 		"vite": "^7.3.1"
 	}
 }

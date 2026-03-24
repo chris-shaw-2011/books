@@ -12,7 +12,6 @@ const AdminOnly = ["EditSettings", "AdminApi", "AdminNavOptions", "Settings", "U
 const AuthenticatedOnly = ["Authenticated", "Navigation"]
 
 const debugLog = (message: string, ...optionalParams: unknown[]) => {
-	// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 	if (debug) {
 		// eslint-disable-next-line no-console
 		console.log(message, optionalParams)
@@ -47,7 +46,7 @@ export default defineConfig({
 					return "assets/[name]-[hash].js"
 				},
 				assetFileNames: assetInfo => {
-					const name = assetInfo.names[0]
+					const name = assetInfo.names[0] ?? ""
 
 					if (AdminOnly.some(n => name.startsWith(n))) {
 						debugLog(`${name} is an admin asset`, assetInfo)

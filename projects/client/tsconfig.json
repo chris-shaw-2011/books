@@ -1,6 +1,26 @@
 {
+	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
-		"baseUrl": ".",
+		"lib": [
+			"ESNext",
+			"DOM",
+			"DOM.Iterable"
+		],
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
+		"jsx": "react-jsx",
+		"rootDirs": [
+			".",
+			".generated"
+		],
+		"types": [
+			"vite/client"
+		]
 	},
-	"extends": "./tsconfig.client.json"
+	"include": [
+		".generated/**/*.d.ts",
+		"src/**/*.ts",
+		"src/**/*.tsx",
+		"vite.config.ts"
+	]
 }

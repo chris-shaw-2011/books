@@ -1,9 +1,11 @@
-import styles from "./Alert.module.scss"
+import styles, { type ClassNames } from "./Alert.module.scss"
 import classnames from "classnames"
+
+type AlertVariant = Exclude<ClassNames, "alert">
 
 interface Props {
 	children: string,
-	variant: string,
+	variant: AlertVariant,
 }
 
 const Alert = (props: Props) => (

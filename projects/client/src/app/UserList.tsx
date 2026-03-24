@@ -81,7 +81,7 @@ const UserList = (props: Props) => {
 		setAddingUserState(s => ({ ...s, ...obj }))
 	}
 	const handleUserListResponse = useCallback((ret: UserListResponse | AddUserResponse) => {
-		setUsers({ users: ret.users, message: ret.message })
+		setUsers(ret)
 	}, [])
 	const handleSubmit = async (event: React.SyntheticEvent<HTMLFormElement, SubmitEvent>) => {
 		const form = event.currentTarget
@@ -92,7 +92,7 @@ const UserList = (props: Props) => {
 		if (form.checkValidity()) {
 			mergeAddingUserState({ status: "Saving" })
 
-			const ret = await (await AdminApi()).addUser(new User({ email: addingUserState.email, isAdmin: addingUserState.isAdmin }), logOut)
+			const ret = await (await AdminApi()).addUser(new User(addingUserState), logOut)
 
 			handleUserListResponse(ret)
 

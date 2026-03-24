@@ -46,7 +46,7 @@ const DirectoryLink = (props: DirectoryProps) => {
 	const id = props.directory.id
 	const searchContext = useContext(SearchContext)
 	const searchWords = searchContext.searchWords
-	const isOpen = useFolderStore(state => searchWords.length || state.openFolders[id] || false)
+	const isOpen = useFolderStore(state => (searchWords.length || state.openFolders[id]) ?? false)
 	const toggleFolder = useFolderStore(state => state.toggleFolder)
 
 	return (

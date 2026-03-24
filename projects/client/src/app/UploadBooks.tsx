@@ -11,7 +11,6 @@ import styles from "./UploadBooks.module.scss"
 import BookLink from "./BookLink"
 import classnames from "classnames"
 import ModalDialog from "./components/ModalDialog"
-import type { JSX } from "react/jsx-runtime"
 import FetchAborted from "./api/FetchAborted"
 
 // TODO: make it so if you close the modal you can re open it and see where it's at
@@ -50,33 +49,18 @@ const IsConversionRunning = (status: UploadStatus) => (status === "Extracting" |
 const ProgressSection = ({ status, percent, uploadFileName, errorMessage, workingFileNames }: FileUploadRowState) => {
 	const percentTxt = `${Math.round(percent)}%`
 	const text = [percentTxt, status]
-	const fileNames: JSX.Element[] = []
 
-	if (workingFileNames.length === 1) {
+	if (workingFileNames.length === 1 && workingFileNames[0]) {
 		text.push(workingFileNames[0])
-	}
-	else {
-		fileNames.push(...workingFileNames.map(n => (
-			<div key={n}>
-				<span style={{ visibility: "hidden" }}>{percentTxt}</span>
-				&nbsp;
-				{n}
-			</div>
-		)))
 	}
 
 	return (
 		<div>
-			<div>
-				{uploadFileName}
-			</div>
+			<div>{uploadFileName}</div>
 			<div>
 				<Line percent={percent} strokeWidth={1} strokeColor={status === "Error" ? "#FF0000" : IsConversionRunning(status) ? "#0000FF" : "#00FF00"} />
 			</div>
-			<div>
-				{text.join(" ")}
-				{fileNames}
-			</div>
+			<div>{text.join(" ")}</div>
 			{status === "Error" && (
 				<div className={styles.error}>
 					<div>
@@ -106,11 +90,12 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 	const id = props.id
 	const workingFileNames = uploadState.workingFileNames
 	const uploadFile = (files: FileList | null) => {
-		if (!files?.length || !canBeUploaded(files[0].name)) {
+		const file = files?.[0]
+
+		if (!file || !canBeUploaded(file.name)) {
 			return
 		}
 
-		const file = files[0]
 		const request = new XMLHttpRequest()
 		const data = new FormData()
 

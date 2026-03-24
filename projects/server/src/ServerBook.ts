@@ -94,22 +94,17 @@ export default class ServerBook extends Book {
 		this.name = tags.title ?? fileName
 		this.author = tags.artists?.length ? tags.artists.join(", ") : tags.artist ?? ""
 
-		if (tags.year !== undefined) {
-			this.year = tags.year
-		}
-
-		this.comment = tags.comment?.length ? tags.comment[0].text ?? "" : ""
-
-		if (metadata.format.duration !== undefined) {
-			this.duration = metadata.format.duration
-		}
-
-		this.narrator = tags.composer?.length ? tags.composer.join(", ") : ""
-		this.genre = tags.genre?.length ? tags.genre.join(", ") : ""
+		this.year = tags.year ?? this.year
+		this.comment = tags.comment?.[0]?.text ?? ""
+		this.duration = metadata.format.duration ?? this.duration
+		this.narrator = tags.composer?.join(", ") ?? ""
+		this.genre = tags.genre?.join(", ") ?? ""
 
 		if (!fs.existsSync(this.photoPath)) {
-			if (tags.picture?.length) {
-				await fs.promises.writeFile(this.photoPath, tags.picture[0].data)
+			const data = tags.picture?.[0]?.data
+
+			if (data) {
+				await fs.promises.writeFile(this.photoPath, data)
 			}
 			else {
 				await this.extractCoverFromAttachedPicture(fullPath)
