@@ -17,8 +17,6 @@
 		"node-id3": "^0.2.9",
 		"nodemailer": "^8.0.4",
 		"sanitize-filename": "^1.6.4",
-		"sqlite": "^5.1.1",
-		"sqlite3": "^5.1.7",
 		"unzipper": "^0.12.3",
 		"uuid": "^13.0.0",
 		"write-aac-metadata": "^1.0.12"
@@ -27,9 +25,11 @@
 	"scripts": {
 		"start": "node ./src/index.ts",
 		"start-production": "node ./src/index.js",
-		"build": "tsc --project ./tsconfig.json && npm run copy-package && npm run copy-audible-hack",
+		"build": "tsc --project ./tsconfig.build.json && npm run copy-package && npm run copy-audible-hack",
+		"migrate-db": "node ./src/migrateDatabase.ts",
 		"copy-package": "cpx \"./package.json\" \"../../bin/projects/server/\"",
 		"copy-audible-hack": "cpx \"./src/inAudible-NG/**/*\" \"../../bin/projects/server/src/inAudible-NG\"",
+		"test": "node --test ./test/**/*.test.ts",
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix"
 	},

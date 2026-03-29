@@ -2,7 +2,7 @@ import bookList from "./BookList.ts"
 import db from "./Database.ts"
 import server from "./server.ts"
 
-await db.open()
+db.open()
 
 void bookList.loadBooks()
 
@@ -16,7 +16,7 @@ const shutdown = async () => {
 	// eslint-disable-next-line no-console
 	console.log("Closing db connection...")
 
-	await db.close() // if your db module supports clean shutdown
+	db.close()
 
 	// eslint-disable-next-line no-console
 	console.log("Db connection closed.")

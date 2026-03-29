@@ -19,7 +19,6 @@ import NodeID3 from "node-id3"
 import sanitize from "sanitize-filename"
 import ServerBook from "./ServerBook.ts"
 import aacWriter from "write-aac-metadata"
-import ServerUser from "./ServerUser.ts"
 import { validateRequest } from "./Validation.ts"
 import AuthorizationExpiration from "./AuthorizationExpiration.ts"
 import cookie from "cookie"
@@ -33,11 +32,9 @@ const getNewExpiration = () => dayjs().add(24, "hours")
 const conversions = new Map<string, Converter>()
 const conversionMutex = new Mutex()
 const server = Fastify({ logger: false, bodyLimit: 10_000_000_000 })
-const getAllUsers = async (): Promise<shared.User[]> => (await db.all("SELECT id, email, isAdmin, lastLogIn FROM user")).map((user: Partial<shared.User>) => new shared.User(user))
-const getUserById = async (userId: string) => await db.get<ServerUser>("SELECT * FROM user WHERE id = ?", userId)
 const rootPath = path.join(rootDir, "../../../../bin/projects/client")
 const validatePassword = async (email: string, password: string, reply: FastifyReply) => {
-	const dbUser = await db.get<ServerUser>("SELECT id, email, hash, isAdmin, lastLogIn FROM user WHERE email = ?", email)
+	const dbUser = db.getUserByEmail(email)
 
 	if (dbUser) {
 		if (await bcrypt.compare(password, dbUser.hash)) {
@@ -47,7 +44,7 @@ const validatePassword = async (email: string, password: string, reply: FastifyR
 			validatedUser.lastLogin = new Date()
 			AuthorizationExpiration.set(authorization, getNewExpiration())
 
-			await db.run("UPDATE user SET lastLogIn = ? WHERE id = ?", validatedUser.lastLogin, validatedUser.id)
+			db.updateUserLastLogin(validatedUser.id, validatedUser.lastLogin)
 
 			return ServerToken.create(validatedUser, authorization, db.settings.checksumSecret)
 		}
@@ -139,13 +136,12 @@ server.post<{ Body: shared.User }>("/auth", async (request, reply) => {
 	}
 
 	if (db.noUsers) {
-		db.noUsers = false
 		// eslint-disable-next-line no-console
 		console.warn(`Adding user ${req.email} to the database since they are the first login attempt`)
 
 		const hash = await passwordHash(req.password)
 
-		await db.run("INSERT INTO user (id, email, hash, isAdmin) VALUES(?, ?, ?, ?)", uuid(), req.email, hash, 1)
+		db.createBootstrapAdmin(req.email, hash)
 	}
 
 	return validatePassword(req.email, req.password, reply)
@@ -168,7 +164,7 @@ server.post("/books", { preHandler: validateRequest }, async request => {
 	}
 
 	const books = await bookList.allBooks()
-	const statuses = await db.statusesForUser(token.user.id)
+	const statuses = db.statusesForUser(token.user.id)
 
 	return new shared.Books({ directory: books, bookStatuses: statuses })
 })
@@ -222,14 +218,14 @@ server.post<{ Body: shared.SettingsUpdate }>("/updateSettings", { preHandler: va
 		// eslint-disable-next-line no-console
 		console.log("updating the database with the new settings", settingsUpdate.settings)
 
-		await db.settings.updateDbSettings()
+		db.settings.updateDbSettings()
 	}
 
 	void reply.send(new shared.SettingsUpdateResponse({ successful: true }))
 })
 
-server.post("/users", { preHandler: validateAdminRequest }, async () => {
-	const users = await getAllUsers()
+server.post("/users", { preHandler: validateAdminRequest }, () => {
+	const users = db.getAllUsers()
 
 	return new shared.UserListResponse({ users })
 })
@@ -243,14 +239,14 @@ server.post<{ Body: shared.AddUserRequest }>("/addUser", { preHandler: validateA
 		message = "Email must be specified"
 	}
 	else {
-		if (await db.get("SELECT id FROM User where email = ?", userRequest.user.email)) {
+		if (db.hasUserWithEmail(userRequest.user.email)) {
 			message = "User already exists"
 		}
 		else {
 			const userId = uuid()
-
-			await db.exec("BEGIN TRANSACTION;")
-			await db.run("INSERT INTO User (id, email, isAdmin) VALUES(?, ?, ?)", userId, userRequest.user.email, userRequest.user.isAdmin)
+			db.transaction(() => {
+				db.insertInvitedUser(userId, userRequest.user.email, userRequest.user.isAdmin)
+			})
 
 			const link = new url.URL(`https://books.christopher-shaw.com/invite/${userId}`).href
 
@@ -265,28 +261,29 @@ server.post<{ Body: shared.AddUserRequest }>("/addUser", { preHandler: validateA
 				`,
 				})
 
-				await db.exec("COMMIT;")
 				successful = true
 			}
 			catch (e) {
-				await db.exec("ROLLBACK;")
+				db.transaction(() => {
+					db.deleteUser(userId)
+				})
 
 				message = (e as Error).message
 			}
 		}
 	}
 
-	const users = await getAllUsers()
+	const users = db.getAllUsers()
 
 	return new shared.AddUserResponse({ users, successful, message })
 })
 
-server.post<{ Body: shared.DeleteUserRequest }>("/deleteUser", { preHandler: validateAdminRequest }, async request => {
+server.post<{ Body: shared.DeleteUserRequest }>("/deleteUser", { preHandler: validateAdminRequest }, request => {
 	const userRequest = new shared.DeleteUserRequest(request.body)
 
-	await db.run("DELETE FROM User WHERE id = ?", userRequest.userId)
+	db.deleteUser(userRequest.userId)
 
-	const users = await getAllUsers()
+	const users = db.getAllUsers()
 
 	return new shared.UserListResponse({ users, message: "User deleted" })
 })
@@ -294,7 +291,7 @@ server.post<{ Body: shared.DeleteUserRequest }>("/deleteUser", { preHandler: val
 server.post<{ Body: shared.UserRequest }>("/user", async (request, reply) => {
 	const userRequest = new shared.UserRequest(request.body)
 
-	const dbUser = await getUserById(userRequest.userId)
+	const dbUser = db.getUserById(userRequest.userId)
 
 	if (!dbUser || dbUser.lastLogin || dbUser.hash) {
 		void reply.code(403)
@@ -307,32 +304,29 @@ server.post<{ Body: shared.UserRequest }>("/user", async (request, reply) => {
 })
 
 server.post<{ Body: shared.SetPasswordRequest }>("/setPassword", async (request, reply) => {
-	let transactionEnd = "ROLLBACK;"
 	const setRequest = new shared.SetPasswordRequest(request.body)
+	const hash = await passwordHash(setRequest.newPassword)
 
-	await db.exec("BEGIN TRANSACTION;")
+	const user = db.transaction(() => {
+		const existingUser = db.getUserById(setRequest.userId)
 
-	try {
-		const user = await getUserById(setRequest.userId)
-
-		if (!user) {
+		if (!existingUser) {
 			return new shared.AccessDenied("User not found")
 		}
-		else if (user.hash) {
+		else if (existingUser.hash) {
 			return new shared.AccessDenied("User's password has already been set")
 		}
 
-		const hash = await passwordHash(setRequest.newPassword)
+		db.updateUserPassword(setRequest.userId, hash)
 
-		await db.run("UPDATE User SET hash = ? WHERE id = ?", hash, setRequest.userId)
+		return existingUser
+	})
 
-		transactionEnd = "COMMIT;"
-
-		return await validatePassword(user.email, setRequest.newPassword, reply)
+	if (user instanceof shared.AccessDenied) {
+		return user
 	}
-	finally {
-		await db.exec(transactionEnd)
-	}
+
+	return await validatePassword(user.email, setRequest.newPassword, reply)
 })
 
 server.post<{ Body: shared.ChangePasswordRequest }>("/changePassword", { preHandler: validateRequest }, async (request, reply) => {
@@ -344,39 +338,33 @@ server.post<{ Body: shared.ChangePasswordRequest }>("/changePassword", { preHand
 		throw new ReferenceError()
 	}
 
-	await db.run("UPDATE User SET hash = ? WHERE id = ?", hash, token.user.id)
+	db.updateUserPassword(token.user.id, hash)
 
 	return validatePassword(token.user.email, changeRequest.newPassword, reply)
 })
 
 server.post<{ Body: shared.ChangeBookStatusRequest }>("/changeBookStatus", { preHandler: validateRequest }, async request => {
 	const statusRequest = new shared.ChangeBookStatusRequest(request.body)
-	let statuses: shared.BookStatuses
 	const token = request.userToken
 
 	if (!token) {
 		throw new ReferenceError()
 	}
 
-	await db.exec("BEGIN TRANSACTION;")
-
-	try {
-		statuses = await db.statusesForUser(token.user.id)
+	const statuses = db.transaction(() => {
+		const nextStatuses = db.statusesForUser(token.user.id)
 
 		if (statusRequest.status !== "Unread") {
-			statuses.set(statusRequest.bookId, new shared.BookWithStatus({ status: statusRequest.status, dateStatusSet: new Date() }))
+			nextStatuses.set(statusRequest.bookId, new shared.BookWithStatus({ status: statusRequest.status, dateStatusSet: new Date() }))
 		}
 		else {
-			statuses.delete(statusRequest.bookId)
+			nextStatuses.delete(statusRequest.bookId)
 		}
 
-		const update = JSON.stringify(statuses)
+		db.updateStatusesForUser(token.user.id, nextStatuses)
 
-		await db.run("UPDATE user SET bookStatuses = ? WHERE id = ?", update, token.user.id)
-	}
-	finally {
-		await db.exec("COMMIT;")
-	}
+		return nextStatuses
+	})
 
 	const books = await bookList.allBooks()
 
@@ -469,7 +457,7 @@ server.post<{ Body: shared.AddFolderRequest }>("/addFolder", { preHandler: valid
 	await bookList.fileAdded(fullPath)
 
 	const books = await bookList.allBooks()
-	const statuses = await db.statusesForUser(token.user.id)
+	const statuses = db.statusesForUser(token.user.id)
 
 	return new shared.Books({ directory: books, bookStatuses: statuses })
 })
@@ -545,7 +533,7 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 			const foundBook = bookList.findBookByPath(newPath)
 
 			if (foundBook) {
-				await db.run("UPDATE user SET bookStatuses = REPLACE(bookStatuses, ?, ?) WHERE bookStatuses LIKE ?", JSON.stringify(book.id), JSON.stringify(foundBook.id), `%${JSON.stringify(book.id)}%`)
+				db.replaceBookStatusId(book.id, foundBook.id)
 			}
 		}
 		else {
@@ -560,7 +548,7 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 	console.log(`Finished updating book ${newBook.name}, retrieving list of all books to return to client`)
 
 	const books = await bookList.allBooks()
-	const statuses = await db.statusesForUser(token.user.id)
+	const statuses = db.statusesForUser(token.user.id)
 
 	// eslint-disable-next-line no-console
 	console.log(`Returning list of books to client`)
@@ -630,4 +618,7 @@ const stop = async () => {
 	}
 }
 
-export default { start, stop }
+const inject = server.inject.bind(server)
+const ready = server.ready.bind(server)
+
+export default { start, stop, inject, ready }

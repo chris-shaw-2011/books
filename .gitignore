@@ -23,7 +23,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 /dist
-db.sqlite
+db.sqlite*
 .eslintcache
 docker-compose.override.yml
 projects/client/.generated/
