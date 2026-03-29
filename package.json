@@ -36,6 +36,6 @@
 		"concurrently": "^9.2.1",
 		"cpx2": "^8.0.0",
 		"source-map-explorer": "^2.5.3",
-		"typescript": "^5.9.3"
+		"typescript": "^6.0.2"
 	}
 }

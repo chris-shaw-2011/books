@@ -5,7 +5,7 @@
 		"@books/shared": "file:../shared",
 		"bootstrap": "^5.3.8",
 		"classnames": "^2.5.1",
-		"dayjs": "^1.11.19",
+		"dayjs": "^1.11.20",
 		"rc-progress": "^4.0.0",
 		"react": "^19.2.4",
 		"react-animate-height": "^3.2.3",
@@ -16,10 +16,10 @@
 		"react-highlight-words": "^0.21.0",
 		"react-textarea-autosize": "^8.5.9",
 		"react-virtuoso": "^4.18.3",
-		"sass": "^1.97.3",
+		"sass": "^1.98.0",
 		"universal-cookie": "^8.0.1",
 		"uuid": "^13.0.0",
-		"zustand": "^5.0.11"
+		"zustand": "^5.0.12"
 	},
 	"scripts": {
 		"start": "vite",
@@ -37,8 +37,8 @@
 		"@types/react": "^19.2.14",
 		"@types/react-dom": "^19.2.3",
 		"@types/react-highlight-words": "^0.20.1",
-		"@vitejs/plugin-react": "^5.1.4",
+		"@vitejs/plugin-react": "^6.0.1",
 		"typed-scss-modules": "^8.1.1",
-		"vite": "^7.3.1"
+		"vite": "^8.0.3"
 	}
 }
