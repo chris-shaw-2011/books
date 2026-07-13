@@ -15,6 +15,7 @@ COPY --from=download --chown=node:node /app /home/node/app
 
 # Release artifact should include production dependencies.
 RUN test -d /home/node/app/bin/node_modules || (echo "Missing /home/node/app/bin/node_modules in release artifact." && exit 1)
+RUN test -f /home/node/app/bin/projects/server/src/index.js || (echo "Missing compiled server entrypoint in release artifact." && exit 1)
 
 USER node
 

@@ -23,6 +23,10 @@ runs:
       shell: bash
       run: npm run build
 
+    - name: Validate server entrypoint
+      shell: bash
+      run: test -f ./bin/projects/server/src/index.js
+
     - name: Bundle production dependencies into bin
       shell: bash
       run: |
