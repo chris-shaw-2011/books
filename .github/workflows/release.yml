@@ -14,32 +14,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Prepare build
         uses: ./.github/actions/prepare-build
+        env:
+          READ_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Tar
-        uses: a7ul/tar-action@v1.2.0
-        id: compress
-        with:
-          command: c
-          cwd: ./
-          files: |
-            ./bin
-          outPath: transpiled.tar.gz
+        run: tar -czf transpiled.tar.gz ./bin
 
       - name: Getting release version
         id: package-version
-        uses: martinbeentjes/npm-get-version-action@v1.3.1
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "current-version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Package release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            transpiled.tar.gz
-          tag_name: ${{ steps.package-version.outputs.current-version }}
-          make_latest: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.package-version.outputs.current-version }}
+        run: |
+          gh release create "${VERSION}" transpiled.tar.gz \
+            --target "${GITHUB_SHA}" \
+            --title "${VERSION}" \
+            --notes "" \
+            --latest
 
   build-container:
     needs: build
