@@ -2,7 +2,7 @@ import nodemailer from "nodemailer"
 import { v4 as uuid } from "uuid"
 import { Settings } from "@books/shared"
 
-export const SettingKeys = ["baseBooksPath", "checksumSecret", "inviteEmail", "inviteEmailPassword", "uploadLocation"] as const
+const SettingKeys = ["baseBooksPath", "checksumSecret", "inviteEmail", "inviteEmailPassword", "uploadLocation"] as const
 
 export type ValidSettings = typeof SettingKeys[number]
 

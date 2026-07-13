@@ -3,22 +3,22 @@
 	"type": "module",
 	"dependencies": {
 		"@books/shared": "file:../shared",
-		"@fastify/multipart": "^9.4.0",
-		"@fastify/static": "^9.0.0",
+		"@fastify/multipart": "^10.1.0",
+		"@fastify/static": "^10.1.0",
 		"async-mutex": "^0.5.0",
 		"bcrypt": "^6.0.0",
 		"chokidar": "^5.0.0",
-		"cookie": "^1.1.1",
-		"dayjs": "^1.11.20",
-		"fastify": "^5.8.4",
+		"cookie": "^2.0.1",
+		"dayjs": "^1.11.21",
+		"fastify": "^5.10.0",
 		"ffmpeg-ffprobe-static": "^6.1.2-rc.1",
 		"get-folder-size": "^5.0.0",
-		"music-metadata": "^11.12.3",
+		"music-metadata": "^11.13.0",
 		"node-id3": "^0.2.9",
-		"nodemailer": "^8.0.4",
+		"nodemailer": "^9.0.3",
 		"sanitize-filename": "^1.6.4",
-		"unzipper": "^0.12.3",
-		"uuid": "^13.0.0",
+		"unzipper": "^0.12.5",
+		"uuid": "^14.0.1",
 		"write-aac-metadata": "^1.0.12"
 	},
 	"main": "./src/index.ts",
@@ -35,8 +35,8 @@
 	},
 	"devDependencies": {
 		"@types/bcrypt": "^6.0.0",
-		"@types/node": "^25.5.0",
-		"@types/nodemailer": "^7.0.11",
+		"@types/node": "^25.9.5",
+		"@types/nodemailer": "^8.0.1",
 		"@types/unzipper": "^0.10.11"
 	}
 }

@@ -21,7 +21,7 @@ import ServerBook from "./ServerBook.ts"
 import aacWriter from "write-aac-metadata"
 import { validateRequest } from "./Validation.ts"
 import AuthorizationExpiration from "./AuthorizationExpiration.ts"
-import cookie from "cookie"
+import * as cookie from "cookie"
 
 // TODO: look into following current fastify standards
 const __dirname = import.meta.dirname
@@ -96,7 +96,7 @@ const validateAdminRequest = (request: FastifyRequest, reply: FastifyReply, done
 }
 
 server.addHook("preValidation", (request, _, done) => {
-	const cookies = cookie.parse(request.headers.cookie ?? "")
+	const cookies = cookie.parseCookie(request.headers.cookie ?? "")
 
 	try {
 		const userToken = ServerToken.fromJSON(db.settings.checksumSecret, cookies.loginCookie)

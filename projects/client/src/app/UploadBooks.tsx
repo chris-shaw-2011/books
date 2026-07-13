@@ -1,5 +1,5 @@
 import { Line } from "rc-progress"
-import { useContext, useEffect, useState, useCallback, useEffectEvent } from "react"
+import { useContext, useEffect, useState, useCallback } from "react"
 import { ListGroup, Modal } from "react-bootstrap"
 import { v4 as uuid } from "uuid"
 import { UploadResponse, type ConverterStatus, ConverterStatuses, Book, ApiMessage, AllowedUploadFileExtensions, canBeUploaded } from "@books/shared"
@@ -119,32 +119,35 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 		}
 		request.send(data)
 	}
-	const getConversionUpdate = useEffectEvent(async (controller: AbortController) => {
-		const ret = await Api.conversionUpdate(conversionId, percent, ToConverterStatus(status), workingFileNames, logOut, controller.signal)
-
-		if (ret instanceof FetchAborted) {
-			return
-		}
-
-		const newStatus: UploadStatus = ret.converterStatus === "Complete" ? "Editing" : ret.converterStatus
-
-		onStatusChanged(id, newStatus)
-		setUploadState(prev => ({ ...prev, percent: ret.conversionPercent, status: newStatus, errorMessage: ret.errorMessage, workingFileNames: ret.fileNames }))
-
-		if (newStatus === "Editing") {
-			setEditingBook(ret.book)
-		}
-	})
-
 	useEffect(() => {
 		const controller = new AbortController()
+		async function getConversionUpdate() {
+			const ret = await Api.conversionUpdate(conversionId, percent, ToConverterStatus(status), workingFileNames, logOut, controller.signal)
+
+			if (ret instanceof FetchAborted) {
+				return
+			}
+
+			const newStatus: UploadStatus = ret.converterStatus === "Complete" ? "Editing" : ret.converterStatus
+
+			onStatusChanged(id, newStatus)
+			setUploadState(prev => ({ ...prev, percent: ret.conversionPercent, status: newStatus, errorMessage: ret.errorMessage, workingFileNames: ret.fileNames }))
+
+			if (newStatus === "Editing") {
+				setEditingBook(ret.book)
+			}
+
+			if (conversionId && IsConversionRunning(status) && newStatus === status && percent === ret.conversionPercent) {
+				void getConversionUpdate()
+			}
+		}
 
 		if (conversionId && IsConversionRunning(status)) {
-			void getConversionUpdate(controller)
+			void getConversionUpdate()
 		}
 
 		return () => controller.abort()
-	}, [status, percent, conversionId, id, workingFileNames])
+	}, [status, percent, conversionId, logOut, onStatusChanged, id, workingFileNames])
 
 	if (status === "Waiting") {
 		return (
