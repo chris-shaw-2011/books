@@ -1,14 +1,14 @@
-import chokidar, { FSWatcher } from "chokidar"
-import fs from "fs"
+import chokidar from "chokidar"
 import path from "path"
 import db from "./Database.ts"
 import ServerDirectory from "./ServerDirectory.ts"
 import { Mutex, Semaphore, type SemaphoreInterface } from "async-mutex"
 import { setTimeout } from "timers/promises"
+import { watchBookFiles } from "./BookWatcher.ts"
 
 class BookList {
 	private books = new ServerDirectory()
-	private watcher?: FSWatcher
+	private watcher = chokidar.watch([])
 	private mutex = new Mutex()
 	private pauseSemaphore = new Semaphore(10)
 	private loading = false
@@ -18,10 +18,7 @@ class BookList {
 		const releaser = await this.mutex.acquire()
 		this.loading = true
 
-		if (this.watcher) {
-			await this.watcher.close()
-			delete this.watcher
-		}
+		await this.watcher.close()
 
 		// eslint-disable-next-line no-console
 		console.log(`Loading books from ${db.settings.baseBooksPath}`)
@@ -38,41 +35,7 @@ class BookList {
 		// eslint-disable-next-line no-console
 		console.log(`${this.books.bookCount()} Books loaded`)
 
-		this.watcher = chokidar.watch(db.settings.baseBooksPath, {
-			ignored: (checkPath: string, stats?: fs.Stats) => {
-				if (!stats) {
-					return false
-				}
-
-				checkPath = path.normalize(checkPath)
-
-				if (stats.isDirectory()) {
-					if (checkPath.startsWith(db.settings.uploadLocation) && db.settings.uploadLocation === checkPath) {
-						return true
-					}
-
-					return false
-				}
-				else {
-					const parsed = path.parse(checkPath)
-
-					if (parsed.base && parsed.ext !== ".mp3" && parsed.ext !== ".m4b") {
-						return true
-					}
-
-					return false
-				}
-			},
-			ignoreInitial: true,
-			awaitWriteFinish: {
-				stabilityThreshold: 5000,
-				pollInterval: 1000,
-			},
-			ignorePermissionErrors: true,
-			usePolling: true,
-			interval: 60000,
-			binaryInterval: 60000,
-		})
+		this.watcher = watchBookFiles(db.settings.baseBooksPath)
 			.on("add", addPath => {
 				// eslint-disable-next-line no-console
 				console.log(`file added event: ${addPath}`)
@@ -96,6 +59,18 @@ class BookList {
 				void this.pauseSemaphore.runExclusive(async () => {
 					await this.deleteBook(delPath)
 				})
+			})
+			.on("unlinkDir", delPath => {
+				// eslint-disable-next-line no-console
+				console.log(`directory removed event: ${delPath}`)
+
+				void this.pauseSemaphore.runExclusive(async () => {
+					await this.deleteBook(delPath)
+				})
+			})
+			.on("error", error => {
+				// eslint-disable-next-line no-console
+				console.error("Book file watcher error", error)
 			})
 
 		this.loading = false
@@ -175,14 +150,12 @@ class BookList {
 	}
 
 	async shutdown() {
-		if (this.watcher) {
-			// eslint-disable-next-line no-console
-			console.log("Closing file watcher...")
-			await this.watcher.close()
+		// eslint-disable-next-line no-console
+		console.log("Closing file watcher...")
+		await this.watcher.close()
 
-			// eslint-disable-next-line no-console
-			console.log("File watcher closed")
-		}
+		// eslint-disable-next-line no-console
+		console.log("File watcher closed")
 	}
 }
 
