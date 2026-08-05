@@ -116,7 +116,7 @@ export default class ServerBook extends Book {
 		this.cover = `${this.download}.jpg`
 		this.numBytes = stats.size
 		this.fullPath = fullPath
-		this.uploadTime = stats.birthtimeMs ? stats.birthtime : stats.mtime
+		this.uploadTime = stats.birthtimeMs && stats.birthtime < stats.mtime ? stats.birthtime : stats.mtime
 		this.folderPath = path.parse(`/${bookUri}`).dir
 	}
 }

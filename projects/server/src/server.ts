@@ -474,6 +474,7 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 	const newDir = path.join(db.settings.baseBooksPath, updateBookRequest.newBook.folderPath)
 	const extension = path.extname(book.fullPath).toLowerCase()
 	const newPath = path.join(newDir, `${sanitize(updateBookRequest.newBook.name.replace(/:/gi, " - "))}${extension}`)
+	let fileTimes: fs.Stats | undefined
 
 	try {
 		await bookList.pauseUpdates()
@@ -483,7 +484,11 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 			if (fs.existsSync(newPath)) {
 				return new shared.UpdateBookResponse({ message: `File ${newPath} already exists` })
 			}
+		}
 
+		fileTimes = await fs.promises.stat(book.fullPath)
+
+		if (book.fullPath !== newPath) {
 			// eslint-disable-next-line no-console
 			console.log(`Renaming ${book.fullPath} to ${newPath}`)
 
@@ -525,6 +530,8 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 			await aacWriter(newPath, { title: newBook.name.trim(), artist: newBook.author.trim(), year: newBook.year, comment: newBook.comment.trim(), composer: newBook.narrator.trim(), genre: newBook.genre.trim() }, undefined, { debug: true, pipeStdio: true })
 		}
 
+		await fs.promises.utimes(newPath, fileTimes.atime, fileTimes.mtime)
+
 		if (book.fullPath !== newPath) {
 			await bookList.fileAdded(newPath)
 
@@ -539,7 +546,14 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 		}
 	}
 	finally {
-		await bookList.resumeUpdates()
+		try {
+			if (fileTimes && fs.existsSync(newPath)) {
+				await fs.promises.utimes(newPath, fileTimes.atime, fileTimes.mtime)
+			}
+		}
+		finally {
+			await bookList.resumeUpdates()
+		}
 	}
 
 	// eslint-disable-next-line no-console

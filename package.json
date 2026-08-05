@@ -1,6 +1,6 @@
 {
 	"name": "books-monorepo",
-	"version": "1.4.2",
+	"version": "1.4.3",
 	"engines": {
 		"npm": ">=10.9.2",
 		"node": ">=26.5.0"
