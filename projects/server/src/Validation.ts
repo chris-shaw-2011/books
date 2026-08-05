@@ -1,9 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify"
 import * as shared from "@books/shared"
-import AuthorizationExpiration from "./AuthorizationExpiration.ts"
-import dayjs from "dayjs"
-
-const getNewExpiration = () => dayjs().add(24, "hours")
+import AuthorizationExpiration, { getNewAuthorizationExpiration } from "./AuthorizationExpiration.ts"
 
 export function validateRequest(request: FastifyRequest, reply: FastifyReply, done: () => void) {
 	const token = request.userToken
@@ -17,7 +14,7 @@ export function validateRequest(request: FastifyRequest, reply: FastifyReply, do
 
 	const expiration = AuthorizationExpiration.get(token.authorization)
 
-	if (expiration === undefined || expiration < dayjs()) {
+	if (expiration === undefined || expiration < Date.now()) {
 		if (expiration !== undefined) {
 			// Remove the token from memory since it expired
 			AuthorizationExpiration.delete(token.authorization)
@@ -29,7 +26,7 @@ export function validateRequest(request: FastifyRequest, reply: FastifyReply, do
 		return
 	}
 
-	AuthorizationExpiration.set(token.authorization, getNewExpiration())
+	AuthorizationExpiration.set(token.authorization, getNewAuthorizationExpiration())
 
 	done()
 }

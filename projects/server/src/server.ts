@@ -4,12 +4,11 @@ import Fastify, { type FastifyRequest, type FastifyReply } from "fastify"
 import fastifyMultipart from "@fastify/multipart"
 import fastifyStatic from "@fastify/static"
 import fs from "fs"
-import dayjs from "dayjs"
 import path from "path"
 import util from "util"
 import { pipeline } from "stream"
 import url from "url"
-import { v4 as uuid } from "uuid"
+import * as crypto from "node:crypto"
 import * as shared from "@books/shared"
 import bookList from "./BookList.ts"
 import Converter from "./Converter.ts"
@@ -20,7 +19,7 @@ import sanitize from "sanitize-filename"
 import ServerBook from "./ServerBook.ts"
 import aacWriter from "write-aac-metadata"
 import { validateRequest } from "./Validation.ts"
-import AuthorizationExpiration from "./AuthorizationExpiration.ts"
+import AuthorizationExpiration, { getNewAuthorizationExpiration } from "./AuthorizationExpiration.ts"
 import * as cookie from "cookie"
 
 // TODO: look into following current fastify standards
@@ -28,7 +27,6 @@ const __dirname = import.meta.dirname
 
 const pump = util.promisify(pipeline)
 const rootDir = __dirname
-const getNewExpiration = () => dayjs().add(24, "hours")
 const conversions = new Map<string, Converter>()
 const conversionMutex = new Mutex()
 const server = Fastify({ logger: false, bodyLimit: 10_000_000_000 })
@@ -39,10 +37,10 @@ const validatePassword = async (email: string, password: string, reply: FastifyR
 	if (dbUser) {
 		if (await bcrypt.compare(password, dbUser.hash)) {
 			const validatedUser = new shared.User(dbUser)
-			const authorization = uuid()
+			const authorization = crypto.randomUUID()
 
 			validatedUser.lastLogin = new Date()
-			AuthorizationExpiration.set(authorization, getNewExpiration())
+			AuthorizationExpiration.set(authorization, getNewAuthorizationExpiration())
 
 			db.updateUserLastLogin(validatedUser.id, validatedUser.lastLogin)
 
@@ -64,7 +62,7 @@ const validationResponse = (request: FastifyRequest, requiresAdmin?: boolean) =>
 
 	const expiration = AuthorizationExpiration.get(token.authorization)
 
-	if (expiration === undefined || expiration < dayjs()) {
+	if (expiration === undefined || expiration < Date.now()) {
 		if (expiration !== undefined) {
 			// Remove the token from memory since it expired
 			AuthorizationExpiration.delete(token.authorization)
@@ -73,7 +71,7 @@ const validationResponse = (request: FastifyRequest, requiresAdmin?: boolean) =>
 		return new shared.Unauthorized("Session Expired, Please Log In Again")
 	}
 
-	AuthorizationExpiration.set(token.authorization, getNewExpiration())
+	AuthorizationExpiration.set(token.authorization, getNewAuthorizationExpiration())
 
 	if (requiresAdmin && !token.user.isAdmin) {
 		return new shared.AccessDenied("Access Denied")
@@ -243,7 +241,7 @@ server.post<{ Body: shared.AddUserRequest }>("/addUser", { preHandler: validateA
 			message = "User already exists"
 		}
 		else {
-			const userId = uuid()
+			const userId = crypto.randomUUID()
 			db.transaction(() => {
 				db.insertInvitedUser(userId, userRequest.user.email, userRequest.user.isAdmin)
 			})
@@ -372,7 +370,7 @@ server.post<{ Body: shared.ChangeBookStatusRequest }>("/changeBookStatus", { pre
 })
 
 server.post("/upload", { preHandler: validateRequest }, async (request, reply) => {
-	const id = uuid()
+	const id = crypto.randomUUID()
 	const file = await request.file()
 
 	if (!file) {

@@ -9,7 +9,6 @@ import sanitize from "sanitize-filename"
 import unzipper from "unzipper"
 import { type ConverterStatus } from "@books/shared"
 import bookList from "./BookList.ts"
-import folderSize from "get-folder-size"
 import * as mm from "music-metadata"
 import { setTimeout as promiseSetTimeout } from "timers/promises"
 
@@ -41,6 +40,33 @@ function onExit(childProcess: ChildProcess): Promise<void> {
 			reject(err)
 		})
 	})
+}
+
+async function getFolderSize(rootPath: string) {
+	let folderSize = 0n
+	const foundInodes = new Set<bigint>()
+	const processItem = async (itemPath: string): Promise<void> => {
+		const stats = await fs.promises.lstat(itemPath, { bigint: true }).catch(() => undefined)
+
+		if (!stats) {
+			return
+		}
+
+		if (!foundInodes.has(stats.ino)) {
+			foundInodes.add(stats.ino)
+			folderSize += stats.size
+		}
+
+		if (stats.isDirectory()) {
+			const directoryItems = await fs.promises.readdir(itemPath).catch(() => [])
+
+			await Promise.all(directoryItems.map(item => processItem(path.join(itemPath, item))))
+		}
+	}
+
+	await processItem(rootPath)
+
+	return folderSize > BigInt(Number.MAX_SAFE_INTEGER) ? Number.MAX_SAFE_INTEGER : Number(folderSize)
 }
 
 export default class Converter {
@@ -230,7 +256,7 @@ export default class Converter {
 		const sizeToUnzip = files.map(f => f.uncompressedSize).reduce((totalSize: number, currSize) => totalSize + currSize)
 		const unzippedFiles: string[] = []
 		const percentageUpdater = setInterval(() => {
-			void folderSize.loose(unzipPath).then(number => {
+			void getFolderSize(unzipPath).then(number => {
 				this.percentComplete = Math.round((number / sizeToUnzip) * 100)
 			})
 		}, 250)

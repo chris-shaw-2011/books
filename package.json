@@ -1,6 +1,6 @@
 {
 	"name": "books-monorepo",
-	"version": "1.4.1",
+	"version": "1.4.2",
 	"engines": {
 		"npm": ">=10.9.2",
 		"node": ">=26.5.0"
@@ -12,7 +12,7 @@
 	"packageManager": "npm@11.10.1",
 	"scripts": {
 		"start": "concurrently \"npm run start-client\" \"npm run start-server\"",
-		"start-production": "npm run build && cpx projects/server/db.sqlite bin/projects/server && cd bin && npm install --omit=dev && cd projects/server && npm run start-production",
+		"start-production": "npm run build && node ./scripts/copy.ts projects/server/db.sqlite bin/projects/server && cd bin && npm install --omit=dev && cd projects/server && npm run start-production",
 		"start-client": "npm start -w @books/client",
 		"start-server": "npm start -w @books/server",
 		"install-packages": "npm install",
@@ -20,7 +20,7 @@
 		"build-client": "npm run build --workspace=@books/client",
 		"build-server": "npm run build --workspace=@books/server",
 		"build-shared": "npm run build --workspace=@books/shared",
-		"copy-package": "cpx \"./package.json\" \"./bin\"",
+		"copy-package": "node ./scripts/copy.ts ./package.json ./bin",
 		"lint": "npm run lint:root && npm run lint:workspaces",
 		"lint:root": "eslint . --ignore-pattern \"projects/**\"",
 		"lint:workspaces": "npm run lint --workspaces --if-present",
@@ -32,9 +32,8 @@
 	},
 	"type": "module",
 	"devDependencies": {
-		"@chris-shaw-2011/lint": "^1.0.3",
-		"concurrently": "^10.0.3",
-		"cpx2": "^9.0.0",
+		"@chris-shaw-2011/lint": "^1.1.0",
+		"concurrently": "^10.0.4",
 		"source-map-explorer": "^2.5.3",
 		"typescript": "^7.0.2"
 	},
@@ -44,6 +43,6 @@
 		"ffmpeg-static@5.3.0": true,
 		"ffmpeg-ffprobe-static@6.1.2-rc.1": true,
 		"esbuild@0.27.7": true,
-		"@parcel/watcher@2.5.6": true
+		"@parcel/watcher@2.6.0": true
 	}
 }

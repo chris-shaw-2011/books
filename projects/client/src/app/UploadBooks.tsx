@@ -1,7 +1,6 @@
 import { Line } from "rc-progress"
 import { useContext, useEffect, useState, useCallback } from "react"
 import { ListGroup, Modal } from "react-bootstrap"
-import { v4 as uuid } from "uuid"
 import { UploadResponse, type ConverterStatus, ConverterStatuses, Book, ApiMessage, AllowedUploadFileExtensions, canBeUploaded } from "@books/shared"
 import Api from "./api/LoggedInApi"
 import AppContext from "./context/AppContext"
@@ -173,7 +172,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 }
 
 const UploadBooks = (props: Props) => {
-	const [fileUploadRows, setFileUploadRows] = useState<Map<string, UploadStatus>>(new Map([[uuid(), "Waiting"]]))
+	const [fileUploadRows, setFileUploadRows] = useState<Map<string, UploadStatus>>(new Map([[crypto.randomUUID(), "Waiting"]]))
 	const onStatusChanged = useCallback((id: string, status: UploadStatus) => {
 		setFileUploadRows(prev => {
 			const prevStatus = prev.get(id) ?? "Waiting"
@@ -181,7 +180,7 @@ const UploadBooks = (props: Props) => {
 			prev.set(id, status)
 
 			if (prevStatus === "Waiting" && status !== "Waiting") {
-				prev.set(uuid(), "Waiting")
+				prev.set(crypto.randomUUID(), "Waiting")
 			}
 			else if (status === "Done" && prevStatus !== "Done") {
 				prev.delete(id)

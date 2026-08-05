@@ -8,7 +8,6 @@ import { Book, type Status, Directory, StatusValues } from "@books/shared"
 import Api from "./api/LoggedInApi"
 import Loading from "./Loading"
 import Textbox from "./components/Textbox"
-import moment from "dayjs"
 import Edit from "./svg/Edit"
 import TextareaAutosize from "react-textarea-autosize"
 import itemStyles from "./ItemLink.module.scss"
@@ -20,7 +19,7 @@ import FolderClosed from "./svg/FolderClosed"
 import Button from "./components/Button"
 import SearchContext from "./context/AppContext"
 import ActionButtons from "./components/ActionButtons"
-import { handleDynamicImportFailure } from "./shared/Methods"
+import { formatDateTime, handleDynamicImportFailure } from "./shared/Methods"
 
 // TODO: Allow normal users to edit books if it's in the Uploads folder
 const AdminApi = async () => (await import("./api/AdminApi").catch(handleDynamicImportFailure)).default
@@ -328,7 +327,7 @@ const BookLink = (props: BookProps) => {
 							<label>
 								<span>Uploaded</span>
 								{" "}
-								<span>{moment(props.book.uploadTime).format("M/D/YYYY h:mm:ss A")}</span>
+								<span>{formatDateTime(props.book.uploadTime)}</span>
 							</label>
 						</div>
 						{(editingState.status === "Saving" || editingState.status == "Editing") && (

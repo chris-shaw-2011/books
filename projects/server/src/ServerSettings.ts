@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer"
-import { v4 as uuid } from "uuid"
+import * as crypto from "node:crypto"
 import { Settings } from "@books/shared"
 
 const SettingKeys = ["baseBooksPath", "checksumSecret", "inviteEmail", "inviteEmailPassword", "uploadLocation"] as const
@@ -63,7 +63,7 @@ export default class ServerSettings extends Settings {
 			// eslint-disable-next-line no-console
 			console.log("Creating checksum secret")
 
-			settings.checksumSecret = uuid()
+			settings.checksumSecret = crypto.randomUUID()
 			ServerSettings.updateDbSetting(db, "checksumSecret", settings.checksumSecret)
 
 			// eslint-disable-next-line no-console

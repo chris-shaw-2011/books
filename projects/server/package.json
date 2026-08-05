@@ -4,22 +4,19 @@
 	"dependencies": {
 		"@books/shared": "file:../shared",
 		"@fastify/multipart": "^10.1.0",
-		"@fastify/static": "^10.1.0",
+		"@fastify/static": "^10.1.2",
 		"async-mutex": "^0.5.0",
 		"bcrypt": "^6.0.0",
 		"chokidar": "^5.0.0",
 		"cookie": "^2.0.1",
-		"dayjs": "^1.11.21",
-		"fastify": "^5.10.0",
+		"fastify": "^5.11.2",
 		"ffmpeg-ffprobe-static": "^6.1.2-rc.1",
-		"get-folder-size": "^5.0.0",
-		"music-metadata": "^11.13.0",
+		"music-metadata": "^11.14.0",
 		"node-id3": "^0.2.9",
-		"nodemailer": "^9.0.3",
+		"nodemailer": "^9.0.4",
 		"sanitize-filename": "^1.6.4",
 		"unzipper": "^0.12.5",
-		"uuid": "^14.0.1",
-		"write-aac-metadata": "^1.0.12"
+		"write-aac-metadata": "^1.0.13"
 	},
 	"main": "./src/index.ts",
 	"scripts": {
@@ -27,15 +24,15 @@
 		"start-production": "node ./src/index.js",
 		"build": "tsc --project ./tsconfig.build.json && npm run copy-package && npm run copy-audible-hack",
 		"migrate-db": "node ./src/migrateDatabase.ts",
-		"copy-package": "cpx \"./package.json\" \"../../bin/projects/server/\"",
-		"copy-audible-hack": "cpx \"./src/inAudible-NG/**/*\" \"../../bin/projects/server/src/inAudible-NG\"",
+		"copy-package": "node ../../scripts/copy.ts ./package.json ../../bin/projects/server/",
+		"copy-audible-hack": "node ../../scripts/copy.ts ./src/inAudible-NG ../../bin/projects/server/src/inAudible-NG",
 		"test": "node --test ./test/**/*.test.ts",
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix"
 	},
 	"devDependencies": {
 		"@types/bcrypt": "^6.0.0",
-		"@types/node": "^25.9.5",
+		"@types/node": "^26.1.2",
 		"@types/nodemailer": "^8.0.1",
 		"@types/unzipper": "^0.10.11"
 	}

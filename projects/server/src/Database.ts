@@ -25,7 +25,7 @@ interface UserRow {
 
 type SqlRow = Record<string, SQLOutputValue>
 
-function expectString(value: SQLOutputValue, fieldName: string): string {
+function expectString(value: SQLOutputValue, fieldName: string) {
 	if (typeof value !== "string") {
 		throw new TypeError(`${fieldName} must be a string`)
 	}
@@ -33,7 +33,7 @@ function expectString(value: SQLOutputValue, fieldName: string): string {
 	return value
 }
 
-function expectOptionalString(value: SQLOutputValue, fieldName: string): string | null {
+function expectOptionalString(value: SQLOutputValue, fieldName: string) {
 	if (value === null) {
 		return null
 	}
@@ -41,7 +41,7 @@ function expectOptionalString(value: SQLOutputValue, fieldName: string): string 
 	return expectString(value, fieldName)
 }
 
-function expectInteger(value: SQLOutputValue, fieldName: string): number {
+function expectInteger(value: SQLOutputValue, fieldName: string) {
 	if (typeof value === "number" && Number.isInteger(value)) {
 		return value
 	}
@@ -53,7 +53,7 @@ function expectInteger(value: SQLOutputValue, fieldName: string): number {
 	throw new TypeError(`${fieldName} must be an integer`)
 }
 
-function expectOptionalInteger(value: SQLOutputValue, fieldName: string): number | null {
+function expectOptionalInteger(value: SQLOutputValue, fieldName: string) {
 	if (value === null) {
 		return null
 	}
@@ -61,7 +61,7 @@ function expectOptionalInteger(value: SQLOutputValue, fieldName: string): number
 	return expectInteger(value, fieldName)
 }
 
-function expectBooleanInteger(value: SQLOutputValue, fieldName: string): 0 | 1 {
+function expectBooleanInteger(value: SQLOutputValue, fieldName: string) {
 	const num = expectInteger(value, fieldName)
 
 	if (num !== 0 && num !== 1) {
@@ -71,7 +71,7 @@ function expectBooleanInteger(value: SQLOutputValue, fieldName: string): 0 | 1 {
 	return num
 }
 
-function expectRow(row: SqlRow | undefined, message: string): SqlRow {
+function expectRow(row: SqlRow | undefined, message: string) {
 	if (row === undefined) {
 		throw new ReferenceError(message)
 	}
@@ -97,7 +97,7 @@ function mapUserRow(row: SqlRow): UserRow {
 	}
 }
 
-function toSharedUser(row: UserRow): shared.User {
+function toSharedUser(row: UserRow) {
 	const userData: Partial<shared.User> = {
 		id: row.id,
 		email: row.email,
@@ -111,7 +111,7 @@ function toSharedUser(row: UserRow): shared.User {
 	return new shared.User(userData)
 }
 
-function toServerUser(row: UserRow): ServerUser {
+function toServerUser(row: UserRow) {
 	const userData: Partial<shared.User> = {
 		id: row.id,
 		email: row.email,
@@ -129,11 +129,11 @@ function toServerUser(row: UserRow): ServerUser {
 	return user
 }
 
-function sanitizeTimestampForFilename(date: Date): string {
+function sanitizeTimestampForFilename(date: Date) {
 	return date.toISOString().replaceAll(":", "-").replaceAll(".", "-")
 }
 
-function normalizeAdminValue(value: SQLOutputValue): 0 | 1 {
+function normalizeAdminValue(value: SQLOutputValue) {
 	if (typeof value === "number") {
 		return value === 0 ? 0 : 1
 	}
@@ -159,7 +159,7 @@ function normalizeAdminValue(value: SQLOutputValue): 0 | 1 {
 	throw new TypeError("Could not normalize user.isAdmin during migration")
 }
 
-function normalizeLastLoginValue(value: SQLOutputValue): number | null {
+function normalizeLastLoginValue(value: SQLOutputValue) {
 	if (value === null) {
 		return null
 	}
@@ -195,7 +195,7 @@ function normalizeLastLoginValue(value: SQLOutputValue): number | null {
 	throw new TypeError("Could not normalize user.lastLogin during migration")
 }
 
-function normalizeBookStatusesValue(value: SQLOutputValue): string {
+function normalizeBookStatusesValue(value: SQLOutputValue) {
 	if (value === null) {
 		return "{}"
 	}
@@ -227,21 +227,17 @@ function configureConnection(database: DatabaseSync) {
 	database.exec("PRAGMA synchronous = NORMAL")
 	database.exec("PRAGMA foreign_keys = ON")
 
-	const maybeDefensive = (database as DatabaseSync & { enableDefensive?: (active: boolean) => void }).enableDefensive
-
-	if (typeof maybeDefensive === "function") {
-		maybeDefensive.call(database, true)
-	}
+	database.enableDefensive(true)
 }
 
-function readUserVersion(database: DatabaseSync): number {
+function readUserVersion(database: DatabaseSync) {
 	const row = expectRow(database.prepare("PRAGMA user_version").get(), "Failed to read PRAGMA user_version")
 	const version = row.user_version
 
 	return expectInteger(version ?? null, "PRAGMA user_version")
 }
 
-function readApplicationTableNames(database: DatabaseSync): string[] {
+function readApplicationTableNames(database: DatabaseSync) {
 	return database.prepare(
 		"SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('setting', 'user') ORDER BY name",
 	).all().map(row => expectString(row.name ?? null, "sqlite_master.name"))

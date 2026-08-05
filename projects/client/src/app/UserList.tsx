@@ -1,4 +1,3 @@
-import moment from "dayjs"
 import { useCallback, useContext, useEffect, useState } from "react"
 import { Modal, ModalFooter, ModalTitle, Table } from "react-bootstrap"
 import { UserListResponse, User, AddUserResponse } from "@books/shared"
@@ -13,7 +12,7 @@ import ModalDialog from "./components/ModalDialog"
 import styles from "./UserList.module.scss"
 import ActionButtons from "./components/ActionButtons"
 import LoggedInAppContext from "./context/LoggedInAppContext"
-import { handleDynamicImportFailure } from "./shared/Methods"
+import { formatDateTime, handleDynamicImportFailure } from "./shared/Methods"
 
 const AdminApi = async () => (await import("./api/AdminApi").catch(handleDynamicImportFailure)).default
 
@@ -160,7 +159,7 @@ const UserList = (props: Props) => {
 							<tr key={u.id}>
 								<td>{u.email}</td>
 								<td>{u.isAdmin ? "Yes" : "No"}</td>
-								<td>{u.lastLogin !== undefined ? moment(u.lastLogin).format("MM/D/YYYY, h:mm:ss a") : "Never"}</td>
+								<td>{u.lastLogin !== undefined ? formatDateTime(u.lastLogin) : "Never"}</td>
 								<td><UserActions loggedInUserId={token.user.id} user={u} handleUserListResponse={handleUserListResponse} logOut={logOut} /></td>
 							</tr>
 						))}
