@@ -10,6 +10,7 @@ const proxyOptions = {
 
 const AdminOnly = ["EditSettings", "AdminApi", "AdminNavOptions", "Settings", "UserList"]
 const AuthenticatedOnly = ["Authenticated", "Navigation"]
+const PublicOnly = ["SetPassword"]
 
 const debugLog = (message: string, ...optionalParams: unknown[]) => {
 	if (debug) {
@@ -24,9 +25,15 @@ export default defineConfig({
 	build: {
 		outDir: "../../bin/projects/client",
 		emptyOutDir: true,
+		manifest: true,
 		target: "esnext",
 		rollupOptions: {
 			output: {
+				manualChunks: id => {
+					if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) {
+						return "react"
+					}
+				},
 				chunkFileNames: chunkInfo => {
 					const file = chunkInfo.name
 
@@ -39,6 +46,11 @@ export default defineConfig({
 						debugLog(`${file} is an authenticated file`, chunkInfo)
 
 						return "assets/authenticated/[name]-[hash].js"
+					}
+					else if (PublicOnly.some(n => file === n)) {
+						debugLog(`${file} is a public file`, chunkInfo)
+
+						return "assets/public/[name]-[hash].js"
 					}
 
 					debugLog(`${file} is a public file`, chunkInfo)
@@ -57,6 +69,11 @@ export default defineConfig({
 						debugLog(`${name} is an authenticated asset`, assetInfo)
 
 						return "assets/authenticated/[name]-[hash][extname]"
+					}
+					else if (PublicOnly.some(n => name.startsWith(n))) {
+						debugLog(`${name} is a public asset`, assetInfo)
+
+						return "assets/public/[name]-[hash][extname]"
 					}
 
 					debugLog(`${name} is a public asset`, assetInfo)

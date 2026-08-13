@@ -31,6 +31,37 @@ const conversions = new Map<string, Converter>()
 const conversionMutex = new Mutex()
 const server = Fastify({ logger: false, bodyLimit: 10_000_000_000 })
 const rootPath = path.join(rootDir, "../../../../bin/projects/client")
+const immutableAssetOptions = { immutable: true, maxAge: "1y" } as const
+interface ClientManifestEntry {
+	file: string,
+	imports?: string[],
+	css?: string[],
+}
+let publicAssets: ReadonlySet<string> | undefined
+const getPublicAssets = () => {
+	if (!publicAssets) {
+		const manifestPath = path.join(rootPath, ".vite/manifest.json")
+		const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as Record<string, ClientManifestEntry>
+		const files = new Set<string>()
+		const addEntry = (key: string) => {
+			const entry = manifest[key]
+
+			if (!entry || files.has(`/${entry.file}`)) {
+				return
+			}
+
+			files.add(`/${entry.file}`)
+			entry.css?.forEach(file => files.add(`/${file}`))
+			entry.imports?.forEach(addEntry)
+		}
+
+		addEntry("index.html")
+		addEntry("src/app/SetPassword.tsx")
+		publicAssets = files
+	}
+
+	return publicAssets
+}
 const validatePassword = async (email: string, password: string, reply: FastifyReply) => {
 	const dbUser = db.getUserByEmail(email)
 
@@ -586,26 +617,43 @@ server.get<{ Params: Record<string, string> }>("/files/*", { preHandler: validat
 })
 
 server.get<{ Params: Record<string, string> }>("/invite/*", async (_, reply) => {
-	await reply.sendFile("index.html", rootPath)
+	await reply.sendFile("index.html", rootPath, { immutable: false, maxAge: 0 })
 })
 
 server.get<{ Params: Record<string, string> }>("/assets/admin/*", { preHandler: validateAdminRequest }, async (request, reply) => {
 	const pathname = new URL(request.raw.url ?? "", "http://dummy").pathname
 
-	await reply.sendFile(pathname, rootPath)
+	await reply.sendFile(pathname, rootPath, immutableAssetOptions)
 })
 
 server.get<{ Params: Record<string, string> }>("/assets/authenticated/*", { preHandler: validateRequest }, async (request, reply) => {
 	const pathname = new URL(request.raw.url ?? "", "http://dummy").pathname
 
-	await reply.sendFile(pathname, rootPath)
+	await reply.sendFile(pathname, rootPath, immutableAssetOptions)
+})
+
+server.get<{ Params: Record<string, string> }>("/assets/*", async (request, reply) => {
+	const pathname = new URL(request.raw.url ?? "", "http://dummy").pathname
+
+	if (!getPublicAssets().has(pathname)) {
+		const response = validationResponse(request)
+
+		if (response) {
+			await reply.code(response.code).send(response)
+
+			return
+		}
+	}
+
+	await reply.sendFile(pathname, rootPath, immutableAssetOptions)
 })
 
 // This handles requests to the root of the site in production
 server.get<{ Params: Record<string, string> }>("/*", async (request, reply) => {
-	const filePath = request.params["*"] ?? ""
+	const requestedPath = request.params["*"] ?? ""
+	const filePath = requestedPath.length ? requestedPath : "index.html"
 
-	await reply.sendFile(filePath, rootPath)
+	await reply.sendFile(filePath, rootPath, { immutable: false, maxAge: 0 })
 })
 
 const start = async () => {
