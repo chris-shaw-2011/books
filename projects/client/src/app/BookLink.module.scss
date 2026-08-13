@@ -1,14 +1,14 @@
 @use "styles/formControl";
 
 .editing {
-	>form>.inner {
+	>form > .inner {
 		cursor: default !important;
 
 		.description {
 			display: flex;
 		}
 
-		>div>.editable {
+		>div > .editable {
 			padding: 5px;
 		}
 	}
@@ -22,6 +22,7 @@
 
 	textarea {
 		@include formControl.form-control;
+
 		height: auto;
 	}
 
@@ -53,7 +54,7 @@
 		>span:first-of-type {
 			width: 70px;
 			text-align: right;
-			margin-right: .5rem;
+			margin-right: 0.5rem;
 			display: inline-block;
 			font-weight: bolder;
 		}
@@ -108,7 +109,6 @@
 }
 
 .path {
-
 	>label,
 	>.pathSelection {
 		display: flex;
@@ -118,7 +118,6 @@
 			display: flex;
 			align-items: center;
 			width: 100%;
-
 		}
 
 		.folderList {
@@ -127,7 +126,7 @@
 		}
 
 		svg {
-			margin: 0px 10px 0px 5px;
+			margin: 0 10px 0 5px;
 		}
 	}
 

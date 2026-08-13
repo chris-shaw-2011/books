@@ -22,8 +22,11 @@
 		"build": "npm run scss-types && npm run build-tsc && npm run build-vite",
 		"build-tsc": "tsc -b",
 		"build-vite": "vite build",
-		"lint": "npm run scss-types:check && eslint .",
-		"lint:fix": "npm run scss-types && eslint . --fix",
+		"lint": "npm run scss-types:check && npm run lint:scss && npm run lint:scss-modules && eslint .",
+		"lint:fix": "npm run scss-types && npm run lint:scss:fix && npm run lint:scss-modules && eslint . --fix",
+		"lint:scss": "stylelint \"src/app/**/*.scss\"",
+		"lint:scss:fix": "stylelint \"src/app/**/*.scss\" --fix",
+		"lint:scss-modules": "scss-modules-unused --project tsconfig.json",
 		"scss-types": "typed-scss-modules \"src/app/**/*.module.scss\" --exportType default --nameFormat none --quoteType double --outputFolder .generated --updateStaleOnly --logLevel error",
 		"scss-types:check": "typed-scss-modules \"src/app/**/*.module.scss\" --exportType default --nameFormat none --quoteType double --outputFolder .generated --listDifferent --logLevel error",
 		"scss-types:watch": "typed-scss-modules \"src/app/**/*.module.scss\" --exportType default --nameFormat none --quoteType double --outputFolder .generated --updateStaleOnly --watch --logLevel error"
