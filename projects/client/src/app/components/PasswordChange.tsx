@@ -1,4 +1,4 @@
-import { Alert } from "react-bootstrap"
+import Alert from "./Alert"
 import ActionButtons from "./ActionButtons"
 import OverlayComponent from "./OverlayComponent"
 import TextboxField from "./TextboxField"

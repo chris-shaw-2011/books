@@ -2,3 +2,25 @@
 	display: inline-flex;
 	flex-direction: column;
 }
+
+.userTable {
+	width: 100%;
+	margin-bottom: 1rem;
+	color: #212529;
+	vertical-align: top;
+	background-color: white;
+	border-color: #dee2e6;
+
+	>:not(caption)>*>* {
+		padding: .5rem;
+		border: 1px solid #dee2e6;
+	}
+
+	>tbody>tr:nth-of-type(odd)>* {
+		background-color: rgba(0, 0, 0, .05);
+	}
+
+	>tbody>tr:hover>* {
+		background-color: rgba(0, 0, 0, .075);
+	}
+}

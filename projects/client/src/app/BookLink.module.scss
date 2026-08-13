@@ -1,3 +1,5 @@
+@use "styles/formControl";
+
 .editing {
 	>form>.inner {
 		cursor: default !important;
@@ -16,6 +18,11 @@
 	label,
 	.pathSelection {
 		width: 100%;
+	}
+
+	textarea {
+		@include formControl.form-control;
+		height: auto;
 	}
 
 	.author {

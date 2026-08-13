@@ -2,7 +2,6 @@ import classnames from "classnames"
 import { useContext, useState, useEffect } from "react"
 import AppContext from "./context/AppContext"
 import LoggedInAppContext from "./context/LoggedInAppContext"
-import { Dropdown, DropdownButton } from "react-bootstrap"
 import Highlighter from "react-highlight-words"
 import { Book, type Status, Directory, StatusValues } from "@books/shared"
 import Api from "./api/LoggedInApi"
@@ -20,6 +19,7 @@ import Button from "./components/Button"
 import SearchContext from "./context/AppContext"
 import ActionButtons from "./components/ActionButtons"
 import { formatDateTime, handleDynamicImportFailure } from "./shared/Methods"
+import DropdownButton from "./components/DropdownButton"
 
 // TODO: Allow normal users to edit books if it's in the Uploads folder
 const AdminApi = async () => (await import("./api/AdminApi").catch(handleDynamicImportFailure)).default
@@ -337,23 +337,14 @@ const BookLink = (props: BookProps) => {
 				</Inner>
 			</form>
 			{!changingStatus && !editing && (
-				<DropdownButton title={props.book.status} id={props.book.id} onClick={e => e.stopPropagation()}>
-					{
-						StatusValues.map(i => {
-							if (i !== props.book.status) {
-								return (
-									<Dropdown.Item key={i} onClick={e => void changeBookStatus(i, e)}>
-										Mark
-										{" "}
-										{i}
-									</Dropdown.Item>
-								)
-							}
+				<DropdownButton
+					title={props.book.status}
+					id={props.book.id}
+					onClick={e => e.stopPropagation()}
+					onSelect={(status, e) => void changeBookStatus(status, e)}
+					options={StatusValues.filter(status => status !== props.book.status).map(status => ({ label: `Mark ${status}`, value: status }))}
 
-							return undefined
-						})
-					}
-				</DropdownButton>
+				/>
 			)}
 			{changingStatus && !editing && <Loading text="Changing Status..." />}
 		</div>

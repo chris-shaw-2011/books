@@ -1,6 +1,5 @@
 import { Line } from "rc-progress"
 import { useContext, useEffect, useState, useCallback } from "react"
-import { ListGroup, Modal } from "react-bootstrap"
 import { UploadResponse, type ConverterStatus, ConverterStatuses, Book, ApiMessage, AllowedUploadFileExtensions, canBeUploaded } from "@books/shared"
 import Api from "./api/LoggedInApi"
 import AppContext from "./context/AppContext"
@@ -9,7 +8,7 @@ import CancelButton from "./components/CancelButton"
 import styles from "./UploadBooks.module.scss"
 import BookLink from "./BookLink"
 import classnames from "classnames"
-import ModalDialog from "./components/ModalDialog"
+import ModalDialog, { ModalBody, ModalFooter, ModalHeader, ModalTitle } from "./components/ModalDialog"
 import FetchAborted from "./api/FetchAborted"
 
 // TODO: make it so if you close the modal you can re open it and see where it's at
@@ -153,7 +152,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 			<div>
 				<form>
 					<div>
-						<input type="file" required={true} placeholder="Specify File" accept={AllowedUploadFileExtensions.join(",")} onChange={e => { uploadFile(e.currentTarget.files) }} />
+						<input className={styles.uploadInput} type="file" required={true} placeholder="Specify File" accept={AllowedUploadFileExtensions.join(",")} onChange={e => { uploadFile(e.currentTarget.files) }} />
 					</div>
 				</form>
 			</div>
@@ -194,23 +193,23 @@ const UploadBooks = (props: Props) => {
 	return (
 		<OverlayComponent onClick={props.onClose} className={classnames({ [styles.editingBook]: arr.some(v => v[1] === "Editing") })}>
 			<ModalDialog className={styles.upload}>
-				<Modal.Header>
-					<Modal.Title>Upload Files</Modal.Title>
-				</Modal.Header>
-				<Modal.Body>
+				<ModalHeader>
+					<ModalTitle>Upload Files</ModalTitle>
+				</ModalHeader>
+				<ModalBody>
 					<h5>Allowed Uploads</h5>
 					<ul>
 						<li>Books downloaded from audible (.aax)</li>
 						<li>Zip file containing multiple mp3 or aax files of a single book</li>
 						<li>A single mp3 file</li>
 					</ul>
-					<ListGroup>
-						{arr.map(v => <ListGroup.Item key={v[0]}><FileUploadRow onStatusChanged={onStatusChanged} id={v[0]} /></ListGroup.Item>)}
-					</ListGroup>
-				</Modal.Body>
-				<Modal.Footer>
+					<div className={styles.uploadList}>
+						{arr.map(v => <div className={styles.uploadListItem} key={v[0]}><FileUploadRow onStatusChanged={onStatusChanged} id={v[0]} /></div>)}
+					</div>
+				</ModalBody>
+				<ModalFooter>
 					<CancelButton onClick={props.onClose} value="Close" />
-				</Modal.Footer>
+				</ModalFooter>
 			</ModalDialog>
 		</OverlayComponent>
 	)

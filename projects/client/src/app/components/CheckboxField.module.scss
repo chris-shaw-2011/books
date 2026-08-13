@@ -1,9 +1,12 @@
+@use "../styles/formControl";
+
 .checkbox {
 	margin-bottom: 1rem;
 	display: flex;
 	align-items: center;
 
 	>input {
+		@include formControl.form-control;
 		margin-right: 10px;
 	}
 }

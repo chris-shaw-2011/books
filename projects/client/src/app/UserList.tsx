@@ -1,5 +1,4 @@
 import { useCallback, useContext, useEffect, useState } from "react"
-import { Modal, ModalFooter, ModalTitle, Table } from "react-bootstrap"
 import { UserListResponse, User, AddUserResponse } from "@books/shared"
 import Loading from "./Loading"
 import AppContext from "./context/AppContext"
@@ -8,7 +7,7 @@ import TextboxField from "./components/TextboxField"
 import CheckboxField from "./components/CheckboxField"
 import DeleteButton from "./components/DeleteButton"
 import Alert from "./components/Alert"
-import ModalDialog from "./components/ModalDialog"
+import ModalDialog, { ModalBody, ModalFooter, ModalTitle } from "./components/ModalDialog"
 import styles from "./UserList.module.scss"
 import ActionButtons from "./components/ActionButtons"
 import LoggedInAppContext from "./context/LoggedInAppContext"
@@ -125,8 +124,8 @@ const UserList = (props: Props) => {
 					<OverlayComponent onClick={cancelAddUser}>
 						<form onSubmit={e => void handleSubmit(e)}>
 							<ModalDialog>
-								<ModalTitle><Modal.Title>Add User</Modal.Title></ModalTitle>
-								<Modal.Body className={styles.addUserBody}>
+								<ModalTitle>Add User</ModalTitle>
+								<ModalBody className={styles.addUserBody}>
 									<TextboxField
 										label="Email address"
 										type="email"
@@ -137,7 +136,7 @@ const UserList = (props: Props) => {
 									/>
 									<CheckboxField type="checkbox" label="Is Admin?" onChange={e => { mergeAddingUserState({ isAdmin: e.currentTarget.checked }) }} />
 									{addingUserState.message && <Alert variant="primary">{addingUserState.message}</Alert>}
-								</Modal.Body>
+								</ModalBody>
 								<ModalFooter>
 									<ActionButtons actionButtonText="AddUser" onCancelClick={cancelAddUser} changeHappeningText="Adding User..." changeHappening={addingUserState.status === "Saving"} />
 								</ModalFooter>
@@ -145,7 +144,7 @@ const UserList = (props: Props) => {
 						</form>
 					</OverlayComponent>
 				)}
-				<Table striped={true} bordered={true} hover={true} style={{ backgroundColor: "white" }}>
+				<table className={styles.userTable}>
 					<thead>
 						<tr>
 							<th>Email</th>
@@ -172,7 +171,7 @@ const UserList = (props: Props) => {
 							</td>
 						</tr>
 					</tfoot>
-				</Table>
+				</table>
 			</>
 		</OverlayComponent>
 	)

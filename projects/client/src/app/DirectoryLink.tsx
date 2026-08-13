@@ -8,6 +8,7 @@ import ItemLink from "./ItemLink"
 import itemStyles from "./ItemLink.module.scss"
 import SearchContext from "./context/AppContext"
 import { create } from "zustand"
+import styles from "./DirectoryLink.module.scss"
 
 interface DirectoryProps {
 	directory: Directory,
@@ -50,8 +51,8 @@ const DirectoryLink = (props: DirectoryProps) => {
 	const toggleFolder = useFolderStore(state => state.toggleFolder)
 
 	return (
-		<div style={props.style} className={classnames("directory", "item", props.className)} onClick={e => toggleFolder(e, id)}>
-			<div className={classnames("inner", itemStyles.inner)}>
+		<div style={props.style} className={classnames(styles.directory, props.className)} onClick={e => toggleFolder(e, id)}>
+			<div className={classnames(styles.inner, itemStyles.inner)}>
 				{isOpen ? <FolderOpen /> : <FolderClosed />}
 				<Highlighter searchWords={[...searchWords]} textToHighlight={props.directory.name} />
 			</div>

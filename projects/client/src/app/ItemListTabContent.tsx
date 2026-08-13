@@ -1,10 +1,10 @@
 import { useState } from "react"
 import { type Status, Directory, SortOrderValues, type SortOrder } from "@books/shared"
-import { DropdownButton, Dropdown } from "react-bootstrap"
 import Styles from "./ItemListTabContent.module.scss"
 import classNames from "classnames"
 import ItemLink from "./ItemLink"
 import { Virtuoso } from "react-virtuoso"
+import DropdownButton from "./components/DropdownButton"
 
 interface BookTabProps {
 	dir: Directory,
@@ -18,11 +18,13 @@ const ItemListTabContent = (props: BookTabProps) => {
 	return (
 		<>
 			<div className={classNames(Styles.sortDropDown)}>
-				<DropdownButton title={`Sorted: ${sort}`} id={`${props.status ?? "All"}-sortButton`} variant="secondary">
-					{SortOrderValues.map(s => (
-						<Dropdown.Item key={s} onClick={() => { setSort(s) }}>{s}</Dropdown.Item>
-					))}
-				</DropdownButton>
+				<DropdownButton
+					title={`Sorted: ${sort}`}
+					id={`${props.status ?? "All"}-sortButton`}
+					onSelect={setSort}
+					options={SortOrderValues.map(value => ({ label: value, value }))}
+					variant="secondary"
+				/>
 			</div>
 			<Virtuoso
 				data={items.items}

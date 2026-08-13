@@ -15,3 +15,26 @@
 		}
 	}
 }
+
+.spinner {
+	display: inline-block;
+	width: 2rem;
+	height: 2rem;
+	vertical-align: -.125em;
+	border: .25em solid currentcolor;
+	border-right-color: transparent;
+	border-radius: 50%;
+	animation: spin .75s linear infinite;
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.spinner {
+		animation-duration: 1.5s;
+	}
+}

@@ -1,0 +1,23 @@
+@use "tokens";
+
+@mixin form-control {
+	height: calc(1.5em + .75rem + 2px);
+	line-height: 1.5;
+	color: tokens.$color-muted-text;
+	border: 1px solid tokens.$color-control-border;
+	border-radius: .25rem;
+	transition: tokens.$control-transition;
+	padding: .375rem .75rem;
+	background-color: tokens.$color-white;
+
+	&::placeholder {
+		color: #6c757d;
+		opacity: 1;
+	}
+
+	&:focus {
+		border-color: #80bdff;
+		outline: 0;
+		box-shadow: 0 0 0 .2rem rgba(0, 123, 255, .25);
+	}
+}

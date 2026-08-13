@@ -1,12 +1,11 @@
 import { useContext, useEffect, useState } from "react"
-import { Modal } from "react-bootstrap"
 import Alert from "./components/Alert"
 import { Settings, NoopFunction } from "@books/shared"
 import Loading from "./Loading"
 import LoggedInAppContext from "./context/LoggedInAppContext"
 import OverlayComponent from "./components/OverlayComponent"
 import TextboxField from "./components/TextboxField"
-import ModalDialog from "./components/ModalDialog"
+import ModalDialog, { ModalBody, ModalFooter, ModalHeader, ModalTitle } from "./components/ModalDialog"
 import ActionButtons from "./components/ActionButtons"
 import AppContext from "./context/AppContext"
 import { handleDynamicImportFailure } from "./shared/Methods"
@@ -79,10 +78,10 @@ const EditSettings = (props: Props) => {
 		<OverlayComponent onClick={props.onClose}>
 			<form onSubmit={e => void handleSubmit(e, settings)}>
 				<ModalDialog>
-					<Modal.Header>
-						<Modal.Title>Settings</Modal.Title>
-					</Modal.Header>
-					<Modal.Body>
+					<ModalHeader>
+						<ModalTitle>Settings</ModalTitle>
+					</ModalHeader>
+					<ModalBody>
 						{message ? <Alert variant="danger">{message}</Alert> : null}
 						<TextboxField
 							label="Base Books Path"
@@ -116,10 +115,10 @@ const EditSettings = (props: Props) => {
 							defaultValue={settings.inviteEmailPassword}
 							onChange={e => onChange({ inviteEmailPassword: e.currentTarget.value || "" })}
 						/>
-					</Modal.Body>
-					<Modal.Footer>
+					</ModalBody>
+					<ModalFooter>
 						<ActionButtons onCancelClick={props.onClose ?? NoopFunction} actionButtonText="Save" changeHappening={saving} changeHappeningText="Saving..." />
-					</Modal.Footer>
+					</ModalFooter>
 				</ModalDialog>
 			</form>
 		</OverlayComponent>

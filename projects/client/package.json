@@ -3,12 +3,10 @@
 	"type": "module",
 	"dependencies": {
 		"@books/shared": "file:../shared",
-		"bootstrap": "^5.3.8",
 		"classnames": "^2.5.1",
 		"rc-progress": "^4.0.0",
 		"react": "^19.2.8",
 		"react-animate-height": "^3.2.4",
-		"react-bootstrap": "^2.10.10",
 		"react-cookie": "^8.1.2",
 		"react-cool-onclickoutside": "^1.7.0",
 		"react-dom": "^19.2.8",

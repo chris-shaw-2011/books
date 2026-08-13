@@ -1,4 +1,3 @@
-import { Spinner } from "react-bootstrap"
 import styles from "./Loading.module.scss"
 
 interface Props {
@@ -8,7 +7,7 @@ interface Props {
 const Loading = ({ text }: Props) => (
 	<div className={styles.loading}>
 		<div>
-			<Spinner animation="border" role="status" />
+			<div className={styles.spinner} role="status" aria-label={text ?? "Loading"} />
 			<div>{text ?? "Loading..."}</div>
 		</div>
 	</div>
