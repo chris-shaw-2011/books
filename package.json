@@ -12,7 +12,7 @@
 	"packageManager": "npm@11.10.1",
 	"scripts": {
 		"start": "concurrently \"npm run start-client\" \"npm run start-server\"",
-		"start-production": "npm run build && node ./scripts/copy.ts projects/server/db.sqlite bin/projects/server && cd bin && npm install --omit=dev && cd projects/server && npm run start-production",
+		"start-production": "npm run build && node ./scripts/copy.ts projects/server/db.sqlite bin/projects/server && npm pkg delete devDependencies --prefix bin && cd bin && npm install --omit=dev && cd projects/server && npm run start-production",
 		"start-client": "npm start -w @books/client",
 		"start-server": "npm start -w @books/server",
 		"install-packages": "npm install",
