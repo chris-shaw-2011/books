@@ -20,8 +20,13 @@ const debugLog = (message: string, ...optionalParams: unknown[]) => {
 }
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
 	plugins: [react()],
+	css: {
+		modules: {
+			...(command === "build" && { generateScopedName: "_[hash:base64:5]" }),
+		},
+	},
 	build: {
 		outDir: "../../bin/projects/client",
 		emptyOutDir: true,
@@ -108,4 +113,4 @@ export default defineConfig({
 			"/setPassword": proxyOptions,
 		},
 	},
-})
+}))
