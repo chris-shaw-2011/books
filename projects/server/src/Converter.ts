@@ -3,14 +3,13 @@ import { type ChildProcess, exec, type ExecOptions } from "child_process"
 import { EventEmitter } from "events"
 import { ffprobePath, ffmpegPath } from "ffmpeg-ffprobe-static"
 import fs from "fs"
-import { parseFile } from "music-metadata"
 import path from "path"
 import sanitize from "sanitize-filename"
 import unzipper from "unzipper"
 import { type ConverterStatus } from "@books/shared"
 import bookList from "./BookList.ts"
-import * as mm from "music-metadata"
 import { setTimeout as promiseSetTimeout } from "timers/promises"
+import { readAudioMetadata } from "./AudioMetadata.ts"
 
 // Set this to true if you want to make sure no intermediate files are removed as things are converted
 // This is useful in debugging if you want to check various stages of the conversion
@@ -224,11 +223,11 @@ export default class Converter {
 		}
 
 		if (outputFilePath) {
-			const metadata = (await parseFile(outputFilePath, { skipCovers: true, skipPostHeaders: true, includeChapters: false }))
+			const metadata = readAudioMetadata(outputFilePath)
 			const extension = path.extname(outputFilePath)
 
-			if (metadata.common.title) {
-				const sanitized = sanitize(metadata.common.title.replace(/:/gi, " - "))
+			if (metadata.title) {
+				const sanitized = sanitize(metadata.title.replace(/:/gi, " - "))
 				let desiredFilePath = path.join(baseFilePath, `${sanitized}${extension}`)
 
 				if (fs.existsSync(desiredFilePath)) {
@@ -332,7 +331,7 @@ export default class Converter {
 
 		if (files.length) {
 			const args = ["-i"]
-			const metadata = { title: outputTitle, artist: "", year: 0, comment: "", composer: "", genre: "" }
+			const metadata = { title: outputTitle, performers: "", year: 0, comment: "", composer: "", genre: "" }
 			let concatFile = ""
 			let chaptersFile = ""
 			let coverPicturePath = bestCover ? bestCover : ""
@@ -378,33 +377,30 @@ export default class Converter {
 					fileCommands.push(`file '${file}'`)
 
 					if (!addedMetadata) {
-						const fileMetadata = await mm.parseFile(file, { skipCovers: true, includeChapters: true })
+						const fileMetadata = readAudioMetadata(file, { picture: !coverPicturePath })
 
-						if (fileMetadata.common.artists?.length) {
-							metadata.artist = fileMetadata.common.artists.join(", ")
-						}
-						else if (fileMetadata.common.artist) {
-							metadata.artist = fileMetadata.common.artist
+						if (fileMetadata.performers.length) {
+							metadata.performers = fileMetadata.performers.join(", ")
 						}
 
-						if (fileMetadata.common.year) {
-							metadata.year = fileMetadata.common.year
+						if (fileMetadata.year) {
+							metadata.year = fileMetadata.year
 						}
 
-						metadata.comment = fileMetadata.common.comment?.[0]?.text ?? metadata.comment
+						metadata.comment = fileMetadata.comment || metadata.comment
 
-						if (fileMetadata.common.genre?.length) {
-							metadata.genre = fileMetadata.common.genre.map(g => g).join(", ")
+						if (fileMetadata.genres.length) {
+							metadata.genre = fileMetadata.genres.join(", ")
 						}
 
-						if (!coverPicturePath && fileMetadata.common.picture?.[0]) {
+						if (!coverPicturePath && fileMetadata.picture.length) {
 							coverPicturePath = `${outputFilePath}.jpg`
 
-							await fs.promises.writeFile(coverPicturePath, fileMetadata.common.picture[0].data)
+							await fs.promises.writeFile(coverPicturePath, fileMetadata.picture)
 						}
 
-						if (fileMetadata.common.title) {
-							metadata.title = fileMetadata.common.title
+						if (fileMetadata.title) {
+							metadata.title = fileMetadata.title
 						}
 
 						addedMetadata = true
@@ -435,10 +431,10 @@ export default class Converter {
 
 				// When concatenating using the concat file the total duration of the output file won't be displayed in ffmpeg so in order to give the user progress feedback we need to calculate that here
 				for (const file of files) {
-					const metadata = await mm.parseFile(file, { skipCovers: true, includeChapters: false })
+					const metadata = readAudioMetadata(file, { duration: true })
 
-					if (metadata.format.duration) {
-						outputDuration += metadata.format.duration
+					if (metadata.duration) {
+						outputDuration += metadata.duration
 					}
 				}
 
@@ -486,8 +482,8 @@ export default class Converter {
 				addMetaData(args, "title", metadata.title)
 			}
 
-			if (metadata.artist) {
-				addMetaData(args, "artist", metadata.artist)
+			if (metadata.performers) {
+				addMetaData(args, "artist", metadata.performers)
 			}
 
 			if (metadata.year) {

@@ -1,11 +1,10 @@
 import { Book, type Status } from "@books/shared"
 import { execFile } from "child_process"
 import { ffmpegPath } from "ffmpeg-ffprobe-static"
-import * as mm from "music-metadata"
 import fs from "fs"
-import NodeID3 from "node-id3"
 import ServerDirectory from "./ServerDirectory.ts"
 import path from "path"
+import { readAudioMetadata, writeMp3Cover } from "./AudioMetadata.ts"
 
 export default class ServerBook extends Book {
 	fullPath = ""
@@ -37,7 +36,7 @@ export default class ServerBook extends Book {
 		}
 
 		try {
-			// Some audio files have invalid id3 tags that music-metadata can't parse but ffmpeg can so we fall back to ffmpeg to try and get cover images
+			// Fall back to FFmpeg for attached pictures that TagLib cannot read.
 			await new Promise<void>((resolve, reject) => {
 				execFile(
 					ffmpegBinary,
@@ -63,9 +62,7 @@ export default class ServerBook extends Book {
 
 			// If ffmpeg found an image and we're dealing with an mp3, write the extracted image to the id3 tag so that the mp3 has a proper cover photo
 			if (path.extname(fullPath).toLowerCase() === ".mp3") {
-				await NodeID3.Promise.update({
-					image: this.photoPath,
-				}, fullPath)
+				writeMp3Cover(fullPath, this.photoPath)
 			}
 
 			return true
@@ -87,23 +84,22 @@ export default class ServerBook extends Book {
 		// eslint-disable-next-line no-console
 		console.log(`${fullPath} - reading tags`)
 
-		const metadata = (await mm.parseFile(fullPath, { skipCovers: fs.existsSync(this.photoPath), includeChapters: false }))
-		const tags = metadata.common
+		const metadata = readAudioMetadata(fullPath, { duration: true, picture: !fs.existsSync(this.photoPath) })
 		const stats = (await fs.promises.stat(fullPath))
 
-		this.name = tags.title ?? fileName
-		this.author = tags.artists?.length ? tags.artists.join(", ") : tags.artist ?? ""
+		this.name = metadata.title || fileName
+		this.author = metadata.performers.join(", ")
 
-		this.year = tags.year ?? this.year
-		this.comment = tags.comment?.[0]?.text ?? ""
-		this.duration = metadata.format.duration ?? this.duration
-		this.narrator = tags.composer?.join(", ") ?? ""
-		this.genre = tags.genre?.join(", ") ?? ""
+		this.year = metadata.year || this.year
+		this.comment = metadata.comment
+		this.duration = metadata.duration || this.duration
+		this.narrator = metadata.composers.join(", ")
+		this.genre = metadata.genres.join(", ")
 
 		if (!fs.existsSync(this.photoPath)) {
-			const data = tags.picture?.[0]?.data
+			const data = metadata.picture
 
-			if (data) {
+			if (data.length) {
 				await fs.promises.writeFile(this.photoPath, data)
 			}
 			else {

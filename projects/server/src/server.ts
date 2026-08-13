@@ -14,10 +14,9 @@ import bookList from "./BookList.ts"
 import Converter from "./Converter.ts"
 import db from "./Database.ts"
 import ServerToken from "./ServerToken.ts"
-import NodeID3 from "node-id3"
 import sanitize from "sanitize-filename"
 import ServerBook from "./ServerBook.ts"
-import aacWriter from "write-aac-metadata"
+import { writeAudioMetadata } from "./AudioMetadata.ts"
 import { validateRequest } from "./Validation.ts"
 import AuthorizationExpiration, { getNewAuthorizationExpiration } from "./AuthorizationExpiration.ts"
 import * as cookie from "cookie"
@@ -26,6 +25,7 @@ import * as cookie from "cookie"
 const __dirname = import.meta.dirname
 
 const pump = util.promisify(pipeline)
+const splitTagValues = (value: string) => value.split(",").map(item => item.trim()).filter(Boolean)
 const rootDir = __dirname
 const conversions = new Map<string, Converter>()
 const conversionMutex = new Mutex()
@@ -532,33 +532,15 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 			await bookList.deleteBook(book.fullPath)
 		}
 
-		// TODO: change this to use taglib: https://github.com/benrr101/node-taglib-sharp#readme
-		if (extension === ".mp3") {
-			const tags = await NodeID3.Promise.read(newPath)
-
-			tags.title = newBook.name.trim()
-			tags.artist = newBook.author.trim().split(", ").map(v => v.trim()).join("/")
-			tags.year = newBook.year.toString()
-			tags.comment = {
-				language: "eng",
-				text: newBook.comment.trim(),
-			}
-			tags.composer = newBook.narrator.trim().split(", ").map(v => v.trim()).join("/")
-			tags.genre = newBook.genre.trim().split(", ").map(v => v.trim()).join("/")
-
-			await NodeID3.Promise.update(tags, newPath)
-
-			/*			if (ret !== true) {
-							const message = "Failed to update the ID3 tag of this book"
-
-							console.error(message, ret)
-
-							//TODO: change this to an error response
-							return new shared.UpdateBookResponse({ message: message })
-						} */
-		}
-		else if (book.name !== newBook.name || book.author !== newBook.author || book.year !== newBook.year || book.comment !== newBook.comment || book.narrator !== newBook.narrator || book.genre !== newBook.genre) {
-			await aacWriter(newPath, { title: newBook.name.trim(), artist: newBook.author.trim(), year: newBook.year, comment: newBook.comment.trim(), composer: newBook.narrator.trim(), genre: newBook.genre.trim() }, undefined, { debug: true, pipeStdio: true })
+		if (extension === ".mp3" || book.name !== newBook.name || book.author !== newBook.author || book.year !== newBook.year || book.comment !== newBook.comment || book.narrator !== newBook.narrator || book.genre !== newBook.genre) {
+			writeAudioMetadata(newPath, {
+				title: newBook.name.trim(),
+				performers: splitTagValues(newBook.author),
+				year: newBook.year,
+				comment: newBook.comment.trim(),
+				composers: splitTagValues(newBook.narrator),
+				genres: splitTagValues(newBook.genre),
+			})
 		}
 
 		await fs.promises.utimes(newPath, fileTimes.atime, fileTimes.mtime)
