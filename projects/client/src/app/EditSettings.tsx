@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react"
+import { use, useEffect, useState } from "react"
 import Alert from "./components/Alert"
 import { Settings, NoopFunction } from "@books/shared"
 import Loading from "./Loading"
@@ -22,8 +22,8 @@ const EditSettings = (props: Props) => {
 	const [settings, setSettings] = useState<Settings | undefined>()
 	const [saving, setSaving] = useState(false)
 	const [message, setMessage] = useState(props.message)
-	const { logOut } = useContext(AppContext)
-	const { token } = useContext(LoggedInAppContext)
+	const { logOut } = use(AppContext)
+	const { token } = use(LoggedInAppContext)
 	const onChange = (obj: Partial<Settings>) => {
 		setSettings(s => new Settings({
 			baseBooksPath: s?.baseBooksPath ?? "",

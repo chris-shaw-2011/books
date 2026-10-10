@@ -1,5 +1,5 @@
 import classnames from "classnames"
-import { useContext } from "react"
+import { use } from "react"
 import { Directory, Book } from "@books/shared"
 import FolderClosed from "./svg/FolderClosed"
 import FolderOpen from "./svg/FolderOpen"
@@ -45,7 +45,7 @@ const ChildItems = (props: ChildItemProps) => (
 
 const DirectoryLink = (props: DirectoryProps) => {
 	const id = props.directory.id
-	const searchContext = useContext(SearchContext)
+	const searchContext = use(SearchContext)
 	const searchWords = searchContext.searchWords
 	const isOpen = useFolderStore(state => (searchWords.length || state.openFolders[id]) ?? false)
 	const toggleFolder = useFolderStore(state => state.toggleFolder)

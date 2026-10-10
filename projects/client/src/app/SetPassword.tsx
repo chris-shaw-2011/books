@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from "react"
+import { use, useEffect, useState } from "react"
 import Api from "./api/Api"
 import Loading from "./Loading"
 import AppContext from "./context/AppContext"
@@ -9,7 +9,7 @@ interface Props {
 }
 
 const SetPassword = ({ onClose }: Props) => {
-	const { token, logOut, inviteUserId } = useContext(AppContext)
+	const { token, logOut, inviteUserId } = use(AppContext)
 	const [user, setUser] = useState(token ? token.user : undefined)
 
 	useEffect(() => {

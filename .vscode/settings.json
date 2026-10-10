@@ -10,7 +10,6 @@
 	},
 	"js/ts.tsdk.path": "./node_modules/typescript/lib",
 	"js/ts.validate.enabled": true,
-	"eslint.runtime": "/usr/bin/node",
 	"eslint.nodePath": "../lint/node_modules",
 	"eslint.validate": [
 		"javascript",

@@ -28,7 +28,7 @@ const ItemListTabContent = (props: BookTabProps) => {
 			</div>
 			<Virtuoso
 				data={items.items}
-				itemContent={(_, item) => <ItemLink {...props} key={item.id} item={item} />}
+				itemContent={(_, item) => <ItemLink key={item.id} {...props} item={item} />}
 			/>
 		</>
 	)

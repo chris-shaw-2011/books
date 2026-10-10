@@ -13,14 +13,14 @@ const ExtensionsToWatch = new Set([
 function shouldUsePolling(baseBooksPath: string) {
 	let usePolling = false
 	let fileSystem = "local"
+	const localFileSystemArgument = process.platform === "darwin" ? "-l" : "--local"
 
 	try {
-		execFileSync("df", ["--local", baseBooksPath])
+		// BSD df (including macOS) uses -l; GNU df uses --local.
+		execFileSync("df", [localFileSystemArgument, baseBooksPath])
 	}
 	catch {
-		const stdout = execFileSync("df", ["--output=fstype", baseBooksPath], { encoding: "utf8" })
-
-		fileSystem = stdout.trim().split("\n").at(-1) ?? stdout
+		fileSystem = "non-local"
 		usePolling = true
 	}
 
@@ -49,6 +49,12 @@ function shouldIgnoreBookPath(checkPath: string, stats?: Stats) {
 }
 
 export function watchBookFiles(baseBooksPath: string) {
+	if (!baseBooksPath) {
+		// A books directory is configured after the initial login. Until then,
+		// there is nothing to watch and chokidar cannot watch an empty path.
+		return chokidar.watch([])
+	}
+
 	return chokidar.watch(baseBooksPath, {
 		ignored: shouldIgnoreBookPath,
 		ignoreInitial: true,

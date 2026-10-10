@@ -1,4 +1,4 @@
-import { useContext, useState } from "react"
+import { use, useState } from "react"
 import Alert from "./components/Alert"
 import Api from "./api/Api"
 import Loading from "./Loading"
@@ -8,7 +8,7 @@ import styles from "./Login.module.scss"
 import AppContext from "./context/AppContext"
 
 const LogIn = () => {
-	const { onLogin, loginMessage } = useContext(AppContext)
+	const { onLogin, loginMessage } = use(AppContext)
 	const [email, setEmail] = useState("")
 	const [password, setPassword] = useState("")
 	const [logInState, setLogInState] = useState({ loggingIn: false, failedMessage: "" })

@@ -12,7 +12,7 @@ export default class AddUserResponse extends ApiMessage {
 		super()
 
 		this.successful = json?.successful ?? false
-		this.users = json?.users ?? []
+		this.users = json?.users?.map(u => new User(u)) ?? []
 		this.message = json?.message ?? ""
 	}
 }

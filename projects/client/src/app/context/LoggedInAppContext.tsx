@@ -17,4 +17,6 @@ const LoggedInAppContext = createContext<LoggedInAppContextType>({
 	rootDirectory: new Directory(),
 })
 
+LoggedInAppContext.displayName = "LoggedInAppContext"
+
 export default LoggedInAppContext

@@ -29,6 +29,8 @@ const AppContext = createContext<AppContext>({
 	onLogin: NoopFunction,
 })
 
+AppContext.displayName = "AppContext"
+
 export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 	const [loginMessage, setLoginMessage] = useState("")
 	const [inviteUserId, setInviteUserId] = useState(window.location.pathname.includes("/invite/") ? window.location.pathname.replace("/invite/", "") : "")
@@ -76,11 +78,12 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 		setLoginMessage("")
 		setVisibleComponent("Books")
 	}, [setCookies, setLoginMessage, inviteUserId])
+	const value = useMemo(() => ({ searchWords, searchChanged, visibleComponent, setVisibleComponent, logOut, token, loginMessage, inviteUserId, onLogin }), [searchWords, searchChanged, visibleComponent, logOut, token, loginMessage, inviteUserId, onLogin])
 
 	return (
-		<AppContext.Provider value={{ searchWords, searchChanged, visibleComponent, setVisibleComponent, logOut, token, loginMessage, inviteUserId, onLogin }}>
+		<AppContext value={value}>
 			{children}
-		</AppContext.Provider>
+		</AppContext>
 	)
 }
 

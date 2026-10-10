@@ -1,4 +1,4 @@
-import { lazy, Suspense, useContext, useEffect, useState } from "react"
+import { lazy, Suspense, use, useEffect, useMemo, useState } from "react"
 import { Token, Book, type Status, Directory, StatusValues } from "@books/shared"
 import Api from "./api/LoggedInApi"
 import ChangePassword from "./ChangePassword"
@@ -69,7 +69,7 @@ interface ItemListTabsProps {
 }
 
 const ItemListTabs = ({ items }: ItemListTabsProps) => {
-	const appContext = useContext(AppContext)
+	const appContext = use(AppContext)
 	const [selectedTab, setSelectedTab] = useState<Status>("Unread")
 
 	if (appContext.searchWords.length) {
@@ -110,9 +110,10 @@ const ItemListTabs = ({ items }: ItemListTabsProps) => {
 }
 
 const Authenticated = ({ token }: Props) => {
-	const { logOut, visibleComponent, setVisibleComponent } = useContext(AppContext)
+	const { logOut, visibleComponent, setVisibleComponent } = use(AppContext)
 	const [state, setState] = useState<Directory | undefined>()
 	const viewBooks = () => setVisibleComponent("Books")
+	const loggedInAppContextValue = useMemo(() => ({ token, updateBooks: setState, rootDirectory: state ?? new Directory() }), [token, state])
 
 	// TODO: figure out why this is called twice
 	useEffect(() => {
@@ -134,9 +135,8 @@ const Authenticated = ({ token }: Props) => {
 	if (!state) {
 		return <Loading />
 	}
-
 	return (
-		<LoggedInAppContext.Provider value={{ token, updateBooks: setState, rootDirectory: state }}>
+		<LoggedInAppContext value={loggedInAppContextValue}>
 			<ItemListTabs items={state} />
 			{
 				(() => {
@@ -162,7 +162,7 @@ const Authenticated = ({ token }: Props) => {
 					}
 				})()
 			}
-		</LoggedInAppContext.Provider>
+		</LoggedInAppContext>
 	)
 }
 

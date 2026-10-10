@@ -1,4 +1,4 @@
-import { lazy, Suspense, useContext, useState } from "react"
+import { lazy, Suspense, use, useState } from "react"
 import DownArrow from "./svg/DownArrow"
 import SelectList, { SelectListItem } from "./components/SelectList"
 import styles from "./Navigation.module.scss"
@@ -19,7 +19,7 @@ const Navigation = () => {
 	const ref = useOnclickOutside(() => {
 		setOpen(false)
 	}, { disabled: !open })
-	const appContext = useContext(AppContext)
+	const appContext = use(AppContext)
 
 	const setVisibleComponent = (e: React.MouseEvent<HTMLDivElement>, component: VisibleComponent) => {
 		e.preventDefault()

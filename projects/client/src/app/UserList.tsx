@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useState } from "react"
+import { useCallback, use, useEffect, useState } from "react"
 import { UserListResponse, User, AddUserResponse } from "@books/shared"
 import Loading from "./Loading"
 import AppContext from "./context/AppContext"
@@ -71,9 +71,9 @@ const UserActions = ({ loggedInUserId, user, handleUserListResponse, logOut }: U
 }
 
 const UserList = (props: Props) => {
-	const { logOut } = useContext(AppContext)
-	const { token } = useContext(LoggedInAppContext)
-	const [users, setUsers] = useState({ users: new Array<User>(), message: "" })
+	const { logOut } = use(AppContext)
+	const { token } = use(LoggedInAppContext)
+	const [users, setUsers] = useState(() => ({ users: new Array<User>(), message: "" }))
 	const [addingUserState, setAddingUserState] = useState(defaultAddingUserState)
 	const mergeAddingUserState = (obj: Partial<AddingUserState>) => {
 		setAddingUserState(s => ({ ...s, ...obj }))

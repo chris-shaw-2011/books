@@ -1,5 +1,5 @@
 import { Line } from "rc-progress"
-import { useContext, useEffect, useState, useCallback } from "react"
+import { use, useEffect, useState, useCallback } from "react"
 import { UploadResponse, type ConverterStatus, ConverterStatuses, Book, ApiMessage, AllowedUploadFileExtensions, canBeUploaded } from "@books/shared"
 import Api from "./api/LoggedInApi"
 import AppContext from "./context/AppContext"
@@ -44,7 +44,7 @@ const ToConverterStatus = (status: UploadStatus): ConverterStatus => {
 
 const IsConversionRunning = (status: UploadStatus) => (status === "Extracting" || status === "Cracking" || status === "Converting" || status === "Combining")
 
-const ProgressSection = ({ status, percent, uploadFileName, errorMessage, workingFileNames }: FileUploadRowState) => {
+const ProgressSection = ({ status, percent, uploadFileName, errorMessage, workingFileNames }: Omit<FileUploadRowState, "conversionId">) => {
 	const percentTxt = `${Math.round(percent)}%`
 	const text = [percentTxt, status]
 
@@ -71,18 +71,18 @@ const ProgressSection = ({ status, percent, uploadFileName, errorMessage, workin
 }
 
 const FileUploadRow = (props: FileUploadRowProps) => {
-	const [uploadState, setUploadState] = useState<FileUploadRowState>({
+	const [uploadState, setUploadState] = useState<FileUploadRowState>(() => ({
 		status: "Waiting",
 		percent: 0,
 		conversionId: "",
 		errorMessage: "",
 		uploadFileName: "",
 		workingFileNames: [],
-	})
+	}))
 	const status = uploadState.status
 	const percent = uploadState.percent
 	const conversionId = uploadState.conversionId
-	const { logOut } = useContext(AppContext)
+	const { logOut } = use(AppContext)
 	const [editingBook, setEditingBook] = useState<Book>()
 	const onStatusChanged = props.onStatusChanged
 	const id = props.id
@@ -171,7 +171,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 }
 
 const UploadBooks = (props: Props) => {
-	const [fileUploadRows, setFileUploadRows] = useState<Map<string, UploadStatus>>(new Map([[crypto.randomUUID(), "Waiting"]]))
+	const [fileUploadRows, setFileUploadRows] = useState<Map<string, UploadStatus>>(() => new Map([[crypto.randomUUID(), "Waiting"]]))
 	const onStatusChanged = useCallback((id: string, status: UploadStatus) => {
 		setFileUploadRows(prev => {
 			const prevStatus = prev.get(id) ?? "Waiting"

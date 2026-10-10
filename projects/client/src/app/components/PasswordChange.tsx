@@ -3,7 +3,7 @@ import ActionButtons from "./ActionButtons"
 import OverlayComponent from "./OverlayComponent"
 import TextboxField from "./TextboxField"
 import { Token, User } from "@books/shared"
-import { useContext, useState } from "react"
+import { use, useState } from "react"
 import AppContext from "../context/AppContext"
 import styles from "./PasswordChange.module.scss"
 
@@ -16,7 +16,7 @@ interface Props {
 }
 
 const PasswordChange = ({ onClose, user, actionButtonText, changeHappeningText, apiCall }: Props) => {
-	const { onLogin, logOut } = useContext(AppContext)
+	const { onLogin, logOut } = use(AppContext)
 	const [passwordsMatch, setPasswordsMatch] = useState(true)
 	const [state, setState] = useState({ password: "", confirmedPassword: "", changingPasswords: false })
 	const mergeState = (obj: Record<string, unknown>) => {

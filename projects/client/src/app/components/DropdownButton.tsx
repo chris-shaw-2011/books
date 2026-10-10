@@ -28,19 +28,19 @@ const DropdownButton = <T extends string>({ id, title, options, onSelect, onClic
 	const [placement, setPlacement] = useState<Placement>({ above: false, offsetX: 0, offsetY: 0 })
 	const toggleRef = useRef<HTMLButtonElement>(null)
 	const menuRef = useRef<HTMLDivElement>(null)
-	const itemRefs = useRef<(HTMLButtonElement | null)[]>([])
-	const pendingFocus = useRef<number | null>(null)
+	const itemButtonsRef = useRef<(HTMLButtonElement | null)[]>([])
+	const pendingFocusRef = useRef<number | null>(null)
 	const rootRef = useOnclickOutside(() => setOpen(false), { disabled: !open })
 	const menuId = `${id}-menu`
 
 	const focusItem = useCallback((index: number) => {
-		const items = itemRefs.current.filter(item => item !== null)
+		const items = itemButtonsRef.current.filter(item => item !== null)
 		const item = items[(index + items.length) % items.length]
 
 		item?.focus()
 	}, [])
 	const openAndFocus = (index: number) => {
-		pendingFocus.current = index
+		pendingFocusRef.current = index
 		setOpen(true)
 	}
 	const closeAndFocusToggle = () => {
@@ -87,9 +87,9 @@ const DropdownButton = <T extends string>({ id, title, options, onSelect, onClic
 		if (open) {
 			updatePlacement()
 
-			if (pendingFocus.current !== null) {
-				focusItem(pendingFocus.current)
-				pendingFocus.current = null
+			if (pendingFocusRef.current !== null) {
+				focusItem(pendingFocusRef.current)
+				pendingFocusRef.current = null
 			}
 		}
 	}, [focusItem, open, updatePlacement])
@@ -109,7 +109,7 @@ const DropdownButton = <T extends string>({ id, title, options, onSelect, onClic
 	}, [open, updatePlacement])
 
 	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-		const items = itemRefs.current.filter(item => item !== null)
+		const items = itemButtonsRef.current.filter(item => item !== null)
 		const activeIndex = items.findIndex(item => item === document.activeElement)
 
 		switch (event.key) {
@@ -186,7 +186,7 @@ const DropdownButton = <T extends string>({ id, title, options, onSelect, onClic
 								onSelect(option.value, event)
 								closeAndFocusToggle()
 							}}
-							ref={element => { itemRefs.current[index] = element }}
+							ref={element => { itemButtonsRef.current[index] = element }}
 							role="menuitem"
 							tabIndex={-1}
 							type="button"

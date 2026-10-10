@@ -69,7 +69,7 @@ Mpeg4IsoChunkLargeOffset.prototype.updatePosition = function (sizeDifference: nu
 }
 
 export const readAudioMetadata = (filePath: string, options: ReadAudioMetadataOptions = {}) => {
-	const readStyle = (options.duration ? ReadStyle.Average : ReadStyle.None) | (options.picture ? 0 : ReadStyle.PictureLazy)
+	const readStyle: ReadStyle = (options.duration ? ReadStyle.Average : ReadStyle.None) | (options.picture ? ReadStyle.None : ReadStyle.PictureLazy)
 	const file = TagLibFile.createFromPath(filePath, undefined, readStyle)
 
 	try {

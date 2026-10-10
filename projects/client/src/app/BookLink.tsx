@@ -1,5 +1,5 @@
 import classnames from "classnames"
-import { useContext, useState, useEffect } from "react"
+import { use, useState, useEffect } from "react"
 import AppContext from "./context/AppContext"
 import LoggedInAppContext from "./context/LoggedInAppContext"
 import Highlighter from "react-highlight-words"
@@ -106,7 +106,7 @@ const FolderList = (props: FolderListProps) => {
 				{open ? <FolderOpen className={styles.folder} /> : <FolderClosed className={styles.folder} />}
 				{directory.name || directory.folderPath}
 			</div>
-			{open && (subDirs.length || addingFolder) && (
+			{open && (subDirs.length > 0 || addingFolder) && (
 				<div className={styles.subFolderList}>
 					{addingFolder && (
 						<div className={styles.newFolder}>
@@ -114,7 +114,7 @@ const FolderList = (props: FolderListProps) => {
 							<Textbox autoFocus={true} placeholder="New Folder Name" onChange={e => props.setNewFolderName(e.target.value)} value={newFolderName} />
 						</div>
 					)}
-					{subDirs.map(i => <FolderList {...props} key={i.id} directory={i} className="" />)}
+					{subDirs.map(i => <FolderList key={i.id} {...props} directory={i} className="" />)}
 				</div>
 			)}
 		</div>
@@ -181,9 +181,9 @@ const FolderSelection = (props: FolderSelectionProps) => {
 }
 
 const BookLink = (props: BookProps) => {
-	const { logOut } = useContext(AppContext)
-	const { updateBooks, token, rootDirectory } = useContext(LoggedInAppContext)
-	const searchContext = useContext(SearchContext)
+	const { logOut } = use(AppContext)
+	const { updateBooks, token, rootDirectory } = use(LoggedInAppContext)
+	const searchContext = use(SearchContext)
 	const [changingStatus, setChangingStatus] = useState(false)
 	const [editingState, setEditingState] = useState<{ status: EditStatus, alertMessage?: string }>({ status: props.editOnly ? "Editing" : "ReadOnly" })
 	const editing = editingState.status === "Editing" || editingState.status === "Saving"

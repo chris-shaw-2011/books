@@ -1,4 +1,4 @@
-import { lazy, Suspense, useContext } from "react"
+import { lazy, Suspense, use } from "react"
 import LogIn from "./LogIn"
 import styles from "./App.module.scss"
 import Loading from "./Loading"
@@ -12,7 +12,7 @@ const Authenticated = lazy(() => import("./Authenticated").catch(handleDynamicIm
 const SetPassword = lazy(() => import("./SetPassword").catch(handleDynamicImportFailure))
 
 const MainContent = () => {
-	const { token, logOut, inviteUserId } = useContext(AppContext)
+	const { token, logOut, inviteUserId } = use(AppContext)
 
 	if (token) {
 		return (
