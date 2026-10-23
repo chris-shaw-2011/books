@@ -26,5 +26,7 @@ yarn-error.log*
 db.sqlite*
 .eslintcache
 docker-compose.override.yml
+/files/
+/db/
 projects/client/.generated/
 tsconfig.tsbuildinfo

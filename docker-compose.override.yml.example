@@ -1,0 +1,18 @@
+# Copy this file to docker-compose.override.yml to run locally
+
+services:
+  books-site:
+#### Uncomment below for local development builds
+#    image: books:local
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
+    environment:
+      - BOOKS_DB_LOCATION=/node/db/db.sqlite
+      - DEFAULT_BASE_BOOKS_PATH=/mnt/books
+      - DEFAULT_INVITE_EMAIL=
+      - DEFAULT_INVITE_EMAIL_PASSWORD=
+      - DEFAULT_UPLOAD_LOCATION=/mnt/books/Uploads
+    volumes:
+      - "./files:/mnt/books"
+      - "./db:/node/db"
