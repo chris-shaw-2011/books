@@ -1,5 +1,5 @@
-import { Books, ChangeBookStatusRequest, ChangePasswordRequest, ConversionUpdateRequest, ConversionUpdateResponse, Token, type ConverterStatus, type Status } from "@books/shared"
-import { ApiClass } from "./Api"
+import { AudibleImportResponse, AudibleRedirectRequest, AudibleReviewRequest, AudibleSessionRequest, AudibleStartRequest, Books, ChangeBookStatusRequest, ChangePasswordRequest, ConversionUpdateRequest, ConversionUpdateResponse, Token, type ConverterStatus, type Status } from "@books/shared"
+import { ApiClass } from "./Api.ts"
 
 export class LoggedInApiClass extends ApiClass {
 	books = async (onFailure: (message?: string) => void) => this.callApi("/books", Books, onFailure)
@@ -10,6 +10,21 @@ export class LoggedInApiClass extends ApiClass {
 		this.callApi("/conversionUpdate", ConversionUpdateResponse, onFailure, new ConversionUpdateRequest({ conversionId, knownPercent, knownConverterStatus, knownWorkingFiles }), signal)
 
 	changePassword = async (newPassword: string, onFailure: (message?: string) => void) => this.callApi("/changePassword", Token, onFailure, new ChangePasswordRequest({ newPassword }))
+
+	audibleStatus = async (onFailure: (message?: string) => void, signal?: AbortSignal) =>
+		this.callApi("/audible/status", AudibleImportResponse, onFailure, undefined, signal, "GET")
+
+	audibleStart = async (account: string, marketplace: string, onFailure: (message?: string) => void) =>
+		this.callApi("/audible/start", AudibleImportResponse, onFailure, new AudibleStartRequest({ account, marketplace }))
+
+	audibleRedirect = async (sessionId: string, redirectUrl: string, onFailure: (message?: string) => void) =>
+		this.callApi("/audible/redirect", AudibleImportResponse, onFailure, new AudibleRedirectRequest({ sessionId, redirectUrl }))
+
+	audibleCancel = async (sessionId: string, onFailure: (message?: string) => void) =>
+		this.callApi("/audible/cancel", AudibleImportResponse, onFailure, new AudibleSessionRequest({ sessionId }))
+
+	audibleReview = async (sessionId: string, asin: string, onFailure: (message?: string) => void) =>
+		this.callApi("/audible/review", AudibleImportResponse, onFailure, new AudibleReviewRequest({ sessionId, asin }))
 }
 
 const LoggedInApi = new LoggedInApiClass()

@@ -5,6 +5,7 @@ import ChangePassword from "./ChangePassword"
 import Loading from "./Loading"
 import LoggedInAppContext from "./context/LoggedInAppContext"
 import UploadBooks from "./UploadBooks"
+import AudibleImport from "./AudibleImport"
 import ItemListTabContent from "./ItemListTabContent"
 import Styles from "./Authenticated.module.scss"
 import classNames from "classnames"
@@ -157,6 +158,8 @@ const Authenticated = ({ token }: Props) => {
 							)
 						case "Upload":
 							return <UploadBooks onClose={viewBooks} />
+						case "Audible":
+							return <AudibleImport onClose={viewBooks} />
 						default:
 							return null
 					}

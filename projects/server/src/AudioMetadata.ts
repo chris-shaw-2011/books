@@ -78,8 +78,10 @@ export const readAudioMetadata = (filePath: string, options: ReadAudioMetadataOp
 		const duration = options.duration ? file.properties.durationMilliseconds / 1000 : undefined
 		const title = tag.title as string | undefined
 		const comment = tag.comment as string | undefined
+		const asin = file instanceof Mpeg4File ? tag.amazonId as string | undefined : undefined
 
 		return {
+			asin: asin ?? "",
 			title: title ?? "",
 			performers: tag.performers,
 			year: tag.year,

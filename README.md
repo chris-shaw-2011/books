@@ -10,6 +10,7 @@ This application is an audiobook management platform. It allows users to organiz
 - Manage a library of audiobooks (add, edit, delete)
 - Track read/unread status and metadata for each book
 - Upload and convert audiobook files (e.g., zip of mp3s to m4b)
+- Import purchased and Audible Plus audiobooks on demand through Libation with temporary Amazon authentication
 - Automatic metadata extraction and modification
 - User authentication and account management
 - Settings management via web interface
@@ -91,6 +92,8 @@ docker compose up -d
 - `npm run build` - Build all packages for production
 - `npm run lint` - Run lint checks
 - `npm run analyze` - Analyze client bundle size
+
+For Audible container requirements, image checks, and interactive account testing, see [Audible import container verification](docs/audible-docker.md).
 
 ## Todo
 Add manage users page<br />

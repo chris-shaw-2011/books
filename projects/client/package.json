@@ -19,6 +19,7 @@
 	},
 	"scripts": {
 		"start": "vite",
+		"test": "node --test test/*.test.ts",
 		"build": "npm run scss-types && npm run build-tsc && npm run build-vite",
 		"build-tsc": "tsc -b",
 		"build-vite": "vite build",

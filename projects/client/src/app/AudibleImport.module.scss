@@ -1,0 +1,38 @@
+.dialog {
+	width: 100%;
+	max-width: 70rem;
+}
+
+.activity {
+	max-height: 12rem;
+	overflow: auto;
+	white-space: pre-wrap;
+}
+
+.review {
+	padding-top: 1rem;
+}
+
+.examples {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1rem;
+	margin: 1rem 0;
+
+	figure {
+		flex: 1 1 14rem;
+		margin: 0;
+		max-width: 18rem;
+	}
+
+	img {
+		display: block;
+		width: 100%;
+		height: auto;
+		border-radius: 0.5rem;
+	}
+
+	figcaption {
+		margin-top: 0.5rem;
+	}
+}

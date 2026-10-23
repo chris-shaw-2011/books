@@ -102,13 +102,16 @@ class BookList {
 		// eslint-disable-next-line no-console
 		console.log(`file added: ${addPath} - processing`)
 
-		const dir = this.books.findClosestDirectory(addPath)
+		try {
+			const dir = this.books.findClosestDirectory(addPath)
 
-		await dir.loadBooks(path.parse(addPath))
+			await dir.loadBooks(path.parse(addPath))
 
-		dir.sortItems(true)
-
-		releaser()
+			dir.sortItems(true)
+		}
+		finally {
+			releaser()
+		}
 
 		// eslint-disable-next-line no-console
 		console.log(`file added: ${addPath} - done`)
@@ -126,6 +129,10 @@ class BookList {
 		}
 
 		return this.books
+	}
+
+	public async hasAsin(asin: string) {
+		return (await this.allBooks()).hasAsin(asin)
 	}
 
 	public async pauseUpdates() {

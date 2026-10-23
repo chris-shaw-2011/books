@@ -11,6 +11,8 @@ import url from "url"
 import * as crypto from "node:crypto"
 import * as shared from "@books/shared"
 import bookList from "./BookList.ts"
+import { createAudibleImporter } from "./audible/ImportService.ts"
+import { registerAudibleRoutes } from "./audible/Routes.ts"
 import Converter from "./Converter.ts"
 import db from "./Database.ts"
 import ServerToken from "./ServerToken.ts"
@@ -30,6 +32,13 @@ const rootDir = __dirname
 const conversions = new Map<string, Converter>()
 const conversionMutex = new Mutex()
 const server = Fastify({ logger: false, bodyLimit: 10_000_000_000 })
+const audibleImporter = createAudibleImporter(() => db.settings, async filePath => {
+	await bookList.fileAdded(filePath)
+	const book = bookList.findBookByPath(filePath)
+	if (!(book instanceof ServerBook)) throw new Error("Imported book could not be indexed")
+	return new shared.Book(book)
+}, asin => bookList.hasAsin(asin))
+registerAudibleRoutes(server, audibleImporter)
 const rootPath = path.join(rootDir, "../../../../bin/projects/client")
 const immutableAssetOptions = { immutable: true, maxAge: "1y" } as const
 interface ClientManifestEntry {

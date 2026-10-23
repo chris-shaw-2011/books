@@ -39,6 +39,11 @@ const Navigation = () => {
 					{" "}
 					Upload Books
 				</SelectListItem>
+				<SelectListItem onClick={e => { setVisibleComponent(e, "Audible") }}>
+					<Upload />
+					{" "}
+					Import Audible Books
+				</SelectListItem>
 				{appContext.token?.user.isAdmin && (
 					<Suspense fallback={<Loading />}>
 						<AdminNavOptions setVisibleComponent={setVisibleComponent} />

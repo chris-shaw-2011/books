@@ -1,16 +1,16 @@
 import { AccessDenied, Unauthorized, ApiMessage } from "@books/shared"
-import FetchAborted from "./FetchAborted"
-import UnexpectedApiMessageType from "./UnexpectedApiMessageType"
+import FetchAborted from "./FetchAborted.ts"
+import UnexpectedApiMessageType from "./UnexpectedApiMessageType.ts"
 
 export default abstract class BaseApi {
 	async fetchWithType(url: string, jsonSend?: ApiMessage): Promise<ApiMessage>
-	async fetchWithType(url: string, jsonSend?: ApiMessage, signal?: AbortSignal): Promise<ApiMessage | FetchAborted>
-	async fetchWithType(url: string, jsonSend?: ApiMessage, signal?: AbortSignal) {
+	async fetchWithType(url: string, jsonSend?: ApiMessage, signal?: AbortSignal, method?: "GET" | "POST"): Promise<ApiMessage | FetchAborted>
+	async fetchWithType(url: string, jsonSend?: ApiMessage, signal?: AbortSignal, method: "GET" | "POST" = "POST") {
 		const headers = jsonSend ? { "Content-Type": "application/json" } : {}
 		const init: RequestInit = {
-			method: "POST",
+			method,
 			headers: headers,
-			body: jsonSend ? JSON.stringify(jsonSend) : "",
+			...(method === "POST" && { body: jsonSend ? JSON.stringify(jsonSend) : "" }),
 		}
 		let response: Response
 
@@ -69,9 +69,9 @@ export default abstract class BaseApi {
 	}
 
 	protected async callApi<T extends ApiMessage>(url: string, expectedResponseType: new (args: Partial<T>) => T, onFailure: (message?: string) => void, jsonSend?: ApiMessage): Promise<T>
-	protected async callApi<T extends ApiMessage>(url: string, expectedResponseType: new (args: Partial<T>) => T, onFailure: (message?: string) => void, jsonSend?: ApiMessage, signal?: AbortSignal): Promise<T | FetchAborted>
-	protected async callApi<T extends ApiMessage>(url: string, expectedResponseType: new (args: Partial<T>) => T, onFailure: (message?: string) => void, jsonSend?: ApiMessage, signal?: AbortSignal) {
-		const response = await this.fetchWithType(url, jsonSend, signal)
+	protected async callApi<T extends ApiMessage>(url: string, expectedResponseType: new (args: Partial<T>) => T, onFailure: (message?: string) => void, jsonSend?: ApiMessage, signal?: AbortSignal, method?: "GET" | "POST"): Promise<T | FetchAborted>
+	protected async callApi<T extends ApiMessage>(url: string, expectedResponseType: new (args: Partial<T>) => T, onFailure: (message?: string) => void, jsonSend?: ApiMessage, signal?: AbortSignal, method: "GET" | "POST" = "POST") {
+		const response = await this.fetchWithType(url, jsonSend, signal, method)
 
 		return this.handleApiResponse(response, expectedResponseType, onFailure)
 	}

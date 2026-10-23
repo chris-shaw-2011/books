@@ -14,13 +14,15 @@
 			".generated"
 		],
 		"types": [
-			"vite/client"
+			"vite/client",
+			"node"
 		]
 	},
 	"include": [
 		".generated/**/*.d.ts",
 		"src/**/*.ts",
 		"src/**/*.tsx",
-		"vite.config.ts"
+		"vite.config.ts",
+		"test/**/*.ts"
 	]
 }

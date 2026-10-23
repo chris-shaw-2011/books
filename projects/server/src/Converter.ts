@@ -607,19 +607,21 @@ export default class Converter {
 	}
 
 	private async runFfmpeg(outputFilePath: string, args: string[]) {
-		if (!ffmpegPath) {
+		const executable = process.env.FFMPEG_PATH ?? ffmpegPath
+		if (!executable) {
 			throw Error("ffprobePath is null")
 		}
 
-		return this.runProgram(ffmpegPath, `${outputFilePath}.ffmpeg.log`, args, data => this.parseData(data, outputFilePath))
+		return this.runProgram(executable, `${outputFilePath}.ffmpeg.log`, args, data => this.parseData(data, outputFilePath))
 	}
 
 	private async runFfprobe(inputFilePath: string, args: string[]) {
-		if (!ffprobePath) {
+		const executable = process.env.FFPROBE_PATH ?? ffprobePath
+		if (!executable) {
 			throw Error("ffprobePath is null")
 		}
 
-		return await this.runProgram(ffprobePath, `${inputFilePath}.ffprobe.log`, args)
+		return await this.runProgram(executable, `${inputFilePath}.ffprobe.log`, args)
 	}
 
 	private async runProgram(programPath: string, logPath: string, args: string[], onData?: (data: string) => void, workingDirectory?: string) {

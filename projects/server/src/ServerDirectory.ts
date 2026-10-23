@@ -19,6 +19,10 @@ export default class ServerDirectory extends Directory {
 	parent?: ServerDirectory
 	pathTree: string[] = []
 
+	hasAsin(asin: string): boolean {
+		return this.items.some(item => item instanceof ServerDirectory ? item.hasAsin(asin) : item.asin === asin)
+	}
+
 	findById(id: string, searchDir?: ServerDirectory): ServerDirectory | ServerBook | undefined {
 		const items = searchDir?.items ?? this.items
 		for (const item of items) {

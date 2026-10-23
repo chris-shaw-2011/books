@@ -30,3 +30,5 @@ export function validateRequest(request: FastifyRequest, reply: FastifyReply, do
 
 	done()
 }
+
+export const validateRequestPreHandler = { preHandler: validateRequest }

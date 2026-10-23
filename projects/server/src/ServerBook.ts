@@ -29,7 +29,7 @@ export default class ServerBook extends Book {
 	}
 
 	private async extractCoverFromAttachedPicture(fullPath: string) {
-		const ffmpegBinary = ffmpegPath
+		const ffmpegBinary = process.env.FFMPEG_PATH ?? ffmpegPath
 
 		if (!ffmpegBinary) {
 			return false
@@ -95,6 +95,7 @@ export default class ServerBook extends Book {
 		this.duration = metadata.duration || this.duration
 		this.narrator = metadata.composers.join(", ")
 		this.genre = metadata.genres.join(", ")
+		this.asin = metadata.asin
 
 		if (!fs.existsSync(this.photoPath)) {
 			const data = metadata.picture

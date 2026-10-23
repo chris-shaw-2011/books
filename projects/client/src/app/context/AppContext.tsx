@@ -3,7 +3,7 @@ import { createContext, useCallback, useMemo, useState } from "react"
 import { useCookies } from "react-cookie"
 import { cookieName } from "../shared/Methods"
 
-export type VisibleComponent = "Books" | "Settings" | "Users" | "ChangePassword" | "Upload"
+export type VisibleComponent = "Books" | "Settings" | "Users" | "ChangePassword" | "Upload" | "Audible"
 
 interface AppContext {
 	logOut: (message?: string) => void,

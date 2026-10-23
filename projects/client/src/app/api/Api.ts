@@ -1,5 +1,5 @@
 import { LoginRequest, SetPasswordRequest, Token, UserRequest, UserResponse } from "@books/shared"
-import BaseApi from "./BaseApi"
+import BaseApi from "./BaseApi.ts"
 
 export class ApiClass extends BaseApi {
 	auth = async (email: string, password: string, onFailure: (message?: string) => void) => this.callApi("/auth", Token, onFailure, new LoginRequest({ email, password }))

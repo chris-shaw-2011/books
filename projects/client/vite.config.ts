@@ -106,6 +106,7 @@ export default defineConfig(({ command }) => ({
 			"/user": proxyOptions,
 			"/changePassword": proxyOptions,
 			"/upload": proxyOptions,
+			"/audible": proxyOptions,
 			"/conversionUpdate": proxyOptions,
 			"/addFolder": proxyOptions,
 			"/updateBook": proxyOptions,

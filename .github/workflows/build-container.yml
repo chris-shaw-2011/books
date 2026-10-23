@@ -163,6 +163,34 @@ jobs:
           echo "Current base image digest: ${base_digest}"
           echo "digest=${base_digest}" >> "$GITHUB_OUTPUT"
 
+      - name: Set up current Node for release resolution
+        uses: actions/setup-node@v6
+        with:
+          node-version: current
+
+      - name: Test container update checks
+        run: node --test scripts/resolve-libation-release.test.ts scripts/check-apt-updates.test.ts
+
+      - name: Resolve current Libation package
+        id: current-libation
+        run: |
+          set -euo pipefail
+          node scripts/resolve-libation-release.ts amd64 > /tmp/libation-release.json
+          version="$(node -p 'require("/tmp/libation-release.json").version')"
+          sha256="$(node -p 'require("/tmp/libation-release.json").sha256')"
+          echo "Current Libation version: ${version}"
+          echo "Current Libation SHA256: ${sha256}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "sha256=${sha256}" >> "$GITHUB_OUTPUT"
+
+      - name: Hash published container sources
+        id: container-source
+        run: |
+          set -euo pipefail
+          digest="$(sha256sum Dockerfile.release scripts/install-libation.sh scripts/resolve-libation-release.ts scripts/check-docker-runtime.ts | sha256sum | awk '{print $1}')"
+          echo "Published container source SHA256: ${digest}"
+          echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+
       - name: Read latest uploaded container metadata
         id: latest-image
         env:
@@ -174,12 +202,16 @@ jobs:
           version=""
           base_digest=""
           release_version=""
+          libation_sha256=""
+          source_digest=""
 
           if docker pull "${IMAGE_NAME}:latest" >/dev/null 2>&1; then
             found=true
             version="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "${IMAGE_NAME}:latest" || true)"
             base_digest="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.base.digest" }}' "${IMAGE_NAME}:latest" || true)"
             release_version="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.release.version" }}' "${IMAGE_NAME}:latest" || true)"
+            libation_sha256="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.libation.sha256" }}' "${IMAGE_NAME}:latest" || true)"
+            source_digest="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.container-source.sha256" }}' "${IMAGE_NAME}:latest" || true)"
           fi
 
           if [ "${found}" = "true" ]; then
@@ -187,6 +219,8 @@ jobs:
             echo "Previous version label: ${version}"
             echo "Previous release version label: ${release_version}"
             echo "Previous base digest label: ${base_digest}"
+            echo "Previous Libation SHA256 label: ${libation_sha256}"
+            echo "Previous container source SHA256 label: ${source_digest}"
           else
             echo "No previous latest image found at ${IMAGE_NAME}:latest"
           fi
@@ -195,6 +229,37 @@ jobs:
           echo "version=${version}" >> "$GITHUB_OUTPUT"
           echo "base-digest=${base_digest}" >> "$GITHUB_OUTPUT"
           echo "release-version=${release_version}" >> "$GITHUB_OUTPUT"
+          echo "libation-sha256=${libation_sha256}" >> "$GITHUB_OUTPUT"
+          echo "source-digest=${source_digest}" >> "$GITHUB_OUTPUT"
+
+      - name: Check installed Debian packages for upgrades
+        id: apt-updates
+        env:
+          IMAGE_NAME: ${{ steps.image-name.outputs.value }}
+          PREVIOUS_FOUND: ${{ steps.latest-image.outputs.found }}
+          PREVIOUS_RELEASE_VERSION: ${{ steps.latest-image.outputs.release-version }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          PREVIOUS_BASE_DIGEST: ${{ steps.latest-image.outputs.base-digest }}
+          CURRENT_BASE_DIGEST: ${{ steps.current-base.outputs.digest }}
+          PREVIOUS_LIBATION_SHA256: ${{ steps.latest-image.outputs.libation-sha256 }}
+          CURRENT_LIBATION_SHA256: ${{ steps.current-libation.outputs.sha256 }}
+          PREVIOUS_SOURCE_DIGEST: ${{ steps.latest-image.outputs.source-digest }}
+          CURRENT_SOURCE_DIGEST: ${{ steps.container-source.outputs.digest }}
+        run: |
+          set -euo pipefail
+
+          count=0
+          if [ "${PREVIOUS_FOUND}" = "true" ] \
+            && [ "${PREVIOUS_RELEASE_VERSION}" = "${RELEASE_VERSION}" ] \
+            && [ "${PREVIOUS_BASE_DIGEST}" = "${CURRENT_BASE_DIGEST}" ] \
+            && [ "${PREVIOUS_LIBATION_SHA256}" = "${CURRENT_LIBATION_SHA256}" ] \
+            && [ "${PREVIOUS_SOURCE_DIGEST}" = "${CURRENT_SOURCE_DIGEST}" ]; then
+            count="$(docker run --rm --interactive --user root --entrypoint sh "${IMAGE_NAME}:latest" -s < scripts/check-apt-updates.sh)"
+          fi
+
+          [[ "${count}" =~ ^[0-9]+$ ]] || { echo "Invalid APT upgrade count: ${count}"; exit 1; }
+          echo "Available Debian package upgrades: ${count}"
+          echo "count=${count}" >> "$GITHUB_OUTPUT"
 
       - name: Decide whether to build and what version to use
         id: decision
@@ -206,6 +271,12 @@ jobs:
           PREVIOUS_BASE_DIGEST: ${{ steps.latest-image.outputs.base-digest }}
           PREVIOUS_RELEASE_VERSION: ${{ steps.latest-image.outputs.release-version }}
           CURRENT_BASE_DIGEST: ${{ steps.current-base.outputs.digest }}
+          CURRENT_LIBATION_SHA256: ${{ steps.current-libation.outputs.sha256 }}
+          PREVIOUS_LIBATION_SHA256: ${{ steps.latest-image.outputs.libation-sha256 }}
+          CURRENT_SOURCE_DIGEST: ${{ steps.container-source.outputs.digest }}
+          PREVIOUS_SOURCE_DIGEST: ${{ steps.latest-image.outputs.source-digest }}
+          APT_UPGRADE_COUNT: ${{ steps.apt-updates.outputs.count }}
+          BUILD_EVENT: ${{ github.event_name }}
         run: |
           set -euo pipefail
 
@@ -221,8 +292,17 @@ jobs:
           echo "  previous_release_version=${PREVIOUS_RELEASE_VERSION}"
           echo "  previous_base_digest=${PREVIOUS_BASE_DIGEST}"
           echo "  current_base_digest=${CURRENT_BASE_DIGEST}"
+          echo "  previous_libation_sha256=${PREVIOUS_LIBATION_SHA256}"
+          echo "  current_libation_sha256=${CURRENT_LIBATION_SHA256}"
+          echo "  previous_source_digest=${PREVIOUS_SOURCE_DIGEST}"
+          echo "  current_source_digest=${CURRENT_SOURCE_DIGEST}"
+          echo "  apt_upgrade_count=${APT_UPGRADE_COUNT}"
 
-          if [ "${RELEASE_CREATED}" = "true" ]; then
+          if [ "${BUILD_EVENT}" = "workflow_dispatch" ]; then
+            should_build=true
+            target_version="${RELEASE_VERSION}.build${GITHUB_RUN_NUMBER}"
+            reason="container sources changed or manual rebuild requested"
+          elif [ "${RELEASE_CREATED}" = "true" ]; then
             should_build=true
             target_version="${RELEASE_VERSION}"
             reason="new release created"
@@ -230,9 +310,12 @@ jobs:
             if [ "${PREVIOUS_FOUND}" = "true" ] \
               && [ "${PREVIOUS_RELEASE_VERSION}" = "${RELEASE_VERSION}" ] \
               && [ -n "${PREVIOUS_BASE_DIGEST}" ] \
-              && [ "${PREVIOUS_BASE_DIGEST}" = "${CURRENT_BASE_DIGEST}" ]; then
+              && [ "${PREVIOUS_BASE_DIGEST}" = "${CURRENT_BASE_DIGEST}" ] \
+              && [ "${PREVIOUS_LIBATION_SHA256}" = "${CURRENT_LIBATION_SHA256}" ] \
+              && [ "${PREVIOUS_SOURCE_DIGEST}" = "${CURRENT_SOURCE_DIGEST}" ] \
+              && [ "${APT_UPGRADE_COUNT}" = "0" ]; then
               should_build=false
-              reason="base image digest unchanged for latest release"
+              reason="base image, Libation, container sources and Debian packages unchanged for latest release"
             else
               escaped_release="${RELEASE_VERSION//./\\.}"
               next_patch=1
@@ -252,6 +335,12 @@ jobs:
                 reason="latest release has no corresponding container tag yet"
               elif [ -z "${PREVIOUS_BASE_DIGEST}" ]; then
                 reason="previous image missing base digest label"
+              elif [ "${PREVIOUS_LIBATION_SHA256}" != "${CURRENT_LIBATION_SHA256}" ]; then
+                reason="Libation package changed"
+              elif [ "${PREVIOUS_SOURCE_DIGEST}" != "${CURRENT_SOURCE_DIGEST}" ]; then
+                reason="published container sources changed"
+              elif [ "${APT_UPGRADE_COUNT}" != "0" ]; then
+                reason="Debian packages have available upgrades"
               else
                 reason="base image digest changed"
               fi
@@ -274,9 +363,12 @@ jobs:
           context: .
           file: Dockerfile.release
           push: false
+          pull: true
           load: true
           build-args: |
             APP_VERSION=${{ steps.decision.outputs.target-version }}
+            LIBATION_RELEASE_SHA256=${{ steps.current-libation.outputs.sha256 }}
+            APT_REFRESH=${{ github.run_id }}
           tags: books-candidate:${{ github.sha }}
           labels: |
             org.opencontainers.image.version=${{ steps.decision.outputs.target-version }}
@@ -284,6 +376,13 @@ jobs:
             org.opencontainers.image.release.created=${{ steps.release-created.outputs.value }}
             org.opencontainers.image.base.name=${{ steps.base-image.outputs.ref }}
             org.opencontainers.image.base.digest=${{ steps.current-base.outputs.digest }}
+            org.opencontainers.image.libation.version=${{ steps.current-libation.outputs.version }}
+            org.opencontainers.image.libation.sha256=${{ steps.current-libation.outputs.sha256 }}
+            org.opencontainers.image.container-source.sha256=${{ steps.container-source.outputs.digest }}
+
+      - name: Verify candidate runtime before publishing
+        if: steps.decision.outputs.should-build == 'true'
+        run: docker run --rm --network none --entrypoint node books-candidate:${{ github.sha }} /home/node/app/check-docker-runtime.ts
 
       - name: Push container image
         if: steps.decision.outputs.should-build == 'true'
