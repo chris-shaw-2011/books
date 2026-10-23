@@ -105,7 +105,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Resolve base image reference from Dockerfile.release
+      - name: Resolve base image reference from Dockerfile
         id: base-image
         run: |
           set -euo pipefail
@@ -134,10 +134,10 @@ jobs:
                 print last
               }
             }
-          ' Dockerfile.release)"
+          ' Dockerfile)"
 
           if [ -z "${base_ref}" ]; then
-            echo "Failed to parse base image from Dockerfile.release"
+            echo "Failed to parse base image from Dockerfile"
             exit 1
           fi
 
@@ -187,7 +187,7 @@ jobs:
         id: container-source
         run: |
           set -euo pipefail
-          digest="$(sha256sum Dockerfile.release scripts/install-libation.sh scripts/resolve-libation-release.ts scripts/check-docker-runtime.ts | sha256sum | awk '{print $1}')"
+          digest="$(sha256sum Dockerfile scripts/install-libation.sh scripts/resolve-libation-release.ts scripts/check-docker-runtime.ts | sha256sum | awk '{print $1}')"
           echo "Published container source SHA256: ${digest}"
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"
 
@@ -361,7 +361,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: Dockerfile.release
+          file: Dockerfile
           push: false
           pull: true
           load: true

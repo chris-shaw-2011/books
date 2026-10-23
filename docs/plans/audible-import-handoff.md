@@ -62,7 +62,7 @@ This is the current-state handoff for the Audible import feature. The original r
 
 ### Docker and automatic updates
 
-- Both Dockerfiles intentionally use `node:current-slim`. The project owner prefers automatic current software even when an update may require a follow-up fix; do not pin it to `current-bookworm-slim` or another older base merely for stability.
+- The Dockerfile intentionally uses `node:current-slim`. The project owner prefers automatic current software even when an update may require a follow-up fix; do not pin it to `current-bookworm-slim` or another older base merely for stability.
 - The final image runs `apt-get upgrade`. The daily workflow checks Debian upgrades against the **last published Books image**, rather than comparing against the freshly resolved base image.
 - A daily build is triggered by a changed base digest, changed Libation package digest, relevant container source changes, available upgrades in the last published image, or a new application release. An unchanged daily run does not upload another image.
 - There is no separate `checkcontainer.yml`. The project does not use pull requests, and the owner chose to keep the pre-publish verification in `build-container.yml` rather than run a redundant push check.
@@ -82,7 +82,7 @@ This is the current-state handoff for the Audible import feature. The original r
 | Client workflow | `projects/client/src/app/AudibleImport.tsx`, `projects/client/src/app/AudibleImport.module.scss` |
 | Typed client API | `projects/client/src/app/api/LoggedInApi.ts`, `projects/client/src/app/api/BaseApi.ts` |
 | Completed-book permissions | `projects/client/src/app/CompletedBook.tsx`, `projects/client/src/app/Authenticated.tsx` |
-| Docker installation and checks | `Dockerfile`, `Dockerfile.release`, `scripts/install-libation.sh`, `scripts/resolve-libation-release.ts`, `scripts/check-docker-runtime.ts` |
+| Docker installation and checks | `Dockerfile`, `scripts/install-libation.sh`, `scripts/resolve-libation-release.ts`, `scripts/check-docker-runtime.ts` |
 | Publishing policy | `.github/workflows/build-container.yml`, `scripts/check-apt-updates.sh` |
 | Tests | `projects/server/test/audible`, `projects/client/test/audible.test.ts`, `scripts/*.test.ts` |
 
@@ -114,7 +114,7 @@ The following passed after the native FFprobe fix:
 - Full repository lint.
 - Production TypeScript and Vite build.
 - `git diff --check`.
-- Production Docker build from `Dockerfile.release`.
+- Production Docker build from `Dockerfile`.
 - Runtime smoke check for Libation 14.2.2, external login through `node-pty`, native FFprobe, writable staging, and non-root execution.
 - Exact `validateM4b` execution inside the production container.
 - Application HTTP response 200 from inside the restarted container.
@@ -136,7 +136,7 @@ Use [`../audible-docker.md`](../audible-docker.md) for the full checklist. At mi
 The local image and container names are `books-audible:local` and `books-audible-local`. The test mounts preserve the Books database and library while keeping Audible temporary files separate:
 
 ```sh
-docker build -f Dockerfile.release -t books-audible:local .
+docker build -f Dockerfile -t books-audible:local .
 docker run --rm --network none --entrypoint node books-audible:local /home/node/app/check-docker-runtime.ts
 docker run -d --name books-audible-local --init \
   -p 127.0.0.1:3001:3001 \

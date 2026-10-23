@@ -1,17 +1,14 @@
-FROM alpine AS download
-
-WORKDIR /app
-
-RUN wget -qO- https://github.com/chris-shaw-2011/books/releases/latest/download/transpiled.tar.gz \
-	| tar xvz --strip-components=1
-
 FROM node:current-slim
 
+ARG APP_VERSION=dev
+LABEL org.opencontainers.image.version=$APP_VERSION
+ENV APP_VERSION=$APP_VERSION
 ENV NODE_ENV=production
 ENV LIBATION_CLI=/usr/local/bin/libationcli
 ENV FFMPEG_PATH=/usr/bin/ffmpeg
 ENV FFPROBE_PATH=/usr/bin/ffprobe
 
+# Native .NET dependencies and FFmpeg support Libation's high quality audio.
 ARG APT_REFRESH
 RUN : "$APT_REFRESH" && apt-get update \
 	&& DEBIAN_FRONTEND=noninteractive apt-get upgrade -y \
@@ -29,14 +26,13 @@ COPY scripts/resolve-libation-release.ts /tmp/resolve-libation-release.ts
 RUN LIBATION_RELEASE_SHA256="$LIBATION_RELEASE_SHA256" sh /tmp/install-libation.sh \
 	&& rm /tmp/install-libation.sh /tmp/resolve-libation-release.ts
 
-# Setup working directory
 WORKDIR /home/node/app
-COPY --from=download --chown=node:node /app /home/node/app
+COPY --chown=node:node bin ./bin
 COPY --chown=node:node scripts/check-docker-runtime.ts ./check-docker-runtime.ts
 
-# Release artifact should include production dependencies.
-RUN test -d /home/node/app/bin/node_modules || (echo "Missing /home/node/app/bin/node_modules in release artifact." && exit 1)
-RUN test -f /home/node/app/bin/projects/server/src/index.js || (echo "Missing compiled server entrypoint in release artifact." && exit 1)
+# Build output should already contain production dependencies.
+RUN test -d /home/node/app/bin/node_modules || (echo "Missing /home/node/app/bin/node_modules. Run release build first." && exit 1)
+RUN test -f /home/node/app/bin/projects/server/src/index.js || (echo "Missing compiled server entrypoint. Run release build first." && exit 1)
 RUN cd bin && npm rebuild node-pty \
 	&& apt-get purge -y --auto-remove python3 make g++ \
 	&& rm -rf /var/lib/apt/lists/*
@@ -44,5 +40,4 @@ RUN cd bin && npm rebuild node-pty \
 USER node
 
 WORKDIR /home/node/app/bin/projects/server
-
 ENTRYPOINT ["node", "./src/index.js"]

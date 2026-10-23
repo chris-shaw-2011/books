@@ -1,6 +1,6 @@
 # Audible import container verification
 
-Both Dockerfiles use `node:current-slim`. At build time they upgrade installed Debian packages, resolve the [latest Libation release](https://github.com/rmcrackan/Libation/releases/latest), select its amd64 or arm64 Debian package, and verify the download against the SHA256 digest in GitHub's release metadata. The upstream package bundles its .NET runtime; no separate Libation service is needed. The image selects the current Debian release's ICU and OpenSSL runtime packages and installs FFmpeg/FFprobe. External browser authentication does not require desktop GTK/WebKit packages. The package is extracted without executing its desktop installation scripts.
+The Dockerfile uses `node:current-slim`. At build time it upgrades installed Debian packages, resolves the [latest Libation release](https://github.com/rmcrackan/Libation/releases/latest), selects its amd64 or arm64 Debian package, and verifies the download against the SHA256 digest in GitHub's release metadata. The upstream package bundles its .NET runtime; no separate Libation service is needed. The image selects the current Debian release's ICU and OpenSSL runtime packages and installs FFmpeg/FFprobe. External browser authentication does not require desktop GTK/WebKit packages. The package is extracted without executing its desktop installation scripts.
 
 The image rebuilds node-pty against the container's Node version and removes its compiler dependencies afterward. Books continues to run as the `node` user. Mounted upload directories must permit UID 1000 to write, and `/tmp` must have enough free space for an audiobook and its conversion files. Keep temporary import directories out of library watcher paths and persistent credential backups.
 
@@ -15,7 +15,7 @@ npm ci
 npm run build
 cp package-lock.json bin/package-lock.json
 (cd bin && npm ci --omit=dev)
-docker build --pull --no-cache -f Dockerfile.release -t books-audible:test .
+docker build --pull --no-cache -f Dockerfile -t books-audible:test .
 docker run --rm --network none --entrypoint node books-audible:test /home/node/app/check-docker-runtime.ts
 ```
 
