@@ -1,0 +1,22 @@
+# Only send production build inputs to Docker.
+**
+!Dockerfile
+!.dockerignore
+!package.json
+!package-lock.json
+!tsconfig.base.json
+!.env.production
+!projects/
+!projects/**
+!scripts/
+!scripts/**
+
+# Never import host dependencies, generated output, or local data.
+**/node_modules
+**/bin
+**/.generated
+**/*.tsbuildinfo
+**/db.sqlite*
+**/.DS_Store
+**/.env*
+!.env.production

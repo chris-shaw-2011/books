@@ -4,6 +4,7 @@ services:
   books-site:
 #### Uncomment below for local development builds
 #    image: books:local
+#    pull_policy: never
 #    build:
 #      context: .
 #      dockerfile: Dockerfile

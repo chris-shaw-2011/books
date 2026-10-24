@@ -3,14 +3,16 @@ name: Build Container
 on:
   workflow_call:
     inputs:
-      new_release_created:
-        description: True when invoked after creating a new GitHub release.
+      new_version_created:
+        description: True when invoked after tagging a new application version.
         required: false
         type: boolean
         default: false
-  workflow_dispatch: {}
-  schedule:
-    - cron: "0 3 * * *"
+      version_tag:
+        description: Application tag to build; maintenance checks default to latest.
+        required: false
+        type: string
+        default: latest
 
 permissions:
   contents: read
@@ -19,77 +21,36 @@ permissions:
 jobs:
   build-container:
     runs-on: ubuntu-latest
+    # Resolve tags inside the lock so queued rebuilds use the current latest.
+    concurrency:
+      group: books-container-publish
+      cancel-in-progress: false
     steps:
-      - name: Checkout
+      - name: Checkout tagged application source
         uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ inputs.version_tag || 'latest' }}
+          fetch-depth: 0
 
-      - name: Resolve release-created flag
-        id: release-created
+      - name: Resolve application version from tags
+        id: app-version
         env:
-          INPUT_NEW_RELEASE_CREATED: ${{ inputs.new_release_created }}
+          NEW_VERSION_CREATED: ${{ inputs.new_version_created || false }}
         run: |
           set -euo pipefail
-
-          echo "Event: ${GITHUB_EVENT_NAME}"
-          echo "Input new_release_created: ${INPUT_NEW_RELEASE_CREATED:-<unset>}"
-
-          flag="false"
-          if [ "${INPUT_NEW_RELEASE_CREATED:-false}" = "true" ]; then
-            flag="true"
-          fi
-
-          echo "Resolved release-created flag: ${flag}"
-          echo "value=${flag}" >> "$GITHUB_OUTPUT"
-
-      - name: Download latest release artifact
-        id: release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          echo "Fetching latest release for ${GITHUB_REPOSITORY}"
-          release_json="$(curl -fsSL \
-            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest")"
-
-          if ! echo "${release_json}" | jq -e '.id' >/dev/null 2>&1; then
-            echo "No latest release found."
+          version="$(jq -r .version package.json)"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid package version: $version"; exit 1; }
+          commit="$(git rev-parse HEAD)"
+          tagged_commit="$(git rev-parse "refs/tags/${version}^{commit}")"
+          if [ "$tagged_commit" != "$commit" ]; then
+            echo "The version tag ${version} does not match the checked-out source."
             exit 1
           fi
-
-          release_tag="$(echo "${release_json}" | jq -r '.tag_name // empty')"
-          release_version="${release_tag#v}"
-          echo "Latest release tag: ${release_tag}"
-          echo "Normalized release version: ${release_version}"
-          if ! [[ "${release_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Invalid latest release tag_name: ${release_tag}"
-            exit 1
-          fi
-          echo "version=${release_version}" >> "$GITHUB_OUTPUT"
-
-          asset_api_url="$(echo "${release_json}" | jq -r '.assets[]? | select(.name == "transpiled.tar.gz") | .url' | head -n 1)"
-          if [ -z "${asset_api_url}" ] || [ "${asset_api_url}" = "null" ]; then
-            echo "Latest release is missing transpiled.tar.gz."
-            exit 1
-          fi
-          echo "Found transpiled.tar.gz asset. Downloading."
-
-          curl -fsSL \
-            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-            -H "Accept: application/octet-stream" \
-            "${asset_api_url}" \
-            -o /tmp/transpiled.tar.gz
-
-          rm -rf ./bin
-          tar -xzf /tmp/transpiled.tar.gz -C .
-
-          if [ ! -d ./bin ]; then
-            echo "Release archive does not contain ./bin."
-            exit 1
-          fi
-          echo "Release artifact extracted into ./bin"
+          {
+            echo "version=${version}"
+            echo "commit=${commit}"
+            echo "new-version=${NEW_VERSION_CREATED}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Normalize image name
         id: image-name
@@ -169,7 +130,7 @@ jobs:
           node-version: current
 
       - name: Test container update checks
-        run: node --test scripts/resolve-libation-release.test.ts scripts/check-apt-updates.test.ts
+        run: node --test scripts/resolve-libation-release.test.ts scripts/check-apt-updates.test.ts scripts/tag-version.test.ts
 
       - name: Resolve current Libation package
         id: current-libation
@@ -187,8 +148,8 @@ jobs:
         id: container-source
         run: |
           set -euo pipefail
-          digest="$(sha256sum Dockerfile scripts/install-libation.sh scripts/resolve-libation-release.ts scripts/check-docker-runtime.ts | sha256sum | awk '{print $1}')"
-          echo "Published container source SHA256: ${digest}"
+          digest="$(git ls-tree -r HEAD | sha256sum | awk '{print $1}')"
+          echo "Tagged source SHA256: ${digest}"
           echo "digest=${digest}" >> "$GITHUB_OUTPUT"
 
       - name: Read latest uploaded container metadata
@@ -225,12 +186,14 @@ jobs:
             echo "No previous latest image found at ${IMAGE_NAME}:latest"
           fi
 
-          echo "found=${found}" >> "$GITHUB_OUTPUT"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "base-digest=${base_digest}" >> "$GITHUB_OUTPUT"
-          echo "release-version=${release_version}" >> "$GITHUB_OUTPUT"
-          echo "libation-sha256=${libation_sha256}" >> "$GITHUB_OUTPUT"
-          echo "source-digest=${source_digest}" >> "$GITHUB_OUTPUT"
+          {
+            echo "found=${found}"
+            echo "version=${version}"
+            echo "base-digest=${base_digest}"
+            echo "release-version=${release_version}"
+            echo "libation-sha256=${libation_sha256}"
+            echo "source-digest=${source_digest}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Check installed Debian packages for upgrades
         id: apt-updates
@@ -238,7 +201,7 @@ jobs:
           IMAGE_NAME: ${{ steps.image-name.outputs.value }}
           PREVIOUS_FOUND: ${{ steps.latest-image.outputs.found }}
           PREVIOUS_RELEASE_VERSION: ${{ steps.latest-image.outputs.release-version }}
-          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_VERSION: ${{ steps.app-version.outputs.version }}
           PREVIOUS_BASE_DIGEST: ${{ steps.latest-image.outputs.base-digest }}
           CURRENT_BASE_DIGEST: ${{ steps.current-base.outputs.digest }}
           PREVIOUS_LIBATION_SHA256: ${{ steps.latest-image.outputs.libation-sha256 }}
@@ -264,8 +227,8 @@ jobs:
       - name: Decide whether to build and what version to use
         id: decision
         env:
-          RELEASE_CREATED: ${{ steps.release-created.outputs.value }}
-          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_CREATED: ${{ steps.app-version.outputs.new-version }}
+          RELEASE_VERSION: ${{ steps.app-version.outputs.version }}
           PREVIOUS_FOUND: ${{ steps.latest-image.outputs.found }}
           PREVIOUS_VERSION: ${{ steps.latest-image.outputs.version }}
           PREVIOUS_BASE_DIGEST: ${{ steps.latest-image.outputs.base-digest }}
@@ -276,7 +239,6 @@ jobs:
           CURRENT_SOURCE_DIGEST: ${{ steps.container-source.outputs.digest }}
           PREVIOUS_SOURCE_DIGEST: ${{ steps.latest-image.outputs.source-digest }}
           APT_UPGRADE_COUNT: ${{ steps.apt-updates.outputs.count }}
-          BUILD_EVENT: ${{ github.event_name }}
         run: |
           set -euo pipefail
 
@@ -298,14 +260,10 @@ jobs:
           echo "  current_source_digest=${CURRENT_SOURCE_DIGEST}"
           echo "  apt_upgrade_count=${APT_UPGRADE_COUNT}"
 
-          if [ "${BUILD_EVENT}" = "workflow_dispatch" ]; then
-            should_build=true
-            target_version="${RELEASE_VERSION}.build${GITHUB_RUN_NUMBER}"
-            reason="container sources changed or manual rebuild requested"
-          elif [ "${RELEASE_CREATED}" = "true" ]; then
+          if [ "${RELEASE_CREATED}" = "true" ]; then
             should_build=true
             target_version="${RELEASE_VERSION}"
-            reason="new release created"
+            reason="new application version tagged"
           else
             if [ "${PREVIOUS_FOUND}" = "true" ] \
               && [ "${PREVIOUS_RELEASE_VERSION}" = "${RELEASE_VERSION}" ] \
@@ -352,9 +310,11 @@ jobs:
           echo "  target_version=${target_version}"
           echo "  reason=${reason}"
 
-          echo "should-build=${should_build}" >> "$GITHUB_OUTPUT"
-          echo "target-version=${target_version}" >> "$GITHUB_OUTPUT"
-          echo "reason=${reason}" >> "$GITHUB_OUTPUT"
+          {
+            echo "should-build=${should_build}"
+            echo "target-version=${target_version}"
+            echo "reason=${reason}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Build candidate image
         if: steps.decision.outputs.should-build == 'true'
@@ -365,6 +325,8 @@ jobs:
           push: false
           pull: true
           load: true
+          cache-from: type=gha,scope=books-container
+          cache-to: type=gha,scope=books-container,mode=max
           build-args: |
             APP_VERSION=${{ steps.decision.outputs.target-version }}
             LIBATION_RELEASE_SHA256=${{ steps.current-libation.outputs.sha256 }}
@@ -372,8 +334,9 @@ jobs:
           tags: books-candidate:${{ github.sha }}
           labels: |
             org.opencontainers.image.version=${{ steps.decision.outputs.target-version }}
-            org.opencontainers.image.release.version=${{ steps.release.outputs.version }}
-            org.opencontainers.image.release.created=${{ steps.release-created.outputs.value }}
+            org.opencontainers.image.revision=${{ steps.app-version.outputs.commit }}
+            org.opencontainers.image.release.version=${{ steps.app-version.outputs.version }}
+            org.opencontainers.image.release.created=${{ steps.app-version.outputs.new-version }}
             org.opencontainers.image.base.name=${{ steps.base-image.outputs.ref }}
             org.opencontainers.image.base.digest=${{ steps.current-base.outputs.digest }}
             org.opencontainers.image.libation.version=${{ steps.current-libation.outputs.version }}
@@ -390,8 +353,16 @@ jobs:
           IMAGE_NAME: ${{ steps.image-name.outputs.value }}
           TARGET_VERSION: ${{ steps.decision.outputs.target-version }}
           CANDIDATE_IMAGE: books-candidate:${{ github.sha }}
+          SOURCE_COMMIT: ${{ steps.app-version.outputs.commit }}
         run: |
           set -euo pipefail
+
+          # A newer release may have moved latest while this build was running.
+          latest_commit="$(git ls-remote origin refs/tags/latest | cut -f1)"
+          if [ "$latest_commit" != "$SOURCE_COMMIT" ]; then
+            echo "latest moved to another application version; refusing to publish stale images."
+            exit 1
+          fi
 
           echo "Pushing tags:"
           echo "  ${IMAGE_NAME}:${TARGET_VERSION}"
