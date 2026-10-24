@@ -69,10 +69,15 @@ This file is a chronological implementation log and includes approaches that wer
 - Diagnosed the first real downloads from Libation's preserved session database: all 14 attempts completed, but the server's copied macOS FFprobe executable failed with `Exec format error` in the Linux arm64 container. Docker images now explicitly use Debian's native `/usr/bin/ffmpeg` and `/usr/bin/ffprobe` for validation, conversion, and cover extraction. Validation happens once after Libation source fallbacks, preventing a validator failure from downloading the same title three times. Client tests pass 5/5, server tests pass 11/11, script tests pass 3/3, full lint/build pass, and the rebuilt image passed both the runtime smoke check and the server's exact M4B validator. The failed session's temporary credentials and 2 GB of partial audio were removed; the fixed container serves HTTP 200 with the existing database/library mounts.
 - Added `audible-import-handoff.md` as the authoritative current-state record. It captures owner decisions that supersede the original plan, architecture and file ownership, authentication and logging constraints, API and TypeScript conventions, automatic container-update policy, diagnosed real-container failures, the latest verification results, and remaining manual acceptance. The original plan and this chronological log link to the handoff so future agents do not treat superseded progress entries as current design.
 
+## Selection update (October 23, 2026)
+
+Implemented user-confirmed title selection, per-book progress and inline completed-book editing/display. See [`audible-selection-progress.md`](./audible-selection-progress.md) for the plan, delegated work, verification results and remaining manual acceptance.
+
 ## Interface contract
 
 - `POST /audible/start` with `AudibleStartRequest` returns `AudibleImportResponse`.
-- `POST /audible/redirect` with `AudibleRedirectRequest` returns `AudibleImportResponse` and starts importing after authentication.
+- `POST /audible/redirect` with `AudibleRedirectRequest` returns `AudibleImportResponse` and starts discovery after authentication; no books download yet.
+- `POST /audible/select` with `AudibleSelectionRequest` confirms the chosen ASINs and starts only those downloads.
 - `GET /audible/status` returns `AudibleImportResponse` with an optional snapshot for the current user.
 - `GET /audible/events` emits `data: <AudibleImportSnapshot>` (without `loginUrl`) for the current user's active session.
 - `POST /audible/cancel` with `AudibleSessionRequest` cancels the session.

@@ -1,6 +1,16 @@
 import type Book from "./Book.ts"
 
-export type AudibleImportPhase = "authenticating" | "scanning" | "downloading" | "complete" | "cancelled" | "failed"
+export type AudibleImportPhase = "authenticating" | "scanning" | "selecting" | "downloading" | "complete" | "cancelled" | "failed"
+
+export interface AudibleImportBook {
+	asin: string,
+	title: string,
+	coverUrl?: string,
+	status: "available" | "skipped" | "queued" | "downloading" | "complete" | "failed" | "cancelled",
+	percentage?: number,
+	book?: Book,
+	reviewed?: boolean,
+}
 
 export interface AudibleImportSnapshot {
 	id: string,
@@ -13,6 +23,7 @@ export interface AudibleImportSnapshot {
 	downloaded: number,
 	failed: number,
 	remaining: number,
+	books: AudibleImportBook[],
 	reviewQueue: Book[],
 	activity: string[],
 	error?: string,

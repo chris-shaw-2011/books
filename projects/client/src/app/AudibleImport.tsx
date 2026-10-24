@@ -1,13 +1,13 @@
 import { use, useEffect, useRef, useState } from "react"
+import classnames from "classnames"
 import { AudibleImportResponse, type AudibleImportSnapshot } from "@books/shared"
-import { Line } from "rc-progress"
 import OverlayComponent from "./components/OverlayComponent"
 import ModalDialog, { ModalBody, ModalFooter, ModalHeader, ModalTitle } from "./components/ModalDialog"
 import Button from "./components/Button"
 import CancelButton from "./components/CancelButton"
 import TextboxField from "./components/TextboxField"
 import Alert from "./components/Alert"
-import CompletedBook from "./CompletedBook"
+import AudibleBookList from "./AudibleBookList"
 import LoggedInApi from "./api/LoggedInApi"
 import AppContext from "./context/AppContext"
 import FetchAborted from "./api/FetchAborted"
@@ -171,7 +171,7 @@ const AudibleSignIn = ({ loginUrl, busy, onSubmit }: { loginUrl: string, busy: b
 					</p>
 					<TextboxField label="Address you copied" type="url" value={address} onChange={event => setAddress(event.target.value)} required={true} autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder="Paste the full address here" aria-describedby="audible-address-help" />
 					<p id="audible-address-help" className={styles.hint}>It usually starts with https://www.audible.com/ap/maplanding or an Amazon address. It may be very long — paste all of it.</p>
-					<Button className={styles.primary} type="submit" disabled={busy || !address.trim()}>{busy ? "Connecting to Audible…" : "Connect and import my books"}</Button>
+					<Button className={styles.primary} type="submit" disabled={busy || !address.trim()}>{busy ? "Connecting to Audible…" : "Connect and choose books"}</Button>
 					<Button className={styles.textButton} disabled={busy} onClick={() => setStep(3)}>Back to copying instructions</Button>
 				</form>
 			)}
@@ -248,19 +248,19 @@ const AudibleImport = ({ onClose }: { onClose: () => void }) => {
 	}
 	const { snapshot, errorMessage } = snapshotState ?? {}
 	const loginUrl = snapshot?.loginUrl
-	const nextBook = snapshot?.reviewQueue[0]
-	const active = snapshot?.phase && ["authenticating", "scanning", "downloading"].includes(snapshot.phase)
+	const hasReviews = Boolean(snapshot?.reviewQueue.length)
+	const active = snapshot?.phase && ["authenticating", "scanning", "selecting", "downloading"].includes(snapshot.phase)
 
 	return (
-		<OverlayComponent className={styles.overlay} onClick={onClose}>
+		<OverlayComponent className={classnames(styles.overlay, { [styles.expanded]: snapshot && snapshot.phase !== "authenticating" && !showSetup })} onClick={onClose}>
 			<ModalDialog className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="audible-import-title">
 				<ModalHeader><ModalTitle id="audible-import-title">Add your Audible books</ModalTitle></ModalHeader>
 				<ModalBody>
 					{errorMessage && <Alert variant="danger">{errorMessage}</Alert>}
 					{snapshotState === undefined && <p>Loading import status...</p>}
-					{snapshotState !== undefined && (!snapshot || showSetup) && !active && !nextBook && (
+					{snapshotState !== undefined && (!snapshot || showSetup) && !active && !hasReviews && (
 						<ImportStep number={1} title="Let’s find your Audible account">
-							<p>We’ll help you sign in to Amazon, then bring your Audible books into Books.</p>
+							<p>Sign in to Amazon, then choose which Audible books to bring into Books.</p>
 							<form onSubmit={e => {
 								e.preventDefault()
 								void request(() => LoggedInApi.audibleStart(account, marketplace, logOut))
@@ -285,18 +285,9 @@ const AudibleImport = ({ onClose }: { onClose: () => void }) => {
 					)}
 					{snapshot && snapshot.phase !== "authenticating" && !showSetup && (
 						<section className={styles.progress} aria-live="polite">
-							<h2>{({ scanning: "Finding your Audible books…", downloading: "Adding your books…", complete: "Your import is finished", cancelled: "Import stopped", failed: "Your import couldn’t finish" })[snapshot.phase]}</h2>
-							{active && <p>You can close this window. Your books will keep importing.</p>}
-							{snapshot.currentTitle && <p>{snapshot.currentTitle}</p>}
-							{snapshot.percentage !== undefined && (
-								<div role="progressbar" aria-label="Current book progress" aria-valuenow={Math.round(snapshot.percentage)} aria-valuemin={0} aria-valuemax={100}>
-									<Line percent={snapshot.percentage} strokeWidth={2} strokeColor="#0d6efd" />
-									<p>
-										{Math.round(snapshot.percentage)}
-										% of this book
-									</p>
-								</div>
-							)}
+							<h2>{({ scanning: "Finding your Audible books…", selecting: "Choose books to import", downloading: "Adding your books…", complete: "Your import is finished", cancelled: "Import stopped", failed: "Your import couldn’t finish" })[snapshot.phase]}</h2>
+							{snapshot.phase === "scanning" && <p>Finding titles and covers. No books are downloading yet.</p>}
+							{snapshot.phase === "downloading" && <p>You can close this window. Your selected books will keep importing.</p>}
 							<p>
 								{snapshot.downloaded}
 								{" "}
@@ -316,16 +307,16 @@ const AudibleImport = ({ onClose }: { onClose: () => void }) => {
 									be added. You can try importing again.
 								</p>
 							)}
-							{nextBook && (
+							{hasReviews && (
 								<p>
 									{snapshot.reviewQueue.length}
 									{" "}
 									{snapshot.reviewQueue.length === 1 ? "book is" : "books are"}
 									{" "}
-									ready to review below.
+									ready to review in the list below.
 								</p>
 							)}
-							{active && !connected && <p>Updating progress… Your import is still running.</p>}
+							{active && !connected && <p>Updating import status…</p>}
 							{snapshot.error && <Alert variant="danger">{snapshot.error}</Alert>}
 							<details className={styles.help}>
 								<summary>Import details</summary>
@@ -340,20 +331,18 @@ const AudibleImport = ({ onClose }: { onClose: () => void }) => {
 							</details>
 						</section>
 					)}
-					{nextBook && (
-						<div className={styles.review} aria-busy={busy}>
-							<CompletedBook
-								key={nextBook.asin}
-								book={nextBook}
-								onComplete={() => {
-									if (!busy) {
-										void request(() => LoggedInApi.audibleReview(snapshot.id, nextBook.asin, logOut))
-									}
-								}}
-							/>
-						</div>
+					{snapshot && (snapshot.books.length > 0 || snapshot.phase === "selecting") && !showSetup && (
+						<AudibleBookList
+							key={snapshot.id}
+							snapshot={snapshot}
+							busy={busy}
+							onSelect={asins => { void request(() => LoggedInApi.audibleSelect(snapshot.id, asins, logOut)) }}
+							onReview={asin => {
+								void request(() => LoggedInApi.audibleReview(snapshot.id, asin, logOut))
+							}}
+						/>
 					)}
-					{snapshot && !active && !nextBook && !showSetup && <Button className={styles.primary} onClick={() => setShowSetup(true)}>Import more books or try again</Button>}
+					{snapshot && !active && !hasReviews && !showSetup && <Button className={styles.primary} onClick={() => setShowSetup(true)}>Import more books or try again</Button>}
 				</ModalBody>
 				<ModalFooter className={styles.footer}>
 					{active && <Button className={styles.textButton} disabled={busy} onClick={() => { void request(() => LoggedInApi.audibleCancel(snapshot.id, logOut)) }}>Stop import</Button>}

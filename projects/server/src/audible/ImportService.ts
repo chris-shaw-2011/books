@@ -8,10 +8,12 @@ import { Mutex } from "async-mutex"
 import sanitize from "sanitize-filename"
 import type { Book, AudibleImportSnapshot } from "@books/shared"
 import { audioFiles, publishAudio, writeAsin } from "./Files.ts"
+import DownloadProgress from "./DownloadProgress.ts"
 
 export interface AudibleTitle {
 	asin: string,
 	title: string,
+	coverUrl?: string,
 }
 
 export const qualitySettings = {
@@ -21,6 +23,20 @@ export const qualitySettings = {
 	DecryptToLossy: false,
 	SplitFilesByChapter: false,
 	ImportPlusTitles: true,
+}
+
+const coverUrl = (value: unknown) => {
+	if (typeof value !== "string") return
+	try {
+		const url = new URL(value)
+		if (url.protocol === "https:" && !url.username && !url.password) return url.href
+	}
+	catch { /* Missing or malformed covers are optional. */ }
+}
+
+const coverFromId = (value: unknown) => {
+	// Libation ExportDto exposes PictureId/PictureLarge; PictureStorage uses this CDN.
+	if (typeof value === "string" && /^[a-zA-Z0-9+_-]{1,200}$/.test(value)) return `https://images-na.ssl-images-amazon.com/images/I/${encodeURIComponent(value)}._SL300_.jpg`
 }
 
 export function parseLibrary(json: unknown) {
@@ -34,11 +50,13 @@ export function parseLibrary(json: unknown) {
 		const book = nested && typeof nested === "object" ? nested as Record<string, unknown> : row
 		const asin = book.asin ?? book.Asin ?? book.ASIN ?? book.AudibleProductId ?? book.ProductId
 		const title = book.title ?? book.Title
+		const image = coverUrl(book.PictureUrl ?? book.pictureUrl ?? book.CoverUrl ?? book.coverUrl ?? book.cover_url ?? book.ImageUrl ?? book.PictureLarge ?? book.PictureId) ?? coverFromId(book.PictureId) ?? coverFromId(book.PictureLarge)
 		const contentType = book.content_type ?? book.ContentType ?? book.contentType
 		const type = typeof contentType === "string" ? contentType.toLowerCase() : ""
 		if (typeof asin === "string" && asin && typeof title === "string" && !type.includes("podcast") && !type.includes("episode")) result.set(asin, {
 			asin,
 			title,
+			...(image && { coverUrl: image }),
 		})
 	}
 	return [...result.values()]
@@ -66,6 +84,8 @@ interface Session {
 	cancelled: boolean,
 	redirectSubmitted: boolean,
 	run: Promise<void>,
+	selection?: string[],
+	resolveSelection?: () => void,
 }
 
 const terminal = (snapshot: AudibleImportSnapshot) => ["complete", "cancelled", "failed"].includes(snapshot.phase)
@@ -91,8 +111,10 @@ export class AudibleImportService {
 	private root: string
 	private initialized: Promise<void>
 	private dependencies: AudibleDependencies
-	constructor(dependencies: AudibleDependencies, root = path.join(os.tmpdir(), "books-audible-import")) {
+	private selectionTimeoutMs: number
+	constructor(dependencies: AudibleDependencies, root = path.join(os.tmpdir(), "books-audible-import"), selectionTimeoutMs = 30 * 60_000) {
 		this.dependencies = dependencies
+		this.selectionTimeoutMs = selectionTimeoutMs
 		this.root = root
 		this.initialized = this.initialize()
 	}
@@ -184,6 +206,7 @@ export class AudibleImportService {
 				downloaded: 0,
 				failed: 0,
 				remaining: 0,
+				books: [],
 				reviewQueue: [],
 				activity: [],
 			},
@@ -207,11 +230,32 @@ export class AudibleImportService {
 		return this.snapshot(owner)
 	}
 
+	select(owner: string, id: string, asins: string[]) {
+		const session = this.owned(owner, id)
+		if (!Array.isArray(asins) || !asins.length || asins.some(asin => typeof asin !== "string") || new Set(asins).size !== asins.length) throw new Error("Select at least one available book")
+		const selected = [...asins].sort()
+		// A transport retry must never start the same downloads twice.
+		if (session.selection && ["downloading", "complete"].includes(session.snapshot.phase) && JSON.stringify(selected) === JSON.stringify(session.selection)) return this.snapshot(owner)
+		if (session.snapshot.phase !== "selecting") throw new Error("This import is not waiting for a selection")
+		if (selected.some(asin => !session.snapshot.books.some(book => book.asin === asin && book.status === "available"))) throw new Error("Select only available Audible books")
+		session.selection = selected
+		for (const book of session.snapshot.books) {
+			if (selected.includes(book.asin)) book.status = "queued"
+		}
+		session.snapshot.remaining = selected.length
+		session.snapshot.phase = "downloading"
+		session.snapshot.operation = "Waiting to download selected books"
+		session.resolveSelection?.()
+		this.emit(session, `${selected.length} books selected for import`)
+		return this.snapshot(owner)
+	}
+
 	async cancel(owner: string, id: string) {
 		const session = this.owned(owner, id)
 		if (!terminal(session.snapshot)) {
 			session.cancelled = true
 			session.process?.kill()
+			session.resolveSelection?.()
 			await session.run
 		}
 		return this.snapshot(owner)
@@ -219,6 +263,8 @@ export class AudibleImportService {
 
 	review(owner: string, id: string, asin: string) {
 		const session = this.owned(owner, id)
+		const row = session.snapshot.books.find(book => book.asin === asin && book.status === "complete")
+		if (row) row.reviewed = true
 		session.snapshot.reviewQueue = session.snapshot.reviewQueue.filter(book => book.asin !== asin)
 		this.emit(session)
 		return this.snapshot(owner)
@@ -228,6 +274,7 @@ export class AudibleImportService {
 		for (const session of this.sessions.values()) {
 			session.cancelled = true
 			session.process?.kill()
+			session.resolveSelection?.()
 		}
 		await Promise.all([...this.sessions.values()].map(session => session.run))
 		this.listeners.clear()
@@ -243,6 +290,7 @@ export class AudibleImportService {
 		session.process = child
 		await new Promise<void>((resolve, reject) => {
 			let buffer = ""
+			const progress = new DownloadProgress()
 			const timer = setTimeout(() => {
 				child.kill()
 				reject(new Error("Operation timed out"))
@@ -262,9 +310,11 @@ export class AudibleImportService {
 					}
 				}
 				else if (!login) {
-					const percent = /(?:^|\s)(\d{1,3}(?:\.\d+)?)\s*%/.exec(data)
-					if (percent) {
-						session.snapshot.percentage = Math.min(100, Number(percent[1]))
+					const percentage = progress.update(data)
+					if (percentage !== undefined && session.snapshot.phase === "downloading") {
+						session.snapshot.percentage = percentage
+						const book = session.snapshot.books.find(item => item.status === "downloading")
+						if (book) book.percentage = session.snapshot.percentage
 						this.emit(session)
 					}
 				}
@@ -292,9 +342,27 @@ export class AudibleImportService {
 			await this.command(session, ["export", "-p", exported, "-j"])
 			const titles = parseLibrary(JSON.parse(await fs.readFile(exported, "utf8")))
 			session.snapshot.total = titles.length
-			session.snapshot.remaining = titles.length
-			session.snapshot.phase = "downloading"
 			for (const title of titles) {
+				if (session.cancelled) throw new Error("Cancelled")
+				const exists = await this.dependencies.hasAsin(title.asin)
+				session.snapshot.books.push({ ...title, status: exists ? "skipped" : "available" })
+				if (exists) session.snapshot.skipped++
+			}
+			if (session.cancelled) throw new Error("Cancelled")
+			if (!session.snapshot.books.some(book => book.status === "available")) return
+			session.snapshot.phase = "selecting"
+			session.snapshot.operation = "Choose the books to import"
+			await new Promise<void>((resolve, reject) => {
+				const timer = setTimeout(() => reject(new Error("Selection expired")), this.selectionTimeoutMs)
+				timer.unref()
+				session.resolveSelection = () => {
+					clearTimeout(timer)
+					resolve()
+				}
+				this.emit(session, "Library ready. Select books before downloading; this session expires in 30 minutes.")
+			})
+			delete session.resolveSelection
+			for (const title of session.snapshot.books.filter(book => book.status === "queued")) {
 				if (session.cancelled) break
 				await this.downloadMutex.runExclusive(async () => {
 					if (session.cancelled) return
@@ -303,9 +371,11 @@ export class AudibleImportService {
 					try {
 						if (await this.dependencies.hasAsin(title.asin)) {
 							session.snapshot.skipped++
+							title.status = "skipped"
 							this.emit(session, `Skipped existing ASIN ${title.asin}`)
 							return
 						}
+						title.status = "downloading"
 						session.snapshot.operation = "Downloading audiobook"
 						this.emit(session, `Downloading ${title.title}`)
 						await fs.rm(path.join(session.directory, "audio"), {
@@ -314,6 +384,8 @@ export class AudibleImportService {
 						})
 						await fs.mkdir(path.join(session.directory, "audio"))
 						const download = async (settings: typeof qualitySettings) => {
+							delete title.percentage
+							delete session.snapshot.percentage
 							await fs.rm(path.join(session.directory, "audio"), { recursive: true, force: true })
 							await fs.mkdir(path.join(session.directory, "audio"))
 							const overrides = Object.entries(settings).flatMap(([key, value]) => ["-o", `${key}=${String(value)}`])
@@ -342,13 +414,19 @@ export class AudibleImportService {
 						session.snapshot.operation = "Validating audiobook"
 						this.emit(session)
 						await this.dependencies.validate(completed)
+						if (session.cancelled) throw new Error("Cancelled")
 						const book = await this.dependencies.publish(completed, title)
 						session.snapshot.downloaded++
+						title.status = "complete"
+						title.percentage = 100
+						title.book = book
 						session.snapshot.reviewQueue.push(book)
 						this.emit(session, `Imported ${title.title}`)
 					}
 					catch {
 						if (!session.cancelled) {
+							title.status = "failed"
+							delete title.percentage
 							session.snapshot.failed++
 							this.emit(session, `Could not import ${title.title}; try this title again in a new import`)
 						}
@@ -360,11 +438,20 @@ export class AudibleImportService {
 				})
 			}
 		}
-		catch {
+		catch (error) {
 			failed = true
-			if (!session.cancelled) session.snapshot.error = "Libation could not complete this operation. Check that Libation is installed, then start a new import and authenticate again."
+			if (!session.cancelled && error instanceof Error && error.message === "Selection expired") session.snapshot.error = "Your book selection expired. Start a new import and sign in again."
+			else if (!session.cancelled) session.snapshot.error = "Libation could not complete this operation. Check that Libation is installed, then start a new import and authenticate again."
 		}
 		finally {
+			delete session.resolveSelection
+			for (const book of session.snapshot.books) {
+				if (book.status === "queued" || book.status === "downloading") {
+					book.status = session.cancelled ? "cancelled" : "failed"
+					delete book.percentage
+				}
+			}
+			session.snapshot.remaining = 0
 			delete session.snapshot.loginUrl
 			delete session.snapshot.percentage
 			try {

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition -- Bodies may be absent at runtime. */
 import type { ServerResponse } from "node:http"
 import type { FastifyInstance } from "fastify"
-import { AudibleImportResponse, type AudibleStartRequest, type AudibleRedirectRequest, type AudibleSessionRequest, type AudibleReviewRequest } from "@books/shared"
+import { AudibleImportResponse, type AudibleStartRequest, type AudibleRedirectRequest, type AudibleSessionRequest, type AudibleReviewRequest, type AudibleSelectionRequest } from "@books/shared"
 import { validateRequestPreHandler } from "../Validation.ts"
 import type { AudibleImportService } from "./ImportService.ts"
 
@@ -9,6 +9,7 @@ interface AudibleStart { Body: AudibleStartRequest }
 interface AudibleRedirect { Body: AudibleRedirectRequest }
 interface AudibleCancel { Body: AudibleSessionRequest }
 interface AudibleReview { Body: AudibleReviewRequest }
+interface AudibleSelection { Body: AudibleSelectionRequest }
 
 export function registerAudibleRoutes(server: FastifyInstance, importer: AudibleImportService) {
 	const streams = new Set<ServerResponse>()
@@ -40,6 +41,16 @@ export function registerAudibleRoutes(server: FastifyInstance, importer: Audible
 		}
 
 		return reply.code(code).send(ret)
+	})
+
+	server.post<AudibleSelection>("/audible/select", validateRequestPreHandler, (request, reply) => {
+		reply.header("Cache-Control", "no-store")
+		try {
+			return new AudibleImportResponse({ snapshot: importer.select(request.userToken?.user.id ?? "", request.body?.sessionId, request.body?.asins) })
+		}
+		catch (error) {
+			return reply.code(400).send(new AudibleImportResponse({ errorMessage: error instanceof Error ? error.message : "Unable to select books" }))
+		}
 	})
 
 	server.get("/audible/status", validateRequestPreHandler, (request, reply) => {

@@ -16,6 +16,6 @@ export default class AudibleImportResponse extends ApiMessage {
 	}
 
 	static restoreSnapshot(snapshot: AudibleImportSnapshot): AudibleImportSnapshot {
-		return { ...snapshot, reviewQueue: snapshot.reviewQueue.map(item => new Book(item)) }
+		return { ...snapshot, books: snapshot.books.map(item => ({ ...item, ...(item.book && { book: new Book(item.book) }) })), reviewQueue: snapshot.reviewQueue.map(item => new Book(item)) }
 	}
 }

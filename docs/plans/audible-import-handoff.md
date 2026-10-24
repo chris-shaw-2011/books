@@ -1,13 +1,15 @@
 # Audible import handoff
 
-Last updated: October 18, 2026
+Last updated: October 23, 2026
+
+Selection update: see [`audible-selection-progress.md`](./audible-selection-progress.md) for the implementation plan, current verification results and resume instructions. This update supersedes automatic downloads and the first-completed-book-only review UI described in the original plan.
 
 This is the current-state handoff for the Audible import feature. The original requirements are in [`audible-import.md`](./audible-import.md), and [`audible-import-progress.md`](./audible-import-progress.md) is a chronological implementation log that includes approaches later revised. When those documents differ, verify the current source and use this handoff for the decisions made during implementation.
 
 ## Current status
 
 - Work is on `feature/audible-import` and has not been committed yet.
-- The complete mocked workflow, production build, lint, and Docker runtime checks pass.
+- The complete mocked workflow, production build, lint, and Docker runtime checks pass. The October 23 selection update passes 18 server tests, 6 client tests and 3 script tests, mobile browser checks at 320–390 px plus desktop, and a fresh production Docker build/runtime smoke check.
 - A real Audible login has successfully completed, the library was scanned, and real titles were downloaded by Libation.
 - The first real downloads exposed a container FFprobe architecture problem. That issue is fixed, the image was rebuilt, and the user reports that preliminary real-account testing now passes.
 - Full manual acceptance across purchased titles, Audible Plus, duplicate imports, permissions, queue handling, cancellation, and several source formats is still recommended before release.
@@ -33,7 +35,7 @@ This is the current-state handoff for the Audible import feature. The original r
 ### Imports, duplicates, and files
 
 - The server Audible implementation belongs in `projects/server/src/audible`. Client files remain in the existing client layout; there is no client `audible` folder.
-- Libation scans and exports the account library, then Books invokes targeted `liberate <ASIN>` commands sequentially. Podcasts and podcast episodes are excluded.
+- Libation scans and exports the account library, then waits for explicit selection before any download. The user chooses individual titles or all available titles; nothing is selected by default. Books invokes targeted `liberate <ASIN>` commands sequentially for confirmed selections only. Podcasts and podcast episodes are excluded. Selection waits expire after 30 minutes and clean up temporary credentials.
 - Download preference is high quality with Widevine and xHE-AAC. A failed Libation download retries without xHE-AAC and then without Widevine. Validation happens once after a completed source download, so validator failures do not download the same audiobook three times.
 - Audible discovery only accepts M4B output. MP3 files are irrelevant to this workflow and are not searched for ASINs here.
 - ASIN is a property of `Book`, populated during normal server library loading from embedded M4B metadata. Duplicate detection queries the in-memory book tree.
@@ -58,7 +60,7 @@ This is the current-state handoff for the Audible import feature. The original r
 - Reading status is account-level and remains available to non-administrators. It is independent of global metadata and folder editing permissions.
 - `CompletedBook.tsx` is shared by manual uploads and Audible imports. Administrators receive the existing edit flow; non-administrators receive the normal book display without metadata or folder editing controls.
 - Server authorization on metadata updates remains authoritative. An API test verifies that a non-admin cannot bypass the client and update metadata directly.
-- The review queue stores `Book` objects. ASIN comes from `Book.asin`; there is no parallel queue ASIN field.
+- The review queue stores `Book` objects. ASIN comes from `Book.asin`; there is no parallel queue ASIN field. Snapshot `books` rows retain individual status, progress, optional cover and completed `Book` data. Each completed row renders the existing permissions-aware book component in place; acknowledging review leaves the row visible.
 
 ### Docker and automatic updates
 

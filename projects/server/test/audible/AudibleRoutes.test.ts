@@ -52,7 +52,7 @@ void test("Audible routes require authentication and isolate per-user sessions",
 		for (const route of ["/audible/status", "/audible/events"]) assert.equal((await server.inject({
 			url: route,
 		})).statusCode, 401)
-		for (const route of ["/audible/start", "/audible/redirect", "/audible/review", "/audible/cancel"]) assert.equal((await server.inject({
+		for (const route of ["/audible/start", "/audible/redirect", "/audible/review", "/audible/cancel", "/audible/select"]) assert.equal((await server.inject({
 			method: "POST",
 			url: route,
 			payload: {},
@@ -109,6 +109,9 @@ void test("Audible routes require authentication and isolate per-user sessions",
 				redirectUrl: "https://www.amazon.com/ap/maplanding?openid.oa2.authorization_code=secret",
 			},
 		})).statusCode, 400)
+		const otherSelection = await server.inject({ method: "POST", url: "/audible/select", headers: { "x-test-user": "other" }, payload: { sessionId: snapshot.id, asins: ["B000000001"] } })
+		assert.equal(otherSelection.statusCode, 400)
+		assert.equal(otherSelection.json<AudibleImportResponse>().errorMessage, "Import session not found")
 		const cancelled = await server.inject({
 			method: "POST",
 			url: "/audible/cancel",

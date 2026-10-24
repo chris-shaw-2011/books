@@ -8,6 +8,7 @@ const onFailure = (message?: string) => assert.fail(message ?? "Unexpected API f
 const snapshot = (extra: Partial<AudibleImportSnapshot> = {}): AudibleImportSnapshot => ({
 	id: "session", phase: "downloading", operation: "Downloading", currentTitle: "Book one",
 	total: 3, skipped: 0, downloaded: 1, failed: 0, remaining: 2,
+	books: [],
 	reviewQueue: [new Book({ id: "one", name: "Book one", asin: "ASIN1" })], activity: [], ...extra,
 })
 
@@ -54,6 +55,7 @@ void test("Audible API methods use the expected routes and request bodies", asyn
 		const response = await LoggedInApi.audibleStatus(onFailure, signal)
 		await LoggedInApi.audibleStart("reader@example.com", "us", onFailure)
 		await LoggedInApi.audibleRedirect("session", "https://amazon.com/redirect", onFailure)
+		await LoggedInApi.audibleSelect("session", ["ASIN1", "ASIN2"], onFailure)
 		await LoggedInApi.audibleCancel("session", onFailure)
 		await LoggedInApi.audibleReview("session", "ASIN1", onFailure)
 
@@ -61,12 +63,13 @@ void test("Audible API methods use the expected routes and request bodies", asyn
 		assert.ok(response.snapshot?.reviewQueue[0] instanceof Book)
 		assert.deepEqual(calls.map(call => [call.url, call.init?.method]), [
 			["/audible/status", "GET"], ["/audible/start", "POST"], ["/audible/redirect", "POST"],
-			["/audible/cancel", "POST"], ["/audible/review", "POST"],
+			["/audible/select", "POST"], ["/audible/cancel", "POST"], ["/audible/review", "POST"],
 		])
 		assert.equal(calls[0]?.init?.signal, signal)
 		assert.deepEqual(calls.slice(1).map(call => JSON.parse(call.init?.body as string) as object), [
 			{ type: "AudibleStartRequest", account: "reader@example.com", marketplace: "us" },
 			{ type: "AudibleRedirectRequest", sessionId: "session", redirectUrl: "https://amazon.com/redirect" },
+			{ type: "AudibleSelectionRequest", sessionId: "session", asins: ["ASIN1", "ASIN2"] },
 			{ type: "AudibleSessionRequest", sessionId: "session" },
 			{ type: "AudibleReviewRequest", sessionId: "session", asin: "ASIN1" },
 		])
@@ -108,4 +111,23 @@ void test("Audible API returns typed import errors", async () => {
 	finally {
 		globalThis.fetch = originalFetch
 	}
+})
+
+void test("selection and per-book progress survive response restoration and reconnect snapshots", () => {
+	const selecting = new AudibleImportResponse({ snapshot: snapshot({ phase: "selecting", books: [
+		{ asin: "ASIN1", title: "Book one", coverUrl: "https://example.com/cover.jpg", status: "available" },
+		{ asin: "ASIN2", title: "Already imported", status: "skipped" },
+	] }) })
+	assert.equal(selecting.snapshot?.phase, "selecting")
+	assert.deepEqual(selecting.snapshot.books.map(book => book.status), ["available", "skipped"])
+
+	const reconnect = AudibleImportResponse.restoreSnapshot(JSON.parse(JSON.stringify(snapshot({ books: [
+		{ asin: "ASIN1", title: "Book one", status: "complete", reviewed: true, book: new Book({ id: "one", asin: "ASIN1" }) },
+		{ asin: "ASIN2", title: "Book two", status: "downloading", percentage: 42 },
+		{ asin: "ASIN3", title: "Book three", status: "queued" },
+	] }))) as AudibleImportSnapshot)
+	assert.ok(reconnect.books[0]?.book instanceof Book)
+	assert.equal(reconnect.books[0].reviewed, true)
+	assert.equal(reconnect.books[1]?.percentage, 42)
+	assert.equal(reconnect.books[2]?.status, "queued")
 })

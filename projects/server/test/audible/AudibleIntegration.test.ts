@@ -100,7 +100,8 @@ void test("Audible HTTP authentication publishes and indexes a real M4B while re
 					if (args[0] === "liberate") {
 						if (args[1] === "B000000002") {
 							secondDownloadRunning = true
-							data(" 10% ")
+							data("[######")
+							data("......................................................]  ETA 1:00")
 							return
 						}
 						await fs.copyFile(path.join(root, "fixture.m4b"), path.join(directory, "audio", "complete.m4b"))
@@ -151,6 +152,12 @@ void test("Audible HTTP authentication publishes and indexes a real M4B while re
 			},
 		})
 		assert.equal(authenticated.statusCode, 200)
+		await waitFor(() => importer.snapshot(token.user.id)?.phase === "selecting")
+		assert.equal(calls.some(args => args[0] === "liberate"), false)
+		const invalidSelection = await server.inject({ method: "POST", url: "/audible/select", payload: { sessionId: started.id, asins: ["unknown"] } })
+		assert.equal(invalidSelection.statusCode, 400)
+		const selection = await server.inject({ method: "POST", url: "/audible/select", payload: { sessionId: started.id, asins: ["B000000001", "B000000002"] } })
+		assert.equal(selection.statusCode, 200)
 		await waitFor(() => secondDownloadRunning && importer.snapshot(token.user.id)?.downloaded === 1)
 		const status = await server.inject({
 			url: "/audible/status",
@@ -159,6 +166,9 @@ void test("Audible HTTP authentication publishes and indexes a real M4B while re
 		assert.ok(snapshot)
 		assert.equal(snapshot.phase, "downloading")
 		assert.equal(snapshot.remaining, 1)
+		assert.equal(snapshot.books[0]?.status, "complete")
+		assert.equal(snapshot.books[1]?.status, "downloading")
+		assert.equal(snapshot.books[1].percentage, 10)
 		assert.equal(snapshot.reviewQueue.length, 1)
 		assert.equal(snapshot.reviewQueue[0]?.asin, "B000000001")
 		const library = await libraryServer.inject({

@@ -53,6 +53,8 @@ void test("falls back through high-quality AAC sources when preferred downloads 
 		assert.ok(started)
 		for (let i = 0; i < 100 && !service.snapshot("reader")?.loginUrl; i++) await new Promise(resolve => setTimeout(resolve, 5))
 		service.redirect("reader", started.id, redirectUrl)
+		for (let i = 0; i < 100 && service.snapshot("reader")?.phase !== "selecting"; i++) await new Promise(resolve => setTimeout(resolve, 5))
+		service.select("reader", started.id, ["B000000001"])
 		for (let i = 0; i < 100 && service.snapshot("reader")?.phase !== "complete"; i++) await new Promise(resolve => setTimeout(resolve, 5))
 		assert.equal(service.snapshot("reader")?.downloaded, 1)
 		assert.equal(attempts.length, 3)
