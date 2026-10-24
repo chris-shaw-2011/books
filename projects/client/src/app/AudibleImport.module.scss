@@ -1,38 +1,217 @@
+@use "./styles/tokens";
+
+.overlay {
+	position: fixed;
+	padding: 1rem;
+
+	> div {
+		width: 100%;
+		max-width: 36rem;
+		max-height: 100%;
+		overscroll-behavior: contain;
+	}
+}
+
 .dialog {
+	box-sizing: border-box;
 	width: 100%;
-	max-width: 70rem;
+	padding: 1.5rem;
+	border-radius: 1rem;
+	line-height: 1.6;
+	color: tokens.$color-text;
+
+	h2 {
+		margin: 0 0 0.75rem;
+		font-size: 1.5rem;
+		line-height: 1.3;
+	}
+
+	input,
+	select {
+		box-sizing: border-box;
+		width: 100%;
+		min-height: 3rem;
+		font-size: 1rem;
+	}
+
+	select {
+		display: block;
+		margin-top: 0.5rem;
+		padding: 0.5rem;
+		border: 1px solid tokens.$color-control-border;
+		border-radius: tokens.$border-radius;
+	}
+
+	button,
+	summary {
+		min-height: 2.75rem;
+		cursor: pointer;
+	}
+
+	:focus-visible {
+		outline: 3px solid tokens.$color-primary;
+		outline-offset: 3px;
+	}
+}
+
+.step {
+	margin-top: 1.5rem;
+
+	p {
+		margin: 0 0 1rem;
+	}
+}
+
+.eyebrow {
+	color: tokens.$color-muted-text;
+	font-size: 0.875rem;
+	font-weight: 600;
+}
+
+.note {
+	padding: 1rem;
+	margin: 1.25rem 0;
+	border-left: 3px solid tokens.$color-primary;
+	border-radius: 0.25rem;
+	background: #eef5ff;
+
+	p {
+		margin: 0.25rem 0 0;
+	}
+}
+
+.dialog .primary {
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.5rem;
+	width: 100%;
+	min-height: 3.25rem;
+	padding: 0.75rem 1rem;
+	margin: 1.25rem 0 0;
+	border: 0;
+	border-radius: tokens.$border-radius;
+	background: tokens.$color-primary;
+	color: white;
+	font-size: 1rem;
+	font-weight: 600;
+	text-align: center;
+	text-decoration: none;
+
+	&:hover {
+		background: tokens.$color-primary-hover;
+	}
+
+	&:disabled {
+		opacity: 0.65;
+		cursor: wait;
+	}
+}
+
+.dialog .textButton {
+	background: transparent;
+	color: tokens.$color-muted-text;
+	text-decoration: underline;
+	text-underline-offset: 0.2em;
+	margin: 0.5rem 0 0;
+	padding: 0.5rem 0.25rem;
+}
+
+.hint {
+	margin-top: 0.5rem;
+	color: tokens.$color-muted-text;
+	font-size: 0.9375rem;
+}
+
+.instructions {
+	padding-left: 1.5rem;
+
+	li {
+		padding-left: 0.25rem;
+		margin-bottom: 0.75rem;
+	}
+}
+
+.help {
+	margin-top: 1rem;
+	border-top: 1px solid tokens.$color-border;
+	border-bottom: 1px solid tokens.$color-border;
+
+	summary {
+		box-sizing: border-box;
+		padding: 0.75rem 0;
+		font-weight: 600;
+	}
+}
+
+.devicePicker {
+	display: flex;
+	gap: 0.5rem;
+	margin: 0.5rem 0 1rem;
+
+	button {
+		flex: 1;
+		margin: 0;
+		border: 1px solid tokens.$color-border;
+		background: white;
+		color: tokens.$color-text;
+
+		&[aria-pressed="true"] {
+			border-color: tokens.$color-primary;
+			background: #eef5ff;
+			color: #084298;
+		}
+	}
+}
+
+.example {
+	margin: 0 auto 1rem;
+	max-width: 16rem;
+
+	img {
+		display: block;
+		width: 100%;
+		height: auto;
+		border: 1px solid tokens.$color-border;
+		border-radius: 0.5rem;
+	}
+
+	figcaption {
+		margin-top: 0.75rem;
+		font-size: 0.9375rem;
+	}
+}
+
+.progress {
+	margin-top: 1.5rem;
 }
 
 .activity {
 	max-height: 12rem;
 	overflow: auto;
 	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	font-size: 0.8125rem;
 }
 
 .review {
 	padding-top: 1rem;
 }
 
-.examples {
-	display: flex;
-	flex-wrap: wrap;
+.footer {
 	gap: 1rem;
-	margin: 1rem 0;
+	margin-top: 1.5rem;
+	padding-top: 1rem;
+	border-top: 1px solid tokens.$color-border;
+}
 
-	figure {
-		flex: 1 1 14rem;
-		margin: 0;
-		max-width: 18rem;
+@media (width <= 480px) {
+	.overlay {
+		padding: 0.5rem;
 	}
 
-	img {
-		display: block;
-		width: 100%;
-		height: auto;
-		border-radius: 0.5rem;
-	}
-
-	figcaption {
-		margin-top: 0.5rem;
+	.dialog {
+		padding: 1.25rem;
 	}
 }
