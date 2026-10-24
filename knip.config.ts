@@ -6,7 +6,14 @@ import {
 
 export default createKnipConfig({
 	workspaces: {
-		".": rootWorkspaceConfig(),
+		".": rootWorkspaceConfig({
+			entry: [
+				"scripts/check-apt-updates.test.ts",
+				"scripts/check-docker-runtime.ts",
+			],
+			ignoreBinaries: ["libationcli"],
+			ignoreDependencies: ["node-pty"],
+		}),
 		"projects/*": workspaceConfig(),
 		"projects/client": workspaceConfig({
 			entry: [
