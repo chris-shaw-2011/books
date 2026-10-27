@@ -120,15 +120,19 @@ tag and publish immutable version tags. Both call the shared Build Container
 workflow to check, build, verify, and publish an image. Build Container has no
 schedule or standalone trigger.
 
-Update first checks npm without installing packages or compiling the application.
-It runs `npm update --package-lock-only --ignore-scripts` across the workspaces,
-respecting existing dependency ranges and overrides. For example, a `^5.0.0`
-dependency can receive compatible 5.x updates, while an exact version stays pinned.
-It then runs `npm audit fix --package-lock-only --omit=dev --ignore-scripts` to
-apply compatible security fixes for production dependencies. Dev-only advisories are
-excluded from that pass. Neither command installs packages, runs lifecycle scripts,
-or forces incompatible upgrades. Unresolved advisories remain visible in the logs
-without blocking other updates; registry or command errors still fail the check.
+Update checks only production npm dependencies without installing packages or
+compiling the application. `scripts/update-production-dependencies.ts` selects the
+production dependency names from the lockfile, including transitive dependencies,
+and updates them within their existing ranges. For example, a `^5.0.0` dependency
+can receive compatible 5.x updates, while an exact version stays pinned.
+
+It also runs a production-only, lockfile-only `npm audit fix` without lifecycle
+scripts or `--force`. Unresolved advisories remain visible in the logs without
+blocking other updates; registry or command errors still fail the check. Dev-only
+changes and lockfile metadata changes are discarded when no production dependency
+versions, sources, integrity hashes, or installed paths changed. Development
+packages, including TypeScript, Vite, esbuild, and lint tooling, are updated manually
+alongside code releases.
 
 When the lockfile changes, Update commits it with an application patch-version bump
 to `master`, then runs the shared version-tagging script. A committed version that
