@@ -1,0 +1,28 @@
+name: Check Maintenance
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - Dockerfile
+      - .github/workflows/**
+      - scripts/**
+  pull_request:
+    paths:
+      - Dockerfile
+      - .github/workflows/**
+      - scripts/**
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: current
+      - name: Test maintenance scripts
+        run: node --test scripts/*.test.ts

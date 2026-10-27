@@ -21,14 +21,8 @@ if [ "$changed" = true ]; then
     echo "latest already points beyond this commit or to another history; refusing to move it backwards."
     exit 1
   fi
-  if git show-ref --verify --quiet "refs/tags/${version}"; then
-    if [ "$(git rev-parse "refs/tags/${version}^{commit}")" != "$commit" ]; then
-      echo "Version ${version} already identifies another commit. Bump package.json."
-      exit 1
-    fi
-  else
-    git tag "$version" "$commit"
-  fi
+  # Git itself rejects an existing version tag; only latest is allowed to move.
+  git tag "$version" "$commit"
   git tag --force latest "$commit"
   git push --atomic origin "refs/tags/${version}" +refs/tags/latest
 fi

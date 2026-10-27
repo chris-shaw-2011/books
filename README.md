@@ -152,6 +152,12 @@ check. There is no workflow dispatch chain or extra trigger token. GitHub's buil
 token reads registry metadata and writes dependency commits; local Docker builds
 need no token. The repository must allow the workflow to push to `master`.
 
+Maintenance script unit tests run in Check Maintenance when `scripts/**`, the
+Dockerfile, or workflow files change. They do not run as part of daily maintenance.
+Candidate images still run the functional Libation login and audio smoke checks
+before publication. Libation asset digests are update/cache keys, not download
+checksum validation.
+
 Update then calls Build Container even when npm is unchanged, so it can check for
 Node base image, Debian package, and Libation updates. Unchanged inputs skip the
 image build. New application/dependency versions or changed runtime components

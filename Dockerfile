@@ -38,19 +38,20 @@ ENV FFPROBE_PATH=/usr/bin/ffprobe
 
 # Native .NET dependencies and FFmpeg support Libation's high quality audio.
 ARG APT_REFRESH
-RUN : "$APT_REFRESH" && apt-get update \
+RUN apt-get update \
 	&& DEBIAN_FRONTEND=noninteractive apt-get upgrade -y \
 	&& apt-get install -y --no-install-recommends \
 	ca-certificates curl libgssapi-krb5-2 libstdc++6 libgcc-s1 zlib1g ffmpeg \
 	&& icu_package="$(apt-cache pkgnames | grep -E '^libicu[0-9]+$' | sort -V | tail -1)" \
 	&& ssl_package="$(apt-cache pkgnames | grep -E '^libssl[0-9]+(t64)?$' | sort -V | tail -1)" \
-	&& test -n "$icu_package" && test -n "$ssl_package" \
 	&& apt-get install -y --no-install-recommends "$icu_package" "$ssl_package" \
 	&& rm -rf /var/lib/apt/lists/*
-ARG LIBATION_RELEASE_SHA256
 COPY scripts/install-libation.sh /tmp/install-libation.sh
 COPY scripts/resolve-libation-release.ts /tmp/resolve-libation-release.ts
-RUN LIBATION_RELEASE_SHA256="$LIBATION_RELEASE_SHA256" sh /tmp/install-libation.sh \
+ARG LIBATION_PACKAGE_URL
+# This digest is a cache key, not a checksum validation.
+ARG LIBATION_RELEASE_SHA256
+RUN sh /tmp/install-libation.sh "$LIBATION_PACKAGE_URL" \
 	&& rm /tmp/install-libation.sh /tmp/resolve-libation-release.ts
 
 WORKDIR /home/node/app

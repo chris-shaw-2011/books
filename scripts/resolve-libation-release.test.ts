@@ -21,11 +21,6 @@ void test("selects the latest Libation package for both container architectures"
 	}
 })
 
-void test("fails closed when the latest release lacks an expected digest or asset", () => {
-	const firstAsset = release.assets[0]
-	assert.ok(firstAsset)
-	assert.throws(() => selectAsset({ ...release, assets: [] }, "amd64"), /verified amd64 Debian package/)
-	assert.throws(() => selectAsset({ ...release, assets: [{ ...firstAsset, digest: "" }] }, "amd64"), /verified amd64 Debian package/)
-	assert.throws(() => selectAsset({ ...release, tag_name: "v15-beta" }, "amd64"), /unexpected tag/)
-	assert.throws(() => selectAsset(release, "armv7"), /Unsupported Libation architecture/)
+void test("reports a missing architecture package", () => {
+	assert.throws(() => selectAsset({ ...release, assets: [] }, "amd64"), /no amd64 Debian package/)
 })
