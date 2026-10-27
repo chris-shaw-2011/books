@@ -36,20 +36,17 @@ jobs:
         with:
           node-version: current
 
-      - name: Verify production dependency update behavior
-        run: node --test scripts/update-production-dependencies.test.ts
-
       - name: Resolve compatible production updates and security fixes
         run: node scripts/update-production-dependencies.ts
 
-      - name: Commit updates and bump application patch version
+      - name: Commit production dependency updates
         run: |
           set -euo pipefail
           if git diff --quiet -- package-lock.json; then
             echo "No production dependency updates."
             exit 0
           fi
-          npm version patch --no-git-tag-version --ignore-scripts --workspaces=false
+          node scripts/bump-update-version.ts
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json

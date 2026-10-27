@@ -48,7 +48,7 @@ void test("daily updates preserve dev dependencies and skip dev-only releases", 
 		const fixture = (name: string, production = true) => {
 			const dir = join(root, name)
 			mkdirSync(join(dir, "projects/app"), { recursive: true })
-			const pkg = { name: "fixture", version: "1.0.0", private: true, workspaces: ["projects/*"], scripts: { postinstall: "touch installed-marker" } }
+			const pkg = { name: "fixture", version: "1.0.0.1", private: true, workspaces: ["projects/*"], scripts: { postinstall: "touch installed-marker" } }
 			const app = {
 				name: "fixture-app", version: "1.0.0",
 				...(production && { dependencies: { "fixture-runtime": "1.0.0" }, optionalDependencies: { "@fixture/optional": "^1.0.0" } }),
@@ -67,7 +67,7 @@ void test("daily updates preserve dev dependencies and skip dev-only releases", 
 			}
 			writeFileSync(join(dir, "package.json"), JSON.stringify(pkg))
 			writeFileSync(join(dir, "projects/app/package.json"), JSON.stringify(app))
-			writeFileSync(join(dir, "package-lock.json"), `${JSON.stringify({ name: "fixture", version: "1.0.0", lockfileVersion: 3, requires: true, packages }, null, "\t")}\n`)
+			writeFileSync(join(dir, "package-lock.json"), `${JSON.stringify({ name: "fixture", version: "1.0.0.1", lockfileVersion: 3, requires: true, packages }, null, "\t")}\n`)
 			return dir
 		}
 		const run = (cwd: string) => new Promise<{ status: number | null, output: string }>((resolve, reject) => {

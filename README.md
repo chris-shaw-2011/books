@@ -97,14 +97,14 @@ image instead.
 
 ### Publishing versions
 
-Change `package.json`'s version explicitly (for example, `npm version patch --no-git-tag-version`,
-which also updates `package-lock.json`) and push to the default branch. Release checks
+Set a new three-part version in `package.json`, synchronize `package-lock.json`
+(as described below), and push to the default branch. Release checks
 the version against `package.json` at the `latest` Git tag. When it differs (or
 `latest` is missing), it creates an immutable Git tag such as `1.6.1`,
 and moves the lightweight `latest` Git tag to that commit. It then calls the container
 workflow directly; it does not depend on tag pushes triggering another workflow.
 There are no compiled release archives. Manual application releases use explicit
-version bumps; compatible dependency updates can create patch releases automatically.
+version bumps; compatible dependency updates use a fourth component in Git tags.
 
 CI uses the same Dockerfile as local builds and persists the intermediate build cache.
 It smoke-tests the candidate image before pushing versioned and `latest` image tags
@@ -134,12 +134,23 @@ versions, sources, integrity hashes, or installed paths changed. Development
 packages, including TypeScript, Vite, esbuild, and lint tooling, are updated manually
 alongside code releases.
 
-When the lockfile changes, Update commits it with an application patch-version bump
-to `master`, then runs the shared version-tagging script. A committed version that
-was not tagged due to a failed run is retried on the next check. There is no workflow
-dispatch chain or extra trigger token. GitHub's built-in token reads the private
-lint package and writes dependency commits; local Docker builds need no token.
-The repository must allow the workflow to push to `master`.
+When production dependencies change, Update increments the fourth component in
+`package.json` and synchronizes both root version fields in `package-lock.json`.
+For example, `1.7.0` becomes `1.7.0.1`, then `1.7.0.2`. It commits the manifests
+and lockfile, then runs the shared version-tagging script, which tags that exact
+version and moves `latest`. Retries reuse the existing application tag.
+
+This private app supports four-part versions in npm installation and builds, but
+four-part versions are not SemVer: `npm version` cannot manage them. Automatic
+increments use `scripts/bump-update-version.ts`. For a code release, explicitly
+set the next three-part version (for example, `npm pkg set version=1.7.1`) and
+synchronize the lockfile with `npm install --package-lock-only --ignore-scripts`
+before committing. That resets the automatic sequence; its next update is `1.7.1.1`.
+
+A committed version that was not tagged due to a failed run is retried on the next
+check. There is no workflow dispatch chain or extra trigger token. GitHub's built-in
+token reads registry metadata and writes dependency commits; local Docker builds
+need no token. The repository must allow the workflow to push to `master`.
 
 Update then calls Build Container even when npm is unchanged, so it can check for
 Node base image, Debian package, and Libation updates. Unchanged inputs skip the
@@ -148,6 +159,13 @@ produce one candidate image, which is smoke-tested before publication. Docker
 reuses the application build stage when only runtime layers change; a Node base
 image change also rebuilds the native dependencies. No application compilation
 runs merely because the daily schedule fired.
+
+Published container tags always have five numeric components. A code release
+`1.7.0` first builds image `1.7.0.0.0`; dependency revision `1.7.0.1` builds image
+`1.7.0.1.0`. Further Node, Debian, or Libation rebuilds for that same source use
+`1.7.0.1.1`, `1.7.0.1.2`, and so on. The fourth component tracks dependency updates;
+the fifth tracks container rebuilds. `latest` still points to the newest published
+image. Existing historical tags are preserved.
 
 Start Release manually on `master` to initialize tags, or let Update initialize
 them on its next run. To retry a failed build, rerun the failed jobs or start Update.

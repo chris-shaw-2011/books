@@ -36,10 +36,15 @@ jobs:
         id: app-version
         env:
           NEW_VERSION_CREATED: ${{ inputs.new_version_created || false }}
+          REQUESTED_TAG: ${{ inputs.version_tag || 'latest' }}
         run: |
           set -euo pipefail
           version="$(jq -r .version package.json)"
-          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Invalid package version: $version"; exit 1; }
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]] || { echo "Invalid package version: $version"; exit 1; }
+          if [ "$REQUESTED_TAG" != latest ] && [ "$REQUESTED_TAG" != "$version" ]; then
+            echo "Application tag does not match package version: $REQUESTED_TAG"
+            exit 1
+          fi
           commit="$(git rev-parse HEAD)"
           tagged_commit="$(git rev-parse "refs/tags/${version}^{commit}")"
           if [ "$tagged_commit" != "$commit" ]; then
@@ -262,7 +267,6 @@ jobs:
 
           if [ "${RELEASE_CREATED}" = "true" ]; then
             should_build=true
-            target_version="${RELEASE_VERSION}"
             reason="new application version tagged"
           else
             if [ "${PREVIOUS_FOUND}" = "true" ] \
@@ -275,17 +279,7 @@ jobs:
               should_build=false
               reason="base image, Libation, container sources and Debian packages unchanged for latest release"
             else
-              escaped_release="${RELEASE_VERSION//./\\.}"
-              next_patch=1
-
-              if [[ "${PREVIOUS_VERSION}" =~ ^${escaped_release}\.([0-9]+)$ ]]; then
-                next_patch=$((BASH_REMATCH[1] + 1))
-              elif [ "${PREVIOUS_VERSION}" = "${RELEASE_VERSION}" ]; then
-                next_patch=1
-              fi
-
               should_build=true
-              target_version="${RELEASE_VERSION}.${next_patch}"
 
               if [ "${PREVIOUS_FOUND}" != "true" ]; then
                 reason="no previous uploaded image"
@@ -303,6 +297,19 @@ jobs:
                 reason="base image digest changed"
               fi
             fi
+          fi
+
+          if [ "$should_build" = true ]; then
+            prefix="$RELEASE_VERSION"
+            if [[ "$prefix" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              prefix="${prefix}.0"
+            fi
+            escaped_prefix="${prefix//./\\.}"
+            revision=0
+            if [[ "$PREVIOUS_VERSION" =~ ^${escaped_prefix}\.([0-9]+)$ ]]; then
+              revision=$((10#${BASH_REMATCH[1]} + 1))
+            fi
+            target_version="${prefix}.${revision}"
           fi
 
           echo "Decision result:"
