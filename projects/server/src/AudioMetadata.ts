@@ -1,6 +1,8 @@
 import {
 	File as TagLibFile,
 	Id3v2Tag,
+	Id3v2UserTextInformationFrame,
+	Mpeg4AppleTag,
 	Mpeg4BoxHeader,
 	Mpeg4File,
 	Mpeg4IsoChunkLargeOffset,
@@ -10,6 +12,36 @@ import {
 	type Tag,
 	TagTypes,
 } from "node-taglib-sharp"
+
+interface SeriesMetadata {
+	series: string,
+	seriesOrder: number | undefined,
+}
+
+const readSeriesMetadata = (file: TagLibFile): SeriesMetadata => {
+	const tag = file.getTag(file instanceof Mpeg4File ? TagTypes.Apple : TagTypes.Id3v2, false)
+	const value = (name: string) => {
+		if (tag instanceof Mpeg4AppleTag) return tag.getItunesStrings("com.pilabor.tone", name)[0] ?? ""
+		if (tag instanceof Id3v2Tag) return tag.frames.find((frame): frame is Id3v2UserTextInformationFrame => frame instanceof Id3v2UserTextInformationFrame && frame.description === name)?.text[0] ?? ""
+		return ""
+	}
+	const text = value("PART").trim()
+	const order = Number(text)
+	return { series: value("SERIES"), seriesOrder: text && Number.isFinite(order) && order >= 0 ? order : undefined }
+}
+
+const setSeriesMetadata = (tag: Tag, metadata: Partial<SeriesMetadata>) => {
+	if (metadata.series === undefined) return
+	for (const [name, value] of [["SERIES", metadata.series], ["PART", metadata.seriesOrder?.toString() ?? ""]] as const) {
+		if (tag instanceof Mpeg4AppleTag) tag.setItunesStrings("com.pilabor.tone", name, value)
+		else if (tag instanceof Id3v2Tag) {
+			const existing = tag.frames.find((frame): frame is Id3v2UserTextInformationFrame => frame instanceof Id3v2UserTextInformationFrame && frame.description === name)
+			const frame = existing ?? Id3v2UserTextInformationFrame.fromDescription(name)
+			frame.text = [value]
+			if (!existing) tag.addFrame(frame)
+		}
+	}
+}
 
 interface ReadAudioMetadataOptions {
 	duration?: boolean,
@@ -82,6 +114,7 @@ export const readAudioMetadata = (filePath: string, options: ReadAudioMetadataOp
 
 		return {
 			asin: asin ?? "",
+			...readSeriesMetadata(file),
 			title: title ?? "",
 			performers: tag.performers,
 			year: tag.year,
@@ -97,12 +130,12 @@ export const readAudioMetadata = (filePath: string, options: ReadAudioMetadataOp
 	}
 }
 
-export const writeAudioMetadata = (filePath: string, metadata: Pick<Tag, "title" | "performers" | "year" | "comment" | "composers" | "genres">) => {
+export const writeAudioMetadata = (filePath: string, metadata: Pick<Tag, "title" | "performers" | "year" | "comment" | "composers" | "genres"> & Partial<SeriesMetadata>) => {
 	const file = TagLibFile.createFromPath(filePath, undefined, ReadStyle.None)
 
 	try {
 		Id3v2Tag.language = "eng"
-		const tag = file instanceof Mpeg4File ? file.getTag(TagTypes.Apple, true) : file.tag
+		const tag = file.getTag(file instanceof Mpeg4File ? TagTypes.Apple : TagTypes.Id3v2, true)
 
 		tag.title = metadata.title
 		tag.performers = metadata.performers
@@ -110,6 +143,7 @@ export const writeAudioMetadata = (filePath: string, metadata: Pick<Tag, "title"
 		tag.comment = metadata.comment
 		tag.composers = metadata.composers
 		tag.genres = metadata.genres
+		setSeriesMetadata(tag, metadata)
 		file.save()
 	}
 	finally {

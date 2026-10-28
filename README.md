@@ -189,6 +189,18 @@ version numbers alone cannot guarantee a regression-free update.
 
 For Audible container requirements, image checks, and interactive account testing, see [Audible import container verification](docs/audible-docker.md).
 
+Audible imports include series organization in the book selection step for administrators.
+Selected series books show an editable folder, reading order, and destination preview
+before downloading. The default uses Audible's series position, reuses matching library
+folders and their numbering style, and otherwise uses `Series/01 - Title.m4b`.
+Series order is numeric; prequels and novellas can use values such as `0` and `2.5`.
+Missing positions and ranges stay unset until reviewed. Multiple-series books require
+choosing a series; books without series data stay in the configured upload folder.
+Audible supplies the initial series order; edits replace that same value in the
+audio file and the existing book editor. Imports by
+non-administrators continue to use the upload folder. Existing library files are not
+reorganized by an import.
+
 ## Todo
 Add manage users page<br />
 Reset password<br />

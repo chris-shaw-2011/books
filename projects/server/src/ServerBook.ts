@@ -96,6 +96,8 @@ export default class ServerBook extends Book {
 		this.narrator = metadata.composers.join(", ")
 		this.genre = metadata.genres.join(", ")
 		this.asin = metadata.asin
+		this.series = metadata.series
+		this.seriesOrder = metadata.seriesOrder
 
 		if (!fs.existsSync(this.photoPath)) {
 			const data = metadata.picture

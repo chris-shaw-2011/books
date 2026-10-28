@@ -19,6 +19,8 @@ import ServerToken from "./ServerToken.ts"
 import sanitize from "sanitize-filename"
 import ServerBook from "./ServerBook.ts"
 import { writeAudioMetadata } from "./AudioMetadata.ts"
+import { seriesDestination } from "./SeriesOrganization.ts"
+import { updateBookSchema } from "./SeriesSchemas.ts"
 import { validateRequest } from "./Validation.ts"
 import AuthorizationExpiration, { getNewAuthorizationExpiration } from "./AuthorizationExpiration.ts"
 import * as cookie from "cookie"
@@ -31,7 +33,7 @@ const splitTagValues = (value: string) => value.split(",").map(item => item.trim
 const rootDir = __dirname
 const conversions = new Map<string, Converter>()
 const conversionMutex = new Mutex()
-const server = Fastify({ logger: false, bodyLimit: 10_000_000_000 })
+const server = Fastify({ logger: false, bodyLimit: 10_000_000_000, ajv: { customOptions: { coerceTypes: false } } })
 const audibleImporter = createAudibleImporter(() => db.settings, async filePath => {
 	await bookList.fileAdded(filePath)
 	const book = bookList.findBookByPath(filePath)
@@ -500,7 +502,8 @@ server.post<{ Body: shared.AddFolderRequest }>("/addFolder", { preHandler: valid
 	return new shared.Books({ directory: books, bookStatuses: statuses })
 })
 
-server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: validateAdminRequest }, async request => {
+server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preValidation: validateAdminRequest, schema: updateBookSchema, attachValidation: true }, async (request, reply) => {
+	if (request.validationError) return reply.code(400).send(new shared.UpdateBookResponse({ message: request.validationError.message }))
 	const updateBookRequest = new shared.UpdateBookRequest(request.body)
 	// eslint-disable-next-line @stylistic/max-statements-per-line
 	const token = request.userToken ?? (() => { throw new Error() })()
@@ -518,6 +521,9 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 
 	try {
 		await bookList.pauseUpdates()
+		if (newBook.series && newBook.seriesOrder !== undefined && book.fullPath !== newPath) {
+			await seriesDestination(db.settings.baseBooksPath, newBook.folderPath)
+		}
 
 		// Check to see if the file needs renamed
 		if (book.fullPath !== newPath) {
@@ -541,7 +547,7 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 			await bookList.deleteBook(book.fullPath)
 		}
 
-		if (extension === ".mp3" || book.name !== newBook.name || book.author !== newBook.author || book.year !== newBook.year || book.comment !== newBook.comment || book.narrator !== newBook.narrator || book.genre !== newBook.genre) {
+		if (extension === ".mp3" || book.name !== newBook.name || book.author !== newBook.author || book.year !== newBook.year || book.comment !== newBook.comment || book.narrator !== newBook.narrator || book.genre !== newBook.genre || book.series !== newBook.series || book.seriesOrder !== newBook.seriesOrder) {
 			writeAudioMetadata(newPath, {
 				title: newBook.name.trim(),
 				performers: splitTagValues(newBook.author),
@@ -549,6 +555,8 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preHandler: val
 				comment: newBook.comment.trim(),
 				composers: splitTagValues(newBook.narrator),
 				genres: splitTagValues(newBook.genre),
+				series: newBook.series,
+				seriesOrder: newBook.seriesOrder,
 			})
 		}
 

@@ -5,7 +5,6 @@ export default class UpdateBookRequest extends ApiMessage {
 	override readonly type = "UpdateBookRequest"
 
 	newBook: Book
-	prevBook: Book
 
 	constructor(json?: Partial<UpdateBookRequest>) {
 		super()
@@ -21,6 +20,5 @@ export default class UpdateBookRequest extends ApiMessage {
 		}
 
 		this.newBook = new Book(trimmedNewBook)
-		this.prevBook = new Book(json?.prevBook)
 	}
 }

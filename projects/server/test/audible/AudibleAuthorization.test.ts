@@ -24,7 +24,7 @@ void test("an authenticated non-admin cannot update book metadata through the AP
 			method: "POST",
 			url: "/updateBook",
 			headers: { cookie: `loginCookie=${encodeURIComponent(JSON.stringify(token))}` },
-			payload: { newBook: { id: "missing", name: "Changed" }, prevBook: { id: "missing" } },
+			payload: { newBook: { id: "missing", name: "Changed" } },
 		})
 
 		assert.equal(response.statusCode, 403)

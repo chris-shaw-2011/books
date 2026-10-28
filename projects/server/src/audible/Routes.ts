@@ -2,7 +2,8 @@
 import type { ServerResponse } from "node:http"
 import type { FastifyInstance } from "fastify"
 import { AudibleImportResponse, type AudibleStartRequest, type AudibleRedirectRequest, type AudibleSessionRequest, type AudibleReviewRequest, type AudibleSelectionRequest } from "@books/shared"
-import { validateRequestPreHandler } from "../Validation.ts"
+import { validateRequest, validateRequestPreHandler } from "../Validation.ts"
+import { audibleSelectionSchema } from "../SeriesSchemas.ts"
 import type { AudibleImportService } from "./ImportService.ts"
 
 interface AudibleStart { Body: AudibleStartRequest }
@@ -43,10 +44,12 @@ export function registerAudibleRoutes(server: FastifyInstance, importer: Audible
 		return reply.code(code).send(ret)
 	})
 
-	server.post<AudibleSelection>("/audible/select", validateRequestPreHandler, (request, reply) => {
+	server.post<AudibleSelection>("/audible/select", { preValidation: validateRequest, schema: audibleSelectionSchema, attachValidation: true }, (request, reply) => {
 		reply.header("Cache-Control", "no-store")
+		if (request.validationError) return reply.code(400).send(new AudibleImportResponse({ errorMessage: request.validationError.message }))
 		try {
-			return new AudibleImportResponse({ snapshot: importer.select(request.userToken?.user.id ?? "", request.body?.sessionId, request.body?.asins) })
+			if (Object.keys(request.body.organizations ?? {}).length && !request.userToken?.user.isAdmin) return reply.code(403).send(new AudibleImportResponse({ errorMessage: "Only administrators can organize series in the library" }))
+			return new AudibleImportResponse({ snapshot: importer.select(request.userToken?.user.id ?? "", request.body?.sessionId, request.body?.asins, request.body?.organizations) })
 		}
 		catch (error) {
 			return reply.code(400).send(new AudibleImportResponse({ errorMessage: error instanceof Error ? error.message : "Unable to select books" }))

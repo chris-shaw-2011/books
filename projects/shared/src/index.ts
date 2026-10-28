@@ -41,3 +41,5 @@ export { default as AudibleRedirectRequest } from "./api/AudibleRedirectRequest.
 export { default as AudibleSessionRequest } from "./api/AudibleSessionRequest.ts"
 export { default as AudibleReviewRequest } from "./api/AudibleReviewRequest.ts"
 export { default as AudibleSelectionRequest } from "./api/AudibleSelectionRequest.ts"
+export { unnumberedTitle, seriesBookTitle, suggestSeriesOrganization } from "./Series.ts"
+export type { BookSeries, SeriesOrganization } from "./Series.ts"

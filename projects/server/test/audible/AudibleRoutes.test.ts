@@ -32,7 +32,7 @@ void test("Audible routes require authentication and isolate per-user sessions",
 		hasAsin: async () => false,
 		publish: async () => new Book(),
 	}, path.join(root, "sessions"))
-	const server = Fastify()
+	const server = Fastify({ ajv: { customOptions: { coerceTypes: false } } })
 	server.decorateRequest("userToken", undefined)
 	server.addHook("onRequest", async request => {
 		const owner = request.headers["x-test-user"]
@@ -41,6 +41,7 @@ void test("Audible routes require authentication and isolate per-user sessions",
 				user: new User({
 					id: owner,
 					email: `${owner}@example.com`,
+					isAdmin: owner === "admin",
 				}),
 				authorization: owner,
 			}, "test")
@@ -73,6 +74,35 @@ void test("Audible routes require authentication and isolate per-user sessions",
 		assert.equal(started.type, "AudibleImportResponse")
 		const snapshot = started.snapshot
 		assert.ok(snapshot)
+		const forbiddenOrganization = await server.inject({
+			method: "POST",
+			url: "/audible/select",
+			headers: { "x-test-user": "owner" },
+			payload: { sessionId: snapshot.id, asins: ["EXAMPLE"], organizations: { EXAMPLE: { series: { name: "Series", order: 1 }, folderPath: "/Series", padding: 2 } } },
+		})
+		assert.equal(forbiddenOrganization.statusCode, 403)
+		const selection = { sessionId: snapshot.id, asins: ["EXAMPLE"] }
+		const organization = { series: { name: "Series", order: 0 }, folderPath: "/Series", padding: 2 }
+		const invalidBodies = [
+			{},
+			{ ...selection, asins: [] },
+			{ ...selection, asins: ["EXAMPLE", "EXAMPLE"] },
+			{ ...selection, asins: [12] },
+			{ ...selection, organizations: [] },
+			{ ...selection, organizations: { EXAMPLE: { ...organization, padding: 0 } } },
+			...[-1, null, "2.5", "1-3", "NaN", undefined].map(order => ({ ...selection, organizations: { EXAMPLE: { ...organization, series: { name: "Series", order } } } })),
+		]
+		for (const payload of invalidBodies) {
+			const rejected = await server.inject({ method: "POST", url: "/audible/select", headers: { "x-test-user": "admin" }, payload })
+			assert.equal(rejected.statusCode, 400)
+			assert.equal(rejected.json<AudibleImportResponse>().type, "AudibleImportResponse")
+			assert.match(rejected.json<AudibleImportResponse>().errorMessage ?? "", /^body/)
+		}
+		for (const order of [0, 2.5]) {
+			const accepted = await server.inject({ method: "POST", url: "/audible/select", headers: { "x-test-user": "admin" }, payload: { ...selection, organizations: { EXAMPLE: { ...organization, series: { name: "Series", order } } } } })
+			// The schema accepted the number; session ownership remains authoritative.
+			assert.equal(accepted.json<AudibleImportResponse>().errorMessage, "Import session not found")
+		}
 		const otherStatus = (await server.inject({
 			url: "/audible/status",
 			headers: {
@@ -132,6 +162,7 @@ void test("Audible routes require authentication and isolate per-user sessions",
 	}
 	finally {
 		await server.close()
+		AuthorizationExpiration.delete("admin")
 		AuthorizationExpiration.delete("owner")
 		AuthorizationExpiration.delete("other")
 		await fs.rm(root, {

@@ -12,7 +12,7 @@ class AdminApiClass extends LoggedInApiClass {
 
 	deleteUser = async (userId: string, onFailure: (message?: string) => void) => await this.callApi("/deleteUser", UserListResponse, onFailure, new DeleteUserRequest({ userId }))
 
-	updateBook = async (newBook: Book, prevBook: Book, onFailure: (message?: string) => void) => await this.callApi("/updateBook", UpdateBookResponse, onFailure, new UpdateBookRequest({ newBook, prevBook }))
+	updateBook = async (newBook: Book, onFailure: (message?: string) => void) => await this.callApi("/updateBook", UpdateBookResponse, onFailure, new UpdateBookRequest({ newBook }))
 
 	addFolder = async (path: string, folderName: string, onFailure: (message?: string) => void) => await this.callApi("/addFolder", Books, onFailure, new AddFolderRequest({ path, folderName }))
 }

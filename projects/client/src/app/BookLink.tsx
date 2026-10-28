@@ -4,6 +4,7 @@ import AppContext from "./context/AppContext"
 import LoggedInAppContext from "./context/LoggedInAppContext"
 import Highlighter from "react-highlight-words"
 import { Book, type Status, Directory, StatusValues } from "@books/shared"
+import { seriesBookTitle, suggestSeriesOrganization } from "@books/shared"
 import Api from "./api/LoggedInApi"
 import Loading from "./Loading"
 import Textbox from "./components/Textbox"
@@ -62,7 +63,7 @@ const Inner = ({ editing, children, ...passThroughProps }: InnerProps) => {
 }
 
 const EditableTextbox = ({ editing, searchWords, ...passThroughProps }: EditableTextboxProps) => (
-	editing ? <Textbox required={true} {...passThroughProps} /> : <Highlighter searchWords={[...searchWords]} textToHighlight={passThroughProps.defaultValue?.toString() ?? ""} sanitize={sanitize} />
+	editing ? <Textbox required={true} {...passThroughProps} /> : <Highlighter searchWords={[...searchWords]} textToHighlight={(passThroughProps.value ?? passThroughProps.defaultValue)?.toString() ?? ""} sanitize={sanitize} />
 )
 
 const EditableTextboxField = ({ editing, searchWords, ...passThroughProps }: EditableTextboxFieldProps) => {
@@ -193,6 +194,8 @@ const BookLink = (props: BookProps) => {
 	const [newYear, setNewYear] = useState(props.book.year)
 	const [newNarrator, setNewNarrator] = useState(props.book.narrator)
 	const [newGenre, setNewGenre] = useState(props.book.genre)
+	const [newSeries, setNewSeries] = useState(props.book.series)
+	const [newSeriesOrder, setNewSeriesOrder] = useState(props.book.seriesOrder)
 	const [showPathOptions, setShowPathOptions] = useState(false)
 	const [newPath, setNewPath] = useState<undefined | string>()
 	const changeBookStatus = async (status: Status, e: React.MouseEvent<HTMLElement>) => {
@@ -228,11 +231,17 @@ const BookLink = (props: BookProps) => {
 			newBook.author = newAuthor
 			newBook.narrator = newNarrator
 			newBook.folderPath = newPath ?? props.book.folderPath
+			newBook.series = newSeries
+			newBook.seriesOrder = newSeriesOrder
 
 			setEditingState({ status: "Saving" })
 
-			const ret = await (await AdminApi()).updateBook(newBook, props.book, logOut)
+			const ret = await (await AdminApi()).updateBook(newBook, logOut)
 
+			if (ret.message) {
+				setEditingState({ status: "Editing", alertMessage: ret.message })
+				return
+			}
 			updateBooks(ret.books.directory)
 			setEditingState({ status: "ReadOnly" })
 
@@ -260,6 +269,21 @@ const BookLink = (props: BookProps) => {
 		e.preventDefault()
 		setEditingState({ status: "Editing" })
 	}
+	const organizeSeries = () => {
+		const organization = suggestSeriesOrganization({ name: newSeries, order: newSeriesOrder }, rootDirectory)
+		if (!organization || newSeriesOrder === undefined) {
+			setEditingState({ status: "Editing", alertMessage: "Enter a reading order and choose a series with an unambiguous folder." })
+			return
+		}
+		setNewTitle(seriesBookTitle(newTitle, newSeriesOrder, organization.padding))
+		setNewPath(organization.folderPath)
+	}
+	const changeSeriesOrder = (event: React.ChangeEvent<HTMLInputElement>) => {
+		const value = event.target.value === "" ? undefined : event.target.valueAsNumber
+		setNewSeriesOrder(value)
+		const prefix = /^(\d+)(?:\.\d+)?\s+-\s+/.exec(newTitle)?.[1]
+		if (prefix && value !== undefined && event.target.validity.valid) setNewTitle(seriesBookTitle(newTitle, value, prefix.startsWith("0") ? prefix.length : 1))
+	}
 
 	useEffect(() => {
 		if (showPathOptions) {
@@ -275,7 +299,7 @@ const BookLink = (props: BookProps) => {
 					<div>
 						{alertMessage ? <Alert variant="danger">{alertMessage}</Alert> : null}
 						<div className={classnames(styles.title, styles.editable)}>
-							<EditableTextbox editing={editing} defaultValue={props.book.name} placeholder="Title" onChange={e => { setNewTitle(e.target.value) }} searchWords={searchWords} />
+							<EditableTextbox editing={editing} value={editing ? newTitle : props.book.name} placeholder="Title" onChange={e => { setNewTitle(e.target.value) }} searchWords={searchWords} />
 							{!editing && token.user.isAdmin && (
 								<Edit onClick={editClick} />
 							)}
@@ -286,7 +310,7 @@ const BookLink = (props: BookProps) => {
 						<div className={classnames(styles.author, styles.editable)}>
 							<EditableTextboxField editing={editing} label="Author" defaultValue={props.book.author} placeholder="Author" onChange={e => { setNewAuthor(e.target.value) }} searchWords={searchWords} />
 							,&nbsp;
-							<EditableTextbox editing={editing} defaultValue={props.book.year} placeholder="Year" type="number" min="1700" max={new Date().getFullYear()} size={4} className={styles.year} onChange={e => { setNewYear(parseInt(e.target.value, 10)) }} searchWords={searchWords} />
+							<EditableTextbox editing={editing} defaultValue={props.book.year} placeholder="Year" type="number" min="1700" max={new Date().getFullYear()} size={4} className={styles.year} onChange={e => { setNewYear(e.target.valueAsNumber) }} searchWords={searchWords} />
 						</div>
 						<div className={classnames(styles.narrator, styles.editable)}>
 							<EditableTextboxField editing={editing} label="Narrator" defaultValue={props.book.narrator} placeholder="Narrator" onChange={e => { setNewNarrator(e.target.value) }} searchWords={searchWords} />
@@ -294,6 +318,15 @@ const BookLink = (props: BookProps) => {
 						<div className={classnames(styles.genre, styles.editable)}>
 							<EditableTextboxField editing={editing} label="Genre" defaultValue={props.book.genre} placeholder="Genre" onChange={e => { setNewGenre(e.target.value) }} searchWords={searchWords} />
 						</div>
+						{editing ?
+								(
+									<div className={styles.editable}>
+										<TextboxField label="Series" value={newSeries} onChange={event => setNewSeries(event.target.value)} />
+										<TextboxField label="Reading order" value={newSeriesOrder ?? ""} type="number" min={0} step="any" onChange={changeSeriesOrder} />
+										<Button type="button" disabled={!newSeries || newSeriesOrder === undefined} onClick={event => { if (event.currentTarget.form?.reportValidity()) organizeSeries() }}>Use series folder and reading order</Button>
+									</div>
+								) :
+							props.book.series ? <p>{`${props.book.series}${props.book.seriesOrder !== undefined ? ` · ${props.book.seriesOrder}` : ""}`}</p> : null}
 						{editing && (
 							<div className={classnames(styles.path, styles.editable)}>
 								<label onClick={() => { setShowPathOptions(p => !p) }}>

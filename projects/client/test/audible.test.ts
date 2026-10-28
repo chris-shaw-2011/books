@@ -5,6 +5,21 @@ import LoggedInApi from "../src/app/api/LoggedInApi.ts"
 
 const onFailure = (message?: string) => assert.fail(message ?? "Unexpected API failure")
 
+void test("selected series destinations and custom reading orders are sent for import", async () => {
+	const originalFetch = globalThis.fetch
+	let sent: RequestInit | undefined
+	globalThis.fetch = (_input, init) => {
+		sent = init
+		return Promise.resolve(Response.json(new AudibleImportResponse()))
+	}
+	try {
+		const organizations = { ONE: { series: { name: "Series", order: 0 }, folderPath: "/Series", padding: 2 } }
+		await LoggedInApi.audibleSelect("session", ["ONE"], onFailure, organizations)
+		assert.deepEqual(JSON.parse(sent?.body as string), { type: "AudibleSelectionRequest", sessionId: "session", asins: ["ONE"], organizations })
+	}
+	finally { globalThis.fetch = originalFetch }
+})
+
 const snapshot = (extra: Partial<AudibleImportSnapshot> = {}): AudibleImportSnapshot => ({
 	id: "session", phase: "downloading", operation: "Downloading", currentTitle: "Book one",
 	total: 3, skipped: 0, downloaded: 1, failed: 0, remaining: 2,

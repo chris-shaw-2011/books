@@ -1,5 +1,6 @@
 import { AudibleImportResponse, AudibleRedirectRequest, AudibleReviewRequest, AudibleSelectionRequest, AudibleSessionRequest, AudibleStartRequest, Books, ChangeBookStatusRequest, ChangePasswordRequest, ConversionUpdateRequest, ConversionUpdateResponse, Token, type ConverterStatus, type Status } from "@books/shared"
 import { ApiClass } from "./Api.ts"
+import type { SeriesOrganization } from "@books/shared"
 
 export class LoggedInApiClass extends ApiClass {
 	books = async (onFailure: (message?: string) => void) => this.callApi("/books", Books, onFailure)
@@ -20,8 +21,8 @@ export class LoggedInApiClass extends ApiClass {
 	audibleRedirect = async (sessionId: string, redirectUrl: string, onFailure: (message?: string) => void) =>
 		this.callApi("/audible/redirect", AudibleImportResponse, onFailure, new AudibleRedirectRequest({ sessionId, redirectUrl }))
 
-	audibleSelect = async (sessionId: string, asins: string[], onFailure: (message?: string) => void) =>
-		this.callApi("/audible/select", AudibleImportResponse, onFailure, new AudibleSelectionRequest({ sessionId, asins }))
+	audibleSelect = async (sessionId: string, asins: string[], onFailure: (message?: string) => void, organizations?: Record<string, SeriesOrganization>) =>
+		this.callApi("/audible/select", AudibleImportResponse, onFailure, new AudibleSelectionRequest({ sessionId, asins, ...(organizations && { organizations }) }))
 
 	audibleCancel = async (sessionId: string, onFailure: (message?: string) => void) =>
 		this.callApi("/audible/cancel", AudibleImportResponse, onFailure, new AudibleSessionRequest({ sessionId }))

@@ -16,6 +16,8 @@ export default class Book extends Item {
 	narrator: string
 	genre: string
 	asin: string
+	series: string
+	seriesOrder: number | undefined
 
 	override readonly type = "Book"
 
@@ -33,6 +35,8 @@ export default class Book extends Item {
 		this.narrator = json?.narrator?.trim() ?? ""
 		this.genre = json?.genre?.trim() ?? ""
 		this.asin = json?.asin ?? ""
+		this.series = json?.series ?? ""
+		this.seriesOrder = json?.seriesOrder
 
 		if (status !== undefined) {
 			this.status = status
@@ -52,6 +56,8 @@ export default class Book extends Item {
 			narrator: this.narrator,
 			genre: this.genre,
 			asin: this.asin,
+			series: this.series,
+			seriesOrder: this.seriesOrder,
 			id: this.id,
 			name: this.name,
 			folderPath: this.folderPath,

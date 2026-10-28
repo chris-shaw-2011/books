@@ -336,7 +336,7 @@ const AudibleImport = ({ onClose }: { onClose: () => void }) => {
 							key={snapshot.id}
 							snapshot={snapshot}
 							busy={busy}
-							onSelect={asins => { void request(() => LoggedInApi.audibleSelect(snapshot.id, asins, logOut)) }}
+							onSelect={(asins, organizations) => { void request(() => LoggedInApi.audibleSelect(snapshot.id, asins, logOut, organizations)) }}
 							onReview={asin => {
 								void request(() => LoggedInApi.audibleReview(snapshot.id, asin, logOut))
 							}}
