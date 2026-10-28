@@ -4,7 +4,7 @@ import assert from "node:assert/strict"
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-import { Book } from "@books/shared"
+import { audibleBooks, Book } from "@books/shared"
 import { AudibleImportService, parseLibrary, qualitySettings, safeAmazonUrl, type AudibleProcess } from "../../src/audible/ImportService.ts"
 import { publishAudio } from "../../src/audible/Files.ts"
 const loginUrl = "https://www.amazon.com/ap/signin?secret=never-stream-this"
@@ -17,7 +17,7 @@ const waitFor = async (condition: () => boolean) => {
 	throw new Error("Timed out waiting for import")
 }
 void test("parses pinned Libation JSON including purchased and Plus, excludes podcasts and uses ASIN only", () => {
-	assert.deepEqual(parseLibrary([{
+	const parsed = parseLibrary([{
 		AudibleProductId: "B000000001",
 		Title: "Purchased",
 		IsAudiblePlus: false,
@@ -33,13 +33,9 @@ void test("parses pinned Libation JSON including purchased and Plus, excludes po
 	}, {
 		AudibleProductId: "",
 		Title: "Purchased",
-	}]), [{
-		asin: "B000000001",
-		title: "Purchased",
-	}, {
-		asin: "B000000002",
-		title: "Plus",
 	}])
+	assert.deepEqual(parsed.map(book => [book.asin, book.name]), [["B000000001", "Purchased"], ["B000000002", "Plus"]])
+	assert.ok(parsed.every(book => book instanceof Book))
 	assert.throws(() => parseLibrary({
 		unexpected: true,
 	}))
@@ -116,7 +112,7 @@ void test("interactive login, progress, queue, partial failure, repeat duplicate
 			imported.add(title.asin)
 			return new Book({
 				id: title.asin,
-				name: title.title,
+				name: title.name,
 				asin: title.asin,
 			})
 		},
@@ -146,7 +142,7 @@ void test("interactive login, progress, queue, partial failure, repeat duplicate
 		await waitFor(() => service.snapshot("user")?.phase === "selecting")
 		assert.equal(commands.filter(args => args[0] === "liberate").length, 0)
 		assert.equal(service.snapshot("user")?.books.length, 4)
-		assert.equal(service.snapshot("user")?.books[0]?.status, "skipped")
+		assert.equal(audibleBooks(service.snapshot("user")?.books ?? [])[0]?.importStatus, "skipped")
 		assert.throws(() => service.select("other", started.id, ["B000000002"]), /not found/)
 		for (const asins of [["B000000001"], ["unknown"]]) assert.throws(() => service.select("user", started.id, asins))
 		service.select("user", started.id, ["B000000002", "B000000003", "B000000004"])
@@ -158,10 +154,10 @@ void test("interactive login, progress, queue, partial failure, repeat duplicate
 		assert.equal(complete.failed, 1)
 		assert.equal(complete.skipped, 1)
 		assert.equal(complete.remaining, 0)
-		assert.equal(complete.reviewQueue.length, 2)
-		assert.deepEqual(complete.books.map(book => book.status), ["skipped", "complete", "failed", "complete"])
-		assert.equal(complete.books[1]?.percentage, 100)
-		assert.equal(complete.books[1].book?.asin, "B000000002")
+		assert.equal(audibleBooks(complete.books).filter(book => book.importStatus === "complete" && !book.reviewed).length, 2)
+		assert.deepEqual(audibleBooks(complete.books).map(book => book.importStatus), ["skipped", "complete", "failed", "complete"])
+		assert.equal(audibleBooks(complete.books)[1]?.percentage, 100)
+		assert.equal(audibleBooks(complete.books)[1]?.asin, "B000000002")
 		service.select("user", started.id, ["B000000002", "B000000003", "B000000004"])
 		assert.equal(JSON.stringify(events).includes("never-stream-this"), false)
 		assert.equal(JSON.stringify(events).includes("authorization_code"), false)
@@ -169,7 +165,7 @@ void test("interactive login, progress, queue, partial failure, repeat duplicate
 		await assert.rejects(fs.access(sessionDirectory))
 		await assert.rejects(service.start("user", "email@example.com", "us"), /review queue/)
 		service.review("user", started.id, "B000000002")
-		assert.equal(service.snapshot("user")?.books[1]?.reviewed, true)
+		assert.equal(audibleBooks(service.snapshot("user")?.books ?? [])[1]?.reviewed, true)
 		service.review("user", started.id, "B000000004")
 		let reconnect: unknown
 		service.subscribe("user", snapshot => {

@@ -17,7 +17,6 @@ import Converter from "./Converter.ts"
 import db from "./Database.ts"
 import ServerToken from "./ServerToken.ts"
 import sanitize from "sanitize-filename"
-import ServerBook from "./ServerBook.ts"
 import { writeAudioMetadata } from "./AudioMetadata.ts"
 import { seriesDestination } from "./SeriesOrganization.ts"
 import { updateBookSchema } from "./SeriesSchemas.ts"
@@ -37,9 +36,9 @@ const server = Fastify({ logger: false, bodyLimit: 10_000_000_000, ajv: { custom
 const audibleImporter = createAudibleImporter(() => db.settings, async filePath => {
 	await bookList.fileAdded(filePath)
 	const book = bookList.findBookByPath(filePath)
-	if (!(book instanceof ServerBook)) throw new Error("Imported book could not be indexed")
+	if (!book) throw new Error("Imported book could not be indexed")
 	return new shared.Book(book)
-}, asin => bookList.hasAsin(asin))
+}, asin => bookList.hasAsin(asin), { library: () => bookList.allBooks() })
 registerAudibleRoutes(server, audibleImporter)
 const rootPath = path.join(rootDir, "../../../../bin/projects/client")
 const immutableAssetOptions = { immutable: true, maxAge: "1y" } as const
@@ -473,7 +472,8 @@ server.post<{ Body: shared.ConversionUpdateRequest }>("/conversionUpdate", { pre
 		response.fileNames = conversion.fileNames
 
 		if (conversion.status === "Complete") {
-			response.book = bookList.findBookByPath(conversion.convertedFilePath) as ServerBook
+			const book = bookList.findBookByPath(conversion.convertedFilePath)
+			if (book) response.book = book
 		}
 	}
 	else {

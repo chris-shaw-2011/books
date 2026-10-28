@@ -1,4 +1,5 @@
-import Book from "../Book.ts"
+import AudibleImportBook from "../AudibleImportBook.ts"
+import AudibleImportDirectory from "../AudibleImportDirectory.ts"
 import type { AudibleImportSnapshot } from "../AudibleImport.ts"
 import ApiMessage from "./ApiMessage.ts"
 
@@ -16,6 +17,6 @@ export default class AudibleImportResponse extends ApiMessage {
 	}
 
 	static restoreSnapshot(snapshot: AudibleImportSnapshot): AudibleImportSnapshot {
-		return { ...snapshot, books: snapshot.books.map(item => ({ ...item, ...(item.book && { book: new Book(item.book) }) })), reviewQueue: snapshot.reviewQueue.map(item => new Book(item)) }
+		return { ...snapshot, books: snapshot.books.map(item => item.type === "Book" ? new AudibleImportBook(item) : new AudibleImportDirectory(item)) }
 	}
 }

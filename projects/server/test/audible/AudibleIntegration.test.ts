@@ -7,7 +7,7 @@ import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import Fastify from "fastify"
 import { ffmpegPath } from "ffmpeg-ffprobe-static"
-import { Book, User, type AudibleImportResponse, type Books } from "@books/shared"
+import { audibleBooks, Book, User, type AudibleImportResponse, type Books } from "@books/shared"
 import { createAudibleImporter, type AudibleProcess } from "../../src/audible/ImportService.ts"
 import { readAsin } from "../../src/audible/Files.ts"
 import { registerAudibleRoutes } from "../../src/audible/Routes.ts"
@@ -90,10 +90,12 @@ void test("Audible HTTP authentication publishes and indexes a real M4B while re
 						await fs.writeFile(exported, JSON.stringify([{
 							AudibleProductId: "B000000001",
 							Title: "First audiobook",
+							SeriesOrder: "1 : Fixture Series",
 							IsAudiblePlus: false,
 						}, {
 							AudibleProductId: "B000000002",
 							Title: "Second audiobook",
+							SeriesOrder: "2 : Fixture Series",
 							IsAudiblePlus: true,
 						}]))
 					}
@@ -154,6 +156,11 @@ void test("Audible HTTP authentication publishes and indexes a real M4B while re
 		assert.equal(authenticated.statusCode, 200)
 		await waitFor(() => importer.snapshot(token.user.id)?.phase === "selecting")
 		assert.equal(calls.some(args => args[0] === "liberate"), false)
+		const discovery = await server.inject({ url: "/audible/status" })
+		const discoveryTree = discovery.json<AudibleImportResponse>().snapshot?.books
+		assert.equal(discoveryTree?.[0]?.type, "Directory")
+		assert.equal(discoveryTree[0].name, "Fixture Series")
+		assert.equal(audibleBooks(discoveryTree).length, 2)
 		const invalidSelection = await server.inject({ method: "POST", url: "/audible/select", payload: { sessionId: started.id, asins: ["unknown"] } })
 		assert.equal(invalidSelection.statusCode, 400)
 		const selection = await server.inject({ method: "POST", url: "/audible/select", payload: { sessionId: started.id, asins: ["B000000001", "B000000002"] } })
@@ -166,11 +173,11 @@ void test("Audible HTTP authentication publishes and indexes a real M4B while re
 		assert.ok(snapshot)
 		assert.equal(snapshot.phase, "downloading")
 		assert.equal(snapshot.remaining, 1)
-		assert.equal(snapshot.books[0]?.status, "complete")
-		assert.equal(snapshot.books[1]?.status, "downloading")
-		assert.equal(snapshot.books[1].percentage, 10)
-		assert.equal(snapshot.reviewQueue.length, 1)
-		assert.equal(snapshot.reviewQueue[0]?.asin, "B000000001")
+		assert.equal(audibleBooks(snapshot.books)[0]?.importStatus, "complete")
+		assert.equal(audibleBooks(snapshot.books)[1]?.importStatus, "downloading")
+		assert.equal(audibleBooks(snapshot.books)[1]?.percentage, 10)
+		assert.equal(audibleBooks(snapshot.books).filter(book => book.importStatus === "complete" && !book.reviewed).length, 1)
+		assert.equal(audibleBooks(snapshot.books)[0]?.asin, "B000000001")
 		const library = await libraryServer.inject({
 			method: "POST",
 			url: "/books",
@@ -181,13 +188,13 @@ void test("Audible HTTP authentication publishes and indexes a real M4B while re
 		assert.equal(library.statusCode, 200)
 		const books = library.json<Books>()
 		assert.equal(books.type, "Books")
-		assert.ok(JSON.stringify(books.directory).includes(snapshot.reviewQueue[0].id))
+		assert.ok(JSON.stringify(books.directory).includes(audibleBooks(snapshot.books)[0]?.id ?? "missing"))
 		assert.ok(JSON.stringify(books.directory).includes("Fixture title"))
 		const target = path.join(db.settings.uploadLocation, "First audiobook.m4b")
 		assert.equal(readAsin(target), "B000000001")
 		assert.equal((await bookList.allBooks()).bookCount(), 1)
 		assert.equal(await bookList.hasAsin("B000000001"), true)
-		assert.equal(snapshot.reviewQueue[0].asin, "B000000001")
+		assert.equal(audibleBooks(snapshot.books)[0]?.asin, "B000000001")
 		assert.equal(calls.filter(args => args[0] === "liberate").length, 2)
 		const cancelled = await server.inject({
 			method: "POST",
@@ -197,7 +204,7 @@ void test("Audible HTTP authentication publishes and indexes a real M4B while re
 			},
 		})
 		assert.equal(cancelled.json<AudibleImportResponse>().snapshot?.phase, "cancelled")
-		assert.equal(cancelled.json<AudibleImportResponse>().snapshot?.reviewQueue.length, 1)
+		assert.equal(audibleBooks(cancelled.json<AudibleImportResponse>().snapshot?.books ?? []).filter(book => book.importStatus === "complete" && !book.reviewed).length, 1)
 		await assert.rejects(fs.access(processDirectory))
 		assert.equal(readAsin(target), "B000000001")
 	}

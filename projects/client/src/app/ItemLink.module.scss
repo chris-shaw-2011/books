@@ -1,9 +1,23 @@
 .item {
-	padding: 10px 0 10px 10px;
-	margin-left: 30px;
+	padding: var(--item-padding, 10px) 0 var(--item-padding, 10px) var(--item-padding, 10px);
+	margin-left: var(--item-indent, 30px);
 	display: flex;
 	flex-direction: column;
 	border-top: 1px solid black;
+
+	&[data-selectable="true"] {
+		cursor: pointer;
+	}
+
+	&[data-selected="true"] {
+		background-color: #eef5ff;
+		box-shadow: inset 3px 0 #0d6efd;
+	}
+
+	&[aria-disabled="true"] {
+		opacity: 0.5;
+		filter: grayscale(1);
+	}
 }
 
 .inner {
@@ -13,7 +27,7 @@
 	text-decoration: none !important;
 	flex-direction: row;
 	width: 100%;
-	min-height: 144px;
+	min-height: var(--item-cover-size, 144px);
 
 	>div {
 		flex-grow: 1;
@@ -21,8 +35,15 @@
 
 	>svg,
 	>img {
-		height: 144px;
+		height: var(--item-cover-size, 144px);
 		padding-right: 10px;
 		align-self: flex-start;
+	}
+}
+
+@media (width <= 480px) {
+	.item {
+		margin-left: 0;
+		padding-left: 0;
 	}
 }

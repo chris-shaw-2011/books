@@ -1,4 +1,4 @@
-.textboxField {
+.field {
 	margin-bottom: 1rem;
 	display: block;
 
@@ -10,11 +10,27 @@
 		margin-right: 0.5rem;
 	}
 
+	> input,
+	> select {
+		max-width: 100%;
+		min-width: 0;
+	}
+
 	&.labelLeft {
 		display: flex;
 		flex-direction: row;
 		align-items: center;
 		clear: both;
 		margin-bottom: 0;
+
+		> span {
+			flex: 0 0 70px;
+			text-align: right;
+		}
+
+		> input,
+		> select {
+			flex: 1;
+		}
 	}
 }

@@ -7,9 +7,10 @@ import { promisify } from "node:util"
 import test from "node:test"
 import { ffmpegPath } from "ffmpeg-ffprobe-static"
 import { File, Mpeg4AppleTag, ReadStyle, TagTypes } from "node-taglib-sharp"
-import { Book, Directory, seriesBookTitle, suggestSeriesOrganization, type SeriesOrganization } from "@books/shared"
+import { audibleBooks, AudibleImportBook, AudibleImportDirectory, AudibleImportResponse, Book, Directory, seriesBookTitle, suggestSeriesOrganization, type SeriesOrganization } from "@books/shared"
 import { createAudibleImporter, parseLibrary, type AudibleProcess } from "../../src/audible/ImportService.ts"
 import { readAudioMetadata, writeAudioMetadata } from "../../src/AudioMetadata.ts"
+import selectionItems from "../../src/audible/SelectionItems.ts"
 import { seriesDestination } from "../../src/SeriesOrganization.ts"
 
 void test("series suggestions reuse folders and padding, support prequels and novellas, and refuse ambiguous folders", () => {
@@ -38,11 +39,11 @@ void test("parses Libation series order without treating a title or publication 
 		{ AudibleProductId: "FOUR", Title: "Prequel", SeriesOrder: "0 : Prequel series" },
 		{ AudibleProductId: "FIVE", Title: "Unknown", SeriesOrder: " : Unknown series" },
 	])
-	assert.deepEqual(result[0]?.series, [{ name: "Stormlight", order: 2.5 }, { name: "Cosmere", order: 7 }])
-	assert.equal(result[1]?.series, undefined)
-	assert.deepEqual(result[2]?.series, [{ name: "A series, with a comma", order: undefined }])
-	assert.deepEqual(result[3]?.series, [{ name: "Prequel series", order: 0 }])
-	assert.deepEqual(result[4]?.series, [{ name: "Unknown series", order: undefined }])
+	assert.deepEqual(result[0]?.seriesChoices, [{ name: "Stormlight", order: 2.5 }, { name: "Cosmere", order: 7 }])
+	assert.deepEqual(result[1]?.seriesChoices, [])
+	assert.deepEqual(result[2]?.seriesChoices, [{ name: "A series, with a comma", order: undefined }])
+	assert.deepEqual(result[3]?.seriesChoices, [{ name: "Prequel series", order: 0 }])
+	assert.deepEqual(result[4]?.seriesChoices, [{ name: "Unknown series", order: undefined }])
 })
 
 void test("series destinations reject traversal and symlinks outside the library", async () => {
@@ -162,4 +163,30 @@ void test("edits and clears the existing series tags in M4B and MP3", async () =
 		}
 	}
 	finally { await fs.rm(root, { recursive: true, force: true }) }
+})
+
+void test("server selection snapshots contain nested series folders and one copy of every book", () => {
+	const library = new Directory({ items: [new Directory({ name: "Author", folderPath: "/Author", items: [new Directory({ name: "Stormlight Series", folderPath: "/Author/Stormlight Series", items: [new Book({ name: "01 - Existing" })] })] })] })
+	const books = [new AudibleImportBook({ asin: "FIRST", name: "Zulu", series: "Stormlight", seriesOrder: 1, author: "Author", duration: 3600 }), new AudibleImportBook({ asin: "SECOND", name: "Alpha", series: "Stormlight", seriesOrder: 2 }), new AudibleImportBook({ asin: "OLD", name: "Prequel", series: "Stormlight", seriesOrder: 0, importStatus: "skipped" }), new AudibleImportBook({ asin: "SOLO", name: "Standalone" })]
+	const tree = selectionItems(books, library)
+	const author = tree[0]
+	assert.ok(author?.type === "Directory")
+	assert.ok(author instanceof AudibleImportDirectory)
+	assert.equal(author.name, "Author")
+	const series = author.items[0]
+	assert.ok(series?.type === "Directory")
+	assert.ok(series instanceof AudibleImportDirectory)
+	assert.equal(series.name, "Stormlight Series")
+	assert.deepEqual(audibleBooks(series.items).map(book => book.name), ["01 - Zulu", "02 - Alpha", "00 - Prequel"])
+	assert.deepEqual(audibleBooks(tree).map(book => book.asin), ["FIRST", "SECOND", "OLD", "SOLO"])
+	assert.equal(books[0]?.name, "Zulu")
+	assert.equal(books[0].folderPath, "")
+	assert.equal(audibleBooks(tree)[0]?.author, "Author")
+	assert.equal(audibleBooks(tree)[0]?.duration, 3600)
+	assert.equal(audibleBooks(tree)[2]?.importStatus, "skipped")
+	const restored = new AudibleImportResponse(JSON.parse(JSON.stringify({ snapshot: { id: "tree", phase: "selecting", books: tree } })) as AudibleImportResponse)
+	assert.ok(restored.snapshot?.books[0] instanceof AudibleImportDirectory)
+	assert.ok(audibleBooks(restored.snapshot.books)[0] instanceof AudibleImportBook)
+	assert.ok(restored.snapshot.books[0].minUploadTime instanceof Date)
+	assert.ok(restored.snapshot.books[0].maxUploadTime instanceof Date)
 })

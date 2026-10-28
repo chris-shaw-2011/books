@@ -1,58 +1,36 @@
 import Book from "./Book.ts"
 import BookStatuses from "./BookStatuses.ts"
-import Item from "./Item.ts"
-import { type SortOrder } from "./SortOrder.ts"
+import ItemBase, { type Item } from "./Item.ts"
 
-export default class Directory extends Item {
+export default class Directory extends ItemBase {
 	override readonly type = "Directory"
 
-	items: (Directory | Book)[]
+	items: Item[]
 	hasBooks: boolean
 
-	constructor(json?: Partial<Directory>, bookStatuses?: BookStatuses, sortOrder?: SortOrder) {
+	constructor(json?: Partial<Directory>, bookStatuses?: BookStatuses) {
 		super(json)
 
 		this.hasBooks = json?.hasBooks ?? false
-		this.items = []
+		this.items = json?.items?.map(item => item.type === "Book" ? new Book(item, bookStatuses?.get(item.id)?.status) : new Directory(item, bookStatuses)) ?? []
+	}
 
-		json?.items?.forEach(i => {
-			const newUpload = i.uploadTime
-
-			if (i.type === "Book") {
-				const status = bookStatuses ? bookStatuses.get(i.id)?.status : undefined
-				const book = new Book(i, status)
-
-				this.items.push(book)
-			}
-			else {
-				const dir = new Directory(i, bookStatuses, sortOrder)
-
-				this.items.push(dir)
-			}
-
-			if (sortOrder === "Uploaded - Ascending" && (newUpload < this.uploadTime)) {
-				this.uploadTime = newUpload
-			}
-			else if (sortOrder === "Uploaded - Descending" && (newUpload > this.uploadTime)) {
-				this.uploadTime = newUpload
-			}
-		})
-
-		if (sortOrder) {
-			switch (sortOrder) {
-				case "Alphabetically - Descending":
-					this.items.reverse()
-					break
-				case "Alphabetically - Ascending":
-					break
-				case "Uploaded - Ascending":
-					this.items.sort((a, b) => a.uploadTime > b.uploadTime ? 1 : -1)
-					break
-				case "Uploaded - Descending":
-					this.items.sort((a, b) => a.uploadTime > b.uploadTime ? -1 : 1)
-					break
-			}
+	get maxUploadTime(): Date | undefined {
+		let latest: Date | undefined
+		for (const item of this.items) {
+			const time = item.type === "Book" ? item.uploadTime : item.maxUploadTime
+			if (time && (!latest || time > latest)) latest = time
 		}
+		return latest
+	}
+
+	get minUploadTime(): Date | undefined {
+		let earliest: Date | undefined
+		for (const item of this.items) {
+			const time = item.type === "Book" ? item.uploadTime : item.minUploadTime
+			if (time && (!earliest || time < earliest)) earliest = time
+		}
+		return earliest
 	}
 
 	bookCount() {
@@ -70,14 +48,26 @@ export default class Directory extends Item {
 		return count
 	}
 
-	toJSON(): Omit<Directory, "uploadTime" | "bookCount" | "toJSON"> & { uploadTime?: number } {
+	findBookByAsin(asin: string): Book | undefined {
+		if (!asin) return
+		for (const item of this.items) {
+			if (item.type === "Book") {
+				if (item.asin === asin) return item
+			}
+			else {
+				const book = item.findBookByAsin(asin)
+				if (book) return book
+			}
+		}
+	}
+
+	toJSON(): Omit<Directory, "maxUploadTime" | "minUploadTime" | "bookCount" | "findBookByAsin" | "toJSON"> {
 		return {
 			items: this.items,
 			hasBooks: this.hasBooks,
 			id: this.id,
 			name: this.name,
 			folderPath: this.folderPath,
-			uploadTime: new Date(this.uploadTime).getTime(),
 			type: "Directory",
 		}
 	}

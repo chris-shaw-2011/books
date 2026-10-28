@@ -167,7 +167,7 @@ When an administrator completes a manual upload or when an Audible import finish
 
 Reuse:
 
-`BookLink` with `editOnly={true}`
+`BookLink` accepts regular `Book` and `AudibleImportBook` instances. A manual upload supplies `onComplete`; Audible review state and completion come from the import context.
 
 The administrator should be able to modify all currently supported metadata and move the book to another folder.
 

@@ -6,13 +6,12 @@ import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { Mutex } from "async-mutex"
 import sanitize from "sanitize-filename"
-import type { Book, AudibleImportSnapshot, SeriesOrganization, BookSeries, AudibleImportBook } from "@books/shared"
-import { seriesDestination, organizedFileName } from "../SeriesOrganization.ts"
+import { AudibleImportBook, Directory, seriesBookTitle, type Book, type AudibleImportSnapshot, type SeriesOrganization, type BookSeries } from "@books/shared"
+import { seriesDestination } from "../SeriesOrganization.ts"
 import { readAudioMetadata, writeAudioMetadata } from "../AudioMetadata.ts"
 import { audioFiles, publishAudio, writeAsin } from "./Files.ts"
 import DownloadProgress from "./DownloadProgress.ts"
-
-export type AudibleTitle = Pick<AudibleImportBook, "asin" | "title" | "coverUrl" | "series" | "organization">
+import selectionItems from "./SelectionItems.ts"
 
 export function parseSeries(book: Record<string, unknown>): BookSeries[] {
 	// Libation's ExportDto formats SeriesOrder as "1 : Name, 2 : Other name".
@@ -45,6 +44,8 @@ const coverUrl = (value: unknown) => {
 	catch { /* Missing or malformed covers are optional. */ }
 }
 
+const text = (value: unknown) => typeof value === "string" ? value : ""
+
 const coverFromId = (value: unknown) => {
 	// Libation ExportDto exposes PictureId/PictureLarge; PictureStorage uses this CDN.
 	if (typeof value === "string" && /^[a-zA-Z0-9+_-]{1,200}$/.test(value)) return `https://images-na.ssl-images-amazon.com/images/I/${encodeURIComponent(value)}._SL300_.jpg`
@@ -53,7 +54,7 @@ const coverFromId = (value: unknown) => {
 export function parseLibrary(json: unknown) {
 	const list = Array.isArray(json) ? json : json && typeof json === "object" ? Object.values(json).find(Array.isArray) : undefined
 	if (!Array.isArray(list)) throw new Error("Invalid Libation library export")
-	const result = new Map<string, AudibleTitle>()
+	const result = new Map<string, AudibleImportBook>()
 	for (const entry of list) {
 		if (!entry || typeof entry !== "object") continue
 		const row = entry as Record<string, unknown>
@@ -62,15 +63,24 @@ export function parseLibrary(json: unknown) {
 		const asin = book.asin ?? book.Asin ?? book.ASIN ?? book.AudibleProductId ?? book.ProductId
 		const title = book.title ?? book.Title
 		const series = parseSeries(book)
+		const year = new Date(text(book.DatePublished)).getUTCFullYear()
 		const image = coverUrl(book.PictureUrl ?? book.pictureUrl ?? book.CoverUrl ?? book.coverUrl ?? book.cover_url ?? book.ImageUrl ?? book.PictureLarge ?? book.PictureId) ?? coverFromId(book.PictureId) ?? coverFromId(book.PictureLarge)
 		const contentType = book.content_type ?? book.ContentType ?? book.contentType
 		const type = typeof contentType === "string" ? contentType.toLowerCase() : ""
-		if (typeof asin === "string" && asin && typeof title === "string" && !type.includes("podcast") && !type.includes("episode")) result.set(asin, {
+		if (typeof asin === "string" && asin && typeof title === "string" && !type.includes("podcast") && !type.includes("episode")) result.set(asin, new AudibleImportBook({
 			asin,
-			title,
-			...(series.length && { series }),
-			...(image && { coverUrl: image }),
-		})
+			name: title,
+			cover: image ?? "",
+			author: text(book.AuthorNames),
+			narrator: text(book.NarratorNames),
+			comment: text(book.Description),
+			genre: text(book.CategoriesNames),
+			year: Number.isFinite(year) ? year : 0,
+			duration: typeof book.LengthInMinutes === "number" && Number.isFinite(book.LengthInMinutes) && book.LengthInMinutes > 0 ? book.LengthInMinutes * 60 : 0,
+			series: series.length === 1 ? series[0]?.name ?? "" : "",
+			seriesOrder: series.length === 1 ? series[0]?.order : undefined,
+			seriesOptions: series.length > 1 ? series : [],
+		}))
 	}
 	return [...result.values()]
 }
@@ -83,16 +93,18 @@ export interface AudibleProcess {
 }
 
 export interface AudibleDependencies {
+	library?(): Promise<Directory>,
 	spawn(args: string[], directory: string): Promise<AudibleProcess>,
 	validate(file: string): Promise<void>,
 	hasAsin(asin: string): Promise<boolean>,
-	publish(file: string, title: AudibleTitle): Promise<Book>,
+	publish(file: string, book: AudibleImportBook): Promise<Book>,
 }
 
 interface Session {
 	owner: string,
 	directory: string,
-	snapshot: AudibleImportSnapshot,
+	snapshot: Omit<AudibleImportSnapshot, "books"> & { books: AudibleImportBook[] },
+	library: Directory,
 	process?: AudibleProcess,
 	cancelled: boolean,
 	redirectSubmitted: boolean,
@@ -149,10 +161,10 @@ export class AudibleImportService {
 		if (snapshot) for (const listener of this.listeners.get(session.owner) ?? []) listener(snapshot)
 	}
 
-	snapshot(owner: string, includeLogin = true) {
+	snapshot(owner: string, includeLogin = true): AudibleImportSnapshot | undefined {
 		const session = this.sessions.get(owner)
 		if (!session) return
-		const snapshot = structuredClone(session.snapshot)
+		const snapshot = { ...session.snapshot, books: session.snapshot.phase === "selecting" ? selectionItems(session.snapshot.books, session.library) : session.snapshot.books.map(book => new AudibleImportBook(book)), activity: [...session.snapshot.activity] }
 		if (!includeLogin) delete snapshot.loginUrl
 		return snapshot
 	}
@@ -184,7 +196,7 @@ export class AudibleImportService {
 		if (typeof account !== "string" || !account.trim() || account.length > 254 || /[\r\n\0]/.test(account)) throw new Error("Enter a valid Audible account identifier")
 		if (!["us", "uk", "de", "fr", "it", "es", "jp", "ca", "au", "in", "br", "mx"].includes(marketplace)) throw new Error("Unsupported Audible marketplace")
 		const previous = this.sessions.get(owner)
-		if (previous && (!terminal(previous.snapshot) || previous.snapshot.reviewQueue.length)) throw new Error("An import or completed review queue already exists")
+		if (previous && (!terminal(previous.snapshot) || previous.snapshot.books.some(book => book.importStatus === "complete" && !book.reviewed))) throw new Error("An import or completed review queue already exists")
 		if ([...this.sessions.values()].filter(session => !terminal(session.snapshot)).length >= 3) throw new Error("Audible import is busy; try again later")
 		const id = randomUUID()
 		const directory = await fs.mkdtemp(path.join(this.root, "session-"))
@@ -204,6 +216,7 @@ export class AudibleImportService {
 			mode: 0o600,
 		})
 		const session: Session = {
+			library: await this.dependencies.library?.() ?? new Directory(),
 			owner,
 			directory,
 			cancelled: false,
@@ -220,7 +233,6 @@ export class AudibleImportService {
 				failed: 0,
 				remaining: 0,
 				books: [],
-				reviewQueue: [],
 				activity: [],
 			},
 		}
@@ -249,18 +261,24 @@ export class AudibleImportService {
 		// A transport retry must never start the same downloads twice.
 		if (session.selection && ["downloading", "complete"].includes(session.snapshot.phase) && JSON.stringify(selected) === JSON.stringify(session.selection)) return this.snapshot(owner)
 		if (session.snapshot.phase !== "selecting") throw new Error("This import is not waiting for a selection")
-		if (selected.some(asin => !session.snapshot.books.some(book => book.asin === asin && book.status === "available"))) throw new Error("Select only available Audible books")
+		if (selected.some(asin => !session.snapshot.books.some(book => book.asin === asin && book.importStatus === "available"))) throw new Error("Select only available Audible books")
 		const plans = new Map(Object.entries(organizations))
 		for (const [asin, organization] of plans) {
 			const book = session.snapshot.books.find(book => book.asin === asin)
-			if (!selected.includes(asin) || !book?.series?.some(series => series.name === organization.series.name)) throw new Error("Choose a series from the selected book")
+			if (!selected.includes(asin) || !book?.seriesChoices.some(series => series.name === organization.series.name)) throw new Error("Choose a series from the selected book")
 		}
 		session.selection = selected
 		for (const book of session.snapshot.books) {
 			if (selected.includes(book.asin)) {
-				book.status = "queued"
+				book.importStatus = "queued"
 				const organization = plans.get(book.asin)
-				if (organization) book.organization = organization
+				if (organization) {
+					book.folderPath = organization.folderPath
+					book.series = organization.series.name
+					book.seriesOrder = organization.series.order
+					book.padding = organization.padding
+					book.seriesOptions = []
+				}
 			}
 		}
 		session.snapshot.remaining = selected.length
@@ -284,9 +302,8 @@ export class AudibleImportService {
 
 	review(owner: string, id: string, asin: string) {
 		const session = this.owned(owner, id)
-		const row = session.snapshot.books.find(book => book.asin === asin && book.status === "complete")
+		const row = session.snapshot.books.find(book => book.asin === asin && book.importStatus === "complete")
 		if (row) row.reviewed = true
-		session.snapshot.reviewQueue = session.snapshot.reviewQueue.filter(book => book.asin !== asin)
 		this.emit(session)
 		return this.snapshot(owner)
 	}
@@ -334,7 +351,7 @@ export class AudibleImportService {
 					const percentage = progress.update(data)
 					if (percentage !== undefined && session.snapshot.phase === "downloading") {
 						session.snapshot.percentage = percentage
-						const book = session.snapshot.books.find(item => item.status === "downloading")
+						const book = session.snapshot.books.find(item => item.importStatus === "downloading")
 						if (book) book.percentage = session.snapshot.percentage
 						this.emit(session)
 					}
@@ -366,11 +383,12 @@ export class AudibleImportService {
 			for (const title of titles) {
 				if (session.cancelled) throw new Error("Cancelled")
 				const exists = await this.dependencies.hasAsin(title.asin)
-				session.snapshot.books.push({ ...title, status: exists ? "skipped" : "available" })
+				title.importStatus = exists ? "skipped" : "available"
+				session.snapshot.books.push(title)
 				if (exists) session.snapshot.skipped++
 			}
 			if (session.cancelled) throw new Error("Cancelled")
-			if (!session.snapshot.books.some(book => book.status === "available")) return
+			if (!session.snapshot.books.some(book => book.importStatus === "available")) return
 			session.snapshot.phase = "selecting"
 			session.snapshot.operation = "Choose the books to import"
 			await new Promise<void>((resolve, reject) => {
@@ -383,29 +401,29 @@ export class AudibleImportService {
 				this.emit(session, "Library ready. Select books before downloading; this session expires in 30 minutes.")
 			})
 			delete session.resolveSelection
-			for (const title of session.snapshot.books.filter(book => book.status === "queued")) {
+			for (const title of session.snapshot.books.filter(book => book.importStatus === "queued")) {
 				if (session.cancelled) break
 				await this.downloadMutex.runExclusive(async () => {
 					if (session.cancelled) return
-					session.snapshot.currentTitle = title.title
+					session.snapshot.currentTitle = title.name
 					delete session.snapshot.percentage
 					try {
 						if (await this.dependencies.hasAsin(title.asin)) {
 							session.snapshot.skipped++
-							title.status = "skipped"
+							title.importStatus = "skipped"
 							this.emit(session, `Skipped existing ASIN ${title.asin}`)
 							return
 						}
-						title.status = "downloading"
+						title.importStatus = "downloading"
 						session.snapshot.operation = "Downloading audiobook"
-						this.emit(session, `Downloading ${title.title}`)
+						this.emit(session, `Downloading ${title.name}`)
 						await fs.rm(path.join(session.directory, "audio"), {
 							recursive: true,
 							force: true,
 						})
 						await fs.mkdir(path.join(session.directory, "audio"))
 						const download = async (settings: typeof qualitySettings) => {
-							delete title.percentage
+							title.percentage = undefined
 							delete session.snapshot.percentage
 							await fs.rm(path.join(session.directory, "audio"), { recursive: true, force: true })
 							await fs.mkdir(path.join(session.directory, "audio"))
@@ -438,18 +456,18 @@ export class AudibleImportService {
 						if (session.cancelled) throw new Error("Cancelled")
 						const book = await this.dependencies.publish(completed, title)
 						session.snapshot.downloaded++
-						title.status = "complete"
+						title.importStatus = "complete"
 						title.percentage = 100
-						title.book = book
-						session.snapshot.reviewQueue.push(book)
-						this.emit(session, `Imported ${title.title}`)
+						Object.assign(title, book)
+						title.seriesOptions = []
+						this.emit(session, `Imported ${title.name}`)
 					}
 					catch {
 						if (!session.cancelled) {
-							title.status = "failed"
-							delete title.percentage
+							title.importStatus = "failed"
+							title.percentage = undefined
 							session.snapshot.failed++
-							this.emit(session, `Could not import ${title.title}; try this title again in a new import`)
+							this.emit(session, `Could not import ${title.name}; try this title again in a new import`)
 						}
 					}
 					finally {
@@ -467,9 +485,9 @@ export class AudibleImportService {
 		finally {
 			delete session.resolveSelection
 			for (const book of session.snapshot.books) {
-				if (book.status === "queued" || book.status === "downloading") {
-					book.status = session.cancelled ? "cancelled" : "failed"
-					delete book.percentage
+				if (book.importStatus === "queued" || book.importStatus === "downloading") {
+					book.importStatus = session.cancelled ? "cancelled" : "failed"
+					book.percentage = undefined
 				}
 			}
 			session.snapshot.remaining = 0
@@ -551,22 +569,20 @@ export const validateM4b = async (file: string) => {
 export const createAudibleImporter = (settings: () => {
 	uploadLocation: string,
 	baseBooksPath: string,
-}, index: (file: string) => Promise<Book>, hasAsin: AudibleDependencies["hasAsin"], options: { spawn?: AudibleDependencies["spawn"], temporaryRoot?: string } = {}) => new AudibleImportService({
+}, index: (file: string) => Promise<Book>, hasAsin: AudibleDependencies["hasAsin"], options: { spawn?: AudibleDependencies["spawn"], temporaryRoot?: string, library?: () => Promise<Directory> } = {}) => new AudibleImportService({
 	spawn: options.spawn ?? defaultSpawn,
+	library: options.library ?? (() => Promise.resolve(new Directory())),
 	validate: validateM4b,
 	hasAsin,
-	publish: async (file, title) => {
-		writeAsin(file, title.asin)
-		const series = title.organization?.series ?? title.series?.[0]
-		let destination = settings().uploadLocation
-		let name = sanitize(title.title).slice(0, 180) || title.asin
-		if (title.organization) {
-			destination = await seriesDestination(settings().baseBooksPath, title.organization.folderPath)
-			name = organizedFileName(title.title, title.organization)
-		}
+	publish: async (file, book) => {
+		writeAsin(file, book.asin)
+		const series = book.seriesChoices[0]
+		const destination = book.folderPath ? await seriesDestination(settings().baseBooksPath, book.folderPath) : settings().uploadLocation
+		const title = book.folderPath && book.seriesOrder !== undefined ? seriesBookTitle(book.name, book.seriesOrder, book.padding) : book.name
+		const name = sanitize(title.replace(/:/g, " - ")).slice(0, 180) || book.asin
 		if (series) {
 			const metadata = readAudioMetadata(file)
-			writeAudioMetadata(file, { ...metadata, series: series.name, seriesOrder: series.order, title: title.organization ? name : metadata.title })
+			writeAudioMetadata(file, { ...metadata, series: series.name, seriesOrder: series.order, title: book.folderPath ? name : metadata.title })
 		}
 		await validateM4b(file)
 		const target = await publishAudio(file, destination, name)

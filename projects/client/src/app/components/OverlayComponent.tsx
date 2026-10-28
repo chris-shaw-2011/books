@@ -1,7 +1,7 @@
 import styles from "./OverlayComponent.module.scss"
 import classnames from "classnames"
 
-const OverlayComponent = (props: React.HTMLAttributes<HTMLDivElement>) => {
+const OverlayComponent = ({ wide = false, ...props }: React.HTMLAttributes<HTMLDivElement> & { wide?: boolean }) => {
 	const onClick = (e: React.MouseEvent<HTMLDivElement>) => {
 		if (props.onClick && e.target === e.currentTarget) {
 			props.onClick(e)
@@ -9,7 +9,7 @@ const OverlayComponent = (props: React.HTMLAttributes<HTMLDivElement>) => {
 	}
 
 	return (
-		<div {...props} className={classnames(styles.overlay, props.className)} onClick={onClick}>
+		<div {...props} className={classnames(styles.overlay, { [styles.wide]: wide }, props.className)} onClick={onClick}>
 			<div>
 				{props.children}
 			</div>

@@ -1,0 +1,5 @@
+@use "../styles/formControl";
+
+.select {
+	@include formControl.form-control;
+}

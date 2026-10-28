@@ -1,16 +1,18 @@
+import type Book from "./Book.ts"
+import type Directory from "./Directory.ts"
+
+export type Item = Book | Directory
 export type ItemType = "Book" | "Directory"
 
-export default abstract class Item {
+export default abstract class ItemBase {
 	abstract readonly type: ItemType
 
 	id: string
-	uploadTime: Date
 	name: string
 	folderPath: string
 
-	constructor(json?: Omit<Partial<Item>, "uploadTime"> & { uploadTime?: Date | number }) {
+	constructor(json?: Partial<ItemBase>) {
 		this.id = json?.id ?? ""
-		this.uploadTime = new Date(json?.uploadTime ?? 0)
 		this.name = json?.name ?? ""
 		this.folderPath = json?.folderPath ?? ""
 	}

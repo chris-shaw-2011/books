@@ -4,7 +4,7 @@ import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
-import { Book } from "@books/shared"
+import { audibleBooks, Book } from "@books/shared"
 import { AudibleImportService, parseLibrary } from "../../src/audible/ImportService.ts"
 
 const waitFor = async (condition: () => boolean) => {
@@ -45,7 +45,7 @@ const setup = async (selectionTimeoutMs = 30 * 60_000, allExisting = false) => {
 		},
 		hasAsin: async asin => existing.has(asin),
 		validate: async () => undefined,
-		publish: async (_file, title) => new Book({ id: title.asin, asin: title.asin, name: title.title }),
+		publish: async (_file, title) => new Book({ id: title.asin, asin: title.asin, name: title.name }),
 	}, path.join(root, "sessions"), selectionTimeoutMs)
 	const started = await service.start("reader", "reader@example.com", "us")
 	assert.ok(started)
@@ -64,7 +64,7 @@ void test("only selected ASINs download, late duplicates skip, reconnect retains
 	try {
 		assert.equal(commands.some(args => args[0] === "liberate"), false)
 		await fs.access(fixture.directory)
-		assert.equal(service.snapshot("reader")?.books[0]?.coverUrl, "https://images.example/1.jpg")
+		assert.equal(audibleBooks(service.snapshot("reader")?.books ?? [])[0]?.cover, "https://images.example/1.jpg")
 		existing.add("ASIN2")
 		service.select("reader", started.id, ["ASIN1", "ASIN2"])
 		await waitFor(() => service.snapshot("reader")?.phase === "complete")
@@ -73,11 +73,11 @@ void test("only selected ASINs download, late duplicates skip, reconnect retains
 		const snapshot = service.snapshot("reader")
 		assert.equal(snapshot?.downloaded, 1)
 		assert.equal(snapshot.skipped, 1)
-		assert.deepEqual(snapshot.books.map(book => book.status), ["complete", "skipped", "available"])
+		assert.deepEqual(audibleBooks(snapshot.books).map(book => book.importStatus), ["complete", "skipped", "available"])
 		let reconnected = false
 		service.subscribe("reader", recovered => {
 			reconnected = true
-			assert.deepEqual(recovered.books, snapshot.books)
+			assert.deepEqual(audibleBooks(recovered.books), audibleBooks(snapshot.books))
 		})()
 		assert.equal(reconnected, true)
 		await assert.rejects(fs.access(fixture.directory))
@@ -105,8 +105,8 @@ for (const action of ["cancel", "shutdown", "expiry"]) {
 
 void test("optional cover URLs accept HTTPS images and discard malformed or unsafe sources", () => {
 	const books = parseLibrary([{ Book: { Asin: "A", Title: "Nested", PictureUrl: "https://images.example/a.jpg" } }, { Asin: "B", Title: "Unsafe", CoverUrl: "javascript:alert(1)" }, { Asin: "C", Title: "Credentials", CoverUrl: "https://secret@images.example/c.jpg" }, { Asin: "D", Title: "Missing" }])
-	assert.equal(books[0]?.coverUrl, "https://images.example/a.jpg")
-	assert.ok(books.slice(1).every(book => book.coverUrl === undefined))
+	assert.equal(books[0]?.cover, "https://images.example/a.jpg")
+	assert.ok(books.slice(1).every(book => book.cover === ""))
 })
 
 void test("a library with no available titles completes and removes credentials immediately", async () => {
@@ -122,7 +122,22 @@ void test("a library with no available titles completes and removes credentials 
 
 void test("Libation export picture identifiers become thumbnail URLs", () => {
 	const books = parseLibrary([{ AudibleProductId: "A", Title: "Picture", PictureId: "51Test+Id" }, { AudibleProductId: "B", Title: "Large", PictureLarge: "51Large" }, { AudibleProductId: "C", Title: "Unsafe", PictureId: "../../secret" }])
-	assert.equal(books[0]?.coverUrl, "https://images-na.ssl-images-amazon.com/images/I/51Test%2BId._SL300_.jpg")
-	assert.equal(books[1]?.coverUrl, "https://images-na.ssl-images-amazon.com/images/I/51Large._SL300_.jpg")
-	assert.equal(books[2]?.coverUrl, undefined)
+	assert.equal(books[0]?.cover, "https://images-na.ssl-images-amazon.com/images/I/51Test%2BId._SL300_.jpg")
+	assert.equal(books[1]?.cover, "https://images-na.ssl-images-amazon.com/images/I/51Large._SL300_.jpg")
+	assert.equal(books[2]?.cover, "")
+})
+
+void test("selection exports fill the shared book metadata used by the normal list", () => {
+	const [book] = parseLibrary([{ AudibleProductId: "META", Title: "A Book", AuthorNames: "Author One, Author Two", NarratorNames: "A Narrator", Description: "A complete description.", CategoriesNames: "Fantasy; Adventure", LengthInMinutes: 123, DatePublished: "2021-09-10T00:00:00Z" }])
+	assert.ok(book)
+	assert.equal(book.author, "Author One, Author Two")
+	assert.equal(book.narrator, "A Narrator")
+	assert.equal(book.comment, "A complete description.")
+	assert.equal(book.genre, "Fantasy; Adventure")
+	assert.equal(book.duration, 7380)
+	assert.equal(book.year, 2021)
+	const [missing] = parseLibrary([{ AudibleProductId: "MISSING", Title: "Missing", DatePublished: "unknown", AuthorNames: [], LengthInMinutes: -1 }])
+	assert.equal(missing?.year, 0)
+	assert.equal(missing.duration, 0)
+	assert.equal(missing.author, "")
 })

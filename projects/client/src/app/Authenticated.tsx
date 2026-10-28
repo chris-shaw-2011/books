@@ -74,7 +74,7 @@ const ItemListTabs = ({ items }: ItemListTabsProps) => {
 	const [selectedTab, setSelectedTab] = useState<Status>("Unread")
 
 	if (appContext.searchWords.length) {
-		return <ItemListTabContent dir={filter(items, undefined, appContext.searchWords)} />
+		return <ItemListTabContent items={filter(items, undefined, appContext.searchWords).items} />
 	}
 	else {
 		const tabsMap = new Map<Status, Directory>(StatusValues.map(s =>
@@ -104,7 +104,7 @@ const ItemListTabs = ({ items }: ItemListTabsProps) => {
 						)
 					})}
 				</div>
-				<ItemListTabContent key={`${selectedTab}-content`} dir={selectedTabData} status={selectedTab} />
+				<ItemListTabContent key={`${selectedTab}-content`} items={selectedTabData.items} />
 			</div>
 		)
 	}

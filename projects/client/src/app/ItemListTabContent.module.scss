@@ -1,4 +1,12 @@
-.sortDropDown {
+.toolbar {
 	padding: 10px 0 10px 10px;
 	flex-shrink: 0;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.5rem;
+
+	label {
+		margin: 0;
+	}
 }

@@ -1,12 +1,13 @@
 import classnames from "classnames"
 import { use } from "react"
-import { Directory, Book } from "@books/shared"
+import { Directory } from "@books/shared"
 import FolderClosed from "./svg/FolderClosed"
 import FolderOpen from "./svg/FolderOpen"
-import Highlighter from "react-highlight-words"
+import Highlight from "./Highlight"
 import ItemLink from "./ItemLink"
 import itemStyles from "./ItemLink.module.scss"
 import SearchContext from "./context/AppContext"
+import AudibleImportContext from "./context/AudibleImportContext"
 import { create } from "zustand"
 import styles from "./DirectoryLink.module.scss"
 
@@ -16,48 +17,43 @@ interface DirectoryProps {
 	style?: React.CSSProperties | undefined,
 }
 
-interface ChildItemProps {
-	items: (Directory | Book)[],
-	className?: string | undefined,
-	style?: React.CSSProperties | undefined,
-}
-
 interface FolderStore {
 	openFolders: Record<string, boolean>,
-	toggleFolder: (e: React.MouseEvent, path: string) => void,
+	setOpen: (path: string, open: boolean) => void,
 }
 
 const useFolderStore = create<FolderStore>(set => ({
 	openFolders: {},
-	toggleFolder: (e, id) => {
-		e.stopPropagation()
-		set(state => ({
-			openFolders: { ...state.openFolders, [id]: !state.openFolders[id] },
-		}))
+	setOpen: (id, open) => {
+		set(state => state.openFolders[id] === open ? state : { openFolders: { ...state.openFolders, [id]: open } })
 	},
 }))
 
-const ChildItems = (props: ChildItemProps) => (
-	<>
-		{props.items.map(item => <ItemLink className={props.className} style={props.style} item={item} key={item.id} />)}
-	</>
-)
-
 const DirectoryLink = (props: DirectoryProps) => {
 	const id = props.directory.id
+	const controller = use(AudibleImportContext)
 	const searchContext = use(SearchContext)
 	const searchWords = searchContext.searchWords
-	const isOpen = useFolderStore(state => (searchWords.length || state.openFolders[id]) ?? false)
-	const toggleFolder = useFolderStore(state => state.toggleFolder)
+	const isOpen = useFolderStore(state => searchWords.length > 0 || (state.openFolders[id] ?? Boolean(controller?.selecting)))
+	const setOpen = useFolderStore(state => state.setOpen)
 
 	return (
-		<div style={props.style} className={classnames(styles.directory, props.className)} onClick={e => toggleFolder(e, id)}>
-			<div className={classnames(styles.inner, itemStyles.inner)}>
+		<details
+			style={props.style}
+			className={classnames(styles.directory, props.className)}
+			open={isOpen}
+			onInvalidCapture={event => {
+				event.currentTarget.open = true
+				setOpen(id, true)
+			}}
+			onToggle={event => { if (event.target === event.currentTarget) setOpen(id, event.currentTarget.open) }}
+		>
+			<summary className={classnames(styles.inner, itemStyles.inner)}>
 				{isOpen ? <FolderOpen /> : <FolderClosed />}
-				<Highlighter searchWords={[...searchWords]} textToHighlight={props.directory.name} />
-			</div>
-			<ChildItems items={isOpen ? props.directory.items : []} style={props.style} className={props.className} />
-		</div>
+				<Highlight text={props.directory.name} />
+			</summary>
+			{(isOpen || controller?.selecting) && props.directory.items.map(item => <ItemLink key={item.id} item={item} style={props.style} className={props.className} />)}
+		</details>
 	)
 }
 

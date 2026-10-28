@@ -1,10 +1,11 @@
-import Item from "./Item.ts"
+import ItemBase from "./Item.ts"
 
 export const StatusValues = ["Unread", "Read", "Skipped"] as const
 
 export type Status = typeof StatusValues[number]
 
-export default class Book extends Item {
+export default class Book extends ItemBase {
+	uploadTime: Date
 	author: string
 	numBytes: number
 	cover: string
@@ -21,9 +22,10 @@ export default class Book extends Item {
 
 	override readonly type = "Book"
 
-	constructor(json?: Partial<Book>, status?: Status) {
+	constructor(json?: Omit<Partial<Book>, "uploadTime"> & { uploadTime?: Date | number }, status?: Status) {
 		super(json)
 
+		this.uploadTime = new Date(json?.uploadTime ?? 0)
 		this.author = json?.author?.trim() ?? ""
 		this.numBytes = json?.numBytes ?? 0
 		this.cover = json?.cover ?? ""
@@ -61,7 +63,7 @@ export default class Book extends Item {
 			id: this.id,
 			name: this.name,
 			folderPath: this.folderPath,
-			uploadTime: new Date(this.uploadTime).getTime(),
+			uploadTime: this.uploadTime.getTime(),
 			type: "Book",
 		}
 	}

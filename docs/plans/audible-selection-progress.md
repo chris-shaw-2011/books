@@ -1,17 +1,17 @@
 # Audible selection implementation plan and progress
 
-Updated: October 23, 2026. This document is the resume point for the user-controlled Audible import update. Read `audible-import-handoff.md` for existing constraints. Supersedes automatic downloading and the separate first-book-only review presentation in the original plan.
+Updated: October 27, 2026. This document is the resume point for the user-controlled Audible import update. Read `audible-import-handoff.md` for existing constraints. Supersedes automatic downloading and the separate first-book-only review presentation in the original plan.
 
 ## Intended behavior
 
-After authentication, scan/export metadata only. Present titles and optional covers with no books selected by default; allow individual selection and select all available titles. Existing ASIN matches are marked already imported and cannot be selected. Download only after an explicit confirmation. Sequential downloads retain an individual progress/status row for every title. Completed rows render the existing `CompletedBook`/`BookLink` flow in place, honoring administrator editing and reader status permissions. Closing/reopening recovers server state. Keep narrow screens usable.
+After authentication, scan/export metadata only. Present titles and optional covers with no books selected by default; allow individual selection and select all available titles. Existing ASIN matches are marked already imported and cannot be selected. Download only after an explicit confirmation. Sequential downloads retain an individual progress/status row for every title. Completed rows render the existing `BookLink` flow in place, honoring administrator editing and reader status permissions. Closing/reopening recovers server state. Keep narrow screens usable.
 
-## Shared contract (agreed before delegation)
+## Shared contract
 
 - Add phase `selecting`.
-- Snapshot required `books: AudibleImportBook[]`.
-- `AudibleImportBook`: `asin`, `title`, optional `coverUrl`, `status` (`available`, `skipped`, `queued`, `downloading`, `complete`, `failed`, `cancelled`), optional `percentage`, optional `book: Book`, optional `reviewed: boolean`.
-- Keep existing snapshot summary and reviewQueue for compatibility/acknowledgment. Completed row books must be restored as Book instances by the response class. Review acknowledges the matching row without deleting it.
+- Snapshot required `books: AudibleImportItem[]`: a server-built folder tree with `Directory` nodes and `AudibleImportBook` leaves. Each book occurs once; `audibleBooks` derives the leaves for status and selection logic.
+- `AudibleImportBook` extends `Book`. Book metadata uses the inherited fields, including `name`, `cover`, `series`, `seriesOrder`, and `folderPath`. Import-specific fields are `importStatus` (`available`, `skipped`, `queued`, `downloading`, `complete`, `failed`, `cancelled`), `percentage`, `reviewed`, `padding`, and `seriesOptions` for alternative series.
+- Completed rows hold the published metadata directly. Pending reviews are completed, unreviewed rows; there is no nested book or separate review queue. The response class restores every row as an `AudibleImportBook`. Review acknowledges the matching row without deleting it.
 - Add typed `AudibleSelectionRequest { sessionId, asins: string[] }`, export and API message union entry; POST `/audible/select`; service `select(owner, id, asins)`; client method `audibleSelect(sessionId, asins, onFailure)`.
 - Selection validates phase, ownership, nonempty array, unique known available ASINs. Repeat identical submissions during downloading/completion must be safe against HTTP replay; changed/invalid submissions are rejected.
 - Retain temporary session until selection/cancellation with bounded idle expiry and shutdown cleanup; no downloads during discovery or selection. Recheck ASIN under existing download lock.
@@ -63,3 +63,5 @@ Follow-up: Expand the library/import/review dialog to a maximum width of 90rem, 
 Follow-up: Fixed download percentages by parsing Libation's actual `[###...]` terminal bars, not only numeric percent strings. The streaming parser buffers split PTY frames, strips ANSI sequences, handles backspace redraws, selects the latest complete frame and suppresses unchanged updates. Existing per-book percentage labels and native progress bars now receive measured progress through snapshots/SSE. Upstream renderer verified in [ConsoleProgressBar.cs](https://github.com/rmcrackan/Libation/blob/master/Source/LibationCli/ConsoleProgressBar.cs). Server tests now pass 20/20, including terminal parser tests and HTTP integration using a split Libation bar; server lint and production build passed. Actual-account download output still requires interactive acceptance.
 
 Follow-up: Place previously imported titles last while preserving order within each group. Replace their disabled checkbox with an accessible green check badge, green row accent/tint and grayscale cover, including in dark displays. Remove redundant available/imported status lines. Enlarge discovery covers to 6rem (5rem on phones).
+
+Selection presentation: The server groups source series into their suggested library folders before returning status or SSE snapshots. Selection uses the normal folder and book rows; CSS changes their size and marks selected rows. Available exported author, narrator, description, category, publication year and duration populate the inherited Book fields. Native folder disclosures retain selection controls while collapsed and reveal invalid selected books during form validation.

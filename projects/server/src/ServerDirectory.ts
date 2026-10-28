@@ -20,7 +20,7 @@ export default class ServerDirectory extends Directory {
 	pathTree: string[] = []
 
 	hasAsin(asin: string): boolean {
-		return this.items.some(item => item instanceof ServerDirectory ? item.hasAsin(asin) : item.asin === asin)
+		return Boolean(this.findBookByAsin(asin))
 	}
 
 	findById(id: string, searchDir?: ServerDirectory): ServerDirectory | ServerBook | undefined {
@@ -107,22 +107,6 @@ export default class ServerDirectory extends Directory {
 					await book.updateMetadata(fullPath)
 
 					this.items.push(book)
-
-					if (updatePathFullPath) {
-						this.items.sort((a, b) => {
-							const nameA = a.name.toUpperCase()
-							const nameB = b.name.toUpperCase()
-
-							if (nameA > nameB) {
-								return 1
-							}
-							else if (nameA < nameB) {
-								return -1
-							}
-
-							return 0
-						})
-					}
 				}
 				else {
 					// eslint-disable-next-line no-console
@@ -131,21 +115,6 @@ export default class ServerDirectory extends Directory {
 			}
 		}
 
-		if (this.items.length) {
-			this.sortItems()
-
-			return true
-		}
-		else {
-			return false
-		}
-	}
-
-	sortItems(sortParent?: boolean) {
-		this.items.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
-
-		if (sortParent) {
-			this.parent?.sortItems(sortParent)
-		}
+		return this.items.length > 0
 	}
 }

@@ -11,5 +11,17 @@
 
 	& > div {
 		overflow: auto;
+		max-height: 100%;
+		max-width: 100%;
+	}
+}
+
+.wide > div {
+	width: 100%;
+}
+
+@media (width <= 600px) {
+	.overlay {
+		padding: 10px;
 	}
 }

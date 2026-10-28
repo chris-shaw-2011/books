@@ -1,18 +1,12 @@
-import type Book from "./Book.ts"
-import type { BookSeries, SeriesOrganization } from "./Series.ts"
+import type AudibleImportDirectory from "./AudibleImportDirectory.ts"
+import type AudibleImportBook from "./AudibleImportBook.ts"
 
 export type AudibleImportPhase = "authenticating" | "scanning" | "selecting" | "downloading" | "complete" | "cancelled" | "failed"
 
-export interface AudibleImportBook {
-	asin: string,
-	title: string,
-	series?: BookSeries[],
-	organization?: SeriesOrganization,
-	coverUrl?: string,
-	status: "available" | "skipped" | "queued" | "downloading" | "complete" | "failed" | "cancelled",
-	percentage?: number,
-	book?: Book,
-	reviewed?: boolean,
+export type AudibleImportItem = AudibleImportBook | AudibleImportDirectory
+
+export function audibleBooks(items: readonly AudibleImportItem[]): AudibleImportBook[] {
+	return items.flatMap(item => item.type === "Directory" ? audibleBooks(item.items) : [item])
 }
 
 export interface AudibleImportSnapshot {
@@ -26,8 +20,7 @@ export interface AudibleImportSnapshot {
 	downloaded: number,
 	failed: number,
 	remaining: number,
-	books: AudibleImportBook[],
-	reviewQueue: Book[],
+	books: AudibleImportItem[],
 	activity: string[],
 	error?: string,
 	// Returned only by authenticated JSON requests, never in the SSE stream.

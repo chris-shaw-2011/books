@@ -1,4 +1,4 @@
-import { Line } from "rc-progress"
+import Progress from "./Progress"
 import { use, useEffect, useState, useCallback } from "react"
 import { UploadResponse, type ConverterStatus, ConverterStatuses, Book, ApiMessage, AllowedUploadFileExtensions, canBeUploaded } from "@books/shared"
 import Api from "./api/LoggedInApi"
@@ -7,7 +7,6 @@ import OverlayComponent from "./components/OverlayComponent"
 import CancelButton from "./components/CancelButton"
 import styles from "./UploadBooks.module.scss"
 import BookLink from "./BookLink"
-import classnames from "classnames"
 import ModalDialog, { ModalBody, ModalFooter, ModalHeader, ModalTitle } from "./components/ModalDialog"
 import FetchAborted from "./api/FetchAborted"
 
@@ -55,10 +54,7 @@ const ProgressSection = ({ status, percent, uploadFileName, errorMessage, workin
 	return (
 		<div>
 			<div>{uploadFileName}</div>
-			<div>
-				<Line percent={percent} strokeWidth={1} strokeColor={status === "Error" ? "#FF0000" : IsConversionRunning(status) ? "#0000FF" : "#00FF00"} />
-			</div>
-			<div>{text.join(" ")}</div>
+			<Progress percent={percent} text={text.join(" ")} state={status === "Error" ? "error" : IsConversionRunning(status) ? "active" : "complete"} />
 			{status === "Error" && (
 				<div className={styles.error}>
 					<div>
@@ -161,7 +157,7 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 	else if (editingBook) {
 		return (
 			<div>
-				<BookLink book={editingBook} editOnly={true} onEditComplete={() => onStatusChanged(id, "Done")} />
+				<BookLink book={editingBook} onComplete={() => onStatusChanged(id, "Done")} />
 			</div>
 		)
 	}
@@ -191,7 +187,7 @@ const UploadBooks = (props: Props) => {
 	const arr = Array.from(fileUploadRows.entries())
 
 	return (
-		<OverlayComponent onClick={props.onClose} className={classnames({ [styles.editingBook]: arr.some(v => v[1] === "Editing") })}>
+		<OverlayComponent onClick={props.onClose} wide={arr.some(v => v[1] === "Editing")}>
 			<ModalDialog className={styles.upload}>
 				<ModalHeader>
 					<ModalTitle>Upload Files</ModalTitle>

@@ -31,7 +31,7 @@ const ActionButtons = ({ onCancelClick, actionButtonText, actionButtonOnClick, a
 		actionButton = <DeleteButton value={actionButtonText} onClick={actionButtonOnClick} className={actionButtonClassName} disabled={actionButtonDisabled} />
 	}
 	else {
-		actionButton = <OkButton value={actionButtonText} onClick={actionButtonOnClick} className={actionButtonClassName} disabled={actionButtonDisabled} />
+		actionButton = <OkButton type={actionButtonOnClick ? "button" : "submit"} value={actionButtonText} onClick={actionButtonOnClick} className={actionButtonClassName} disabled={actionButtonDisabled} />
 	}
 
 	return (

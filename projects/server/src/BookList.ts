@@ -2,6 +2,7 @@ import chokidar from "chokidar"
 import path from "path"
 import db from "./Database.ts"
 import ServerDirectory from "./ServerDirectory.ts"
+import type ServerBook from "./ServerBook.ts"
 import { Mutex, Semaphore, type SemaphoreInterface } from "async-mutex"
 import { setTimeout } from "timers/promises"
 import { watchBookFiles } from "./BookWatcher.ts"
@@ -106,8 +107,6 @@ class BookList {
 			const dir = this.books.findClosestDirectory(addPath)
 
 			await dir.loadBooks(path.parse(addPath))
-
-			dir.sortItems(true)
 		}
 		finally {
 			releaser()
@@ -120,7 +119,7 @@ class BookList {
 	public findBookByPath(bookPath: string) {
 		const dir = this.books.findClosestDirectory(bookPath)
 
-		return dir.items.find(i => i.fullPath === bookPath)
+		return dir.items.find((item): item is ServerBook => item.type === "Book" && item.fullPath === bookPath)
 	}
 
 	public async allBooks() {

@@ -1,7 +1,6 @@
 import fs from "node:fs/promises"
 import path from "node:path"
 import sanitize from "sanitize-filename"
-import { seriesBookTitle, type SeriesOrganization } from "@books/shared"
 
 const validateSeriesFolder = (folderPath: string) => {
 	if (typeof folderPath !== "string" || !folderPath.startsWith("/") || folderPath.includes("\\") || (folderPath !== "/" && folderPath.split("/").slice(1).some(part => !part || sanitize(part) !== part || part === "." || part === ".."))) throw new Error("Choose a valid series folder inside the library")
@@ -33,5 +32,3 @@ export async function seriesDestination(baseBooksPath: string, folderPath: strin
 	if (!inside(root, await fs.realpath(destination))) throw new Error("Series folder links outside the library")
 	return destination
 }
-
-export const organizedFileName = (title: string, organization: SeriesOrganization) => sanitize(seriesBookTitle(title, organization.series.order, organization.padding).replace(/:/g, " - ")).slice(0, 180)

@@ -1,0 +1,80 @@
+.folder {
+	height: 15px;
+}
+
+.path {
+	color: gray;
+
+	label,
+	.pathSelection {
+		margin: 0;
+
+		>span:first-of-type {
+			width: 70px;
+			text-align: right;
+			margin-right: 0.5rem;
+			display: inline-block;
+			font-weight: bolder;
+		}
+	}
+
+	>label,
+	>.pathSelection {
+		display: flex;
+
+		>span:nth-child(2) {
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			width: 100%;
+		}
+
+		.folderList {
+			height: 100px;
+			overflow: auto;
+		}
+
+		svg {
+			margin: 0 10px 0 5px;
+		}
+	}
+
+	>div {
+		width: 100%;
+		align-items: center;
+	}
+}
+
+.selectableFolder {
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+
+	&:hover {
+		border: solid black 1px;
+	}
+
+	&.selected {
+		background-color: blue;
+		color: white;
+	}
+}
+
+.subFolderList {
+	padding-left: 10px;
+
+	.newFolder {
+		display: flex;
+		flex-direction: row;
+	}
+}
+
+.newFolderButton {
+	display: flex;
+	align-items: center;
+	font-size: 75%;
+}
+
+.actionButtons {
+	justify-content: left;
+}
