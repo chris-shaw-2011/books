@@ -4,7 +4,7 @@
 	"dependencies": {
 		"@books/shared": "file:../shared",
 		"@fastify/multipart": "^10.1.6",
-		"@fastify/static": "^10.1.7",
+		"@fastify/static": "^10.1.8",
 		"async-mutex": "^0.5.0",
 		"bcrypt": "^6.0.0",
 		"chokidar": "^6.0.0",
