@@ -1,4 +1,5 @@
-name: Update
+name: Daily dependency & runtime updates
+run-name: ${{ github.event_name == 'schedule' && 'Daily updates' || format('Manual updates by @{0}', github.actor) }} — production packages, Node, Libation & Debian
 
 on:
   workflow_dispatch: {}
@@ -16,20 +17,21 @@ concurrency:
 
 jobs:
   update:
+    name: Update production dependencies
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     outputs:
-      new-version: ${{ steps.version.outputs.changed }}
       version: ${{ steps.version.outputs.version }}
+      commit: ${{ steps.version.outputs.commit }}
+      release-name: ${{ steps.version.outputs.release-name || 'No new release needed — dependencies unchanged' }}
     env:
       # Only the metadata check needs private-registry access; Docker needs no token.
       READ_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Checkout master
+      - name: Check out current master
         uses: actions/checkout@v7
         with:
           ref: master
-          fetch-depth: 0
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -37,29 +39,63 @@ jobs:
           node-version: current
 
       - name: Resolve compatible production updates and security fixes
+        id: dependencies
         run: node scripts/update-production-dependencies.ts
 
-      - name: Commit production dependency updates
+      - name: Commit ${{ steps.dependencies.outputs.count }} production package changes and bump automatic version
+        id: version
+        if: steps.dependencies.outputs.changed == 'true'
         run: |
           set -euo pipefail
-          if git diff --quiet -- package-lock.json; then
-            echo "No production dependency updates."
-            exit 0
-          fi
-          node scripts/bump-update-version.ts
+          version="$(node scripts/bump-update-version.ts)"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json
           git commit -m "chore: update compatible production dependencies"
           git push origin HEAD:master
+          {
+            echo "version=$version"
+            echo "commit=$(git rev-parse HEAD)"
+            echo "release-name=Release version $version"
+          } >> "$GITHUB_OUTPUT"
 
-      - name: Tag application version
-        id: version
-        run: bash scripts/tag-version.sh
+      - name: Report dependency update failure
+        if: failure()
+        run: echo '## Dependency update failed — see the failed step; Release and container-only checks were not started.' >> "$GITHUB_STEP_SUMMARY"
+
+  release:
+    name: ${{ needs.update.outputs.release-name }}
+    needs: update
+    if: needs.update.outputs.version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Start Release ${{ needs.update.outputs.version }} in a separate workflow run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.update.outputs.version }}
+          COMMIT: ${{ needs.update.outputs.commit }}
+        run: |
+          set -euo pipefail
+          release_url="$(gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref master \
+            -f "version=$VERSION" -f "commit=$COMMIT" -f "update_run=$GITHUB_RUN_ID")"
+          {
+            echo "## Release $VERSION requested"
+            echo
+            echo "[Follow tagging, build and publication in Release](${release_url:-$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/workflows/release.yml})."
+            echo
+            echo 'This Update run only requested the release; its success does not mean an image has been published.'
+            echo 'Release starts after Update finishes and releases the shared concurrency group.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Report Release handoff failure
+        if: failure()
+        run: echo '## Could not start Release — no container build was requested. Rerun this job or start Release manually.' >> "$GITHUB_STEP_SUMMARY"
 
   build-container:
+    name: Check container updates
     needs: update
+    if: needs.update.outputs.version == ''
     uses: ./.github/workflows/build-container.yml
-    with:
-      new_version_created: ${{ needs.update.outputs.new-version == 'true' }}
-      version_tag: ${{ needs.update.outputs.version }}

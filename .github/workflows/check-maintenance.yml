@@ -1,4 +1,5 @@
-name: Check Maintenance
+name: Test maintenance scripts
+run-name: "Maintenance tests — ${{ github.event_name == 'pull_request' && format('PR #{0}: {1}', github.event.pull_request.number, github.event.pull_request.title) || github.event.head_commit.message }}"
 
 on:
   push:
@@ -18,6 +19,7 @@ permissions:
 
 jobs:
   test:
+    name: Test dependency updates, versioning & Libation resolution
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

@@ -98,7 +98,7 @@ image instead.
 ### Publishing versions
 
 Set a new three-part version in `package.json`, synchronize `package-lock.json`
-(as described below), and push to the default branch. Release checks
+(as described below), and push to the default branch. **Release application** checks
 the version against `package.json` at the `latest` Git tag. When it differs (or
 `latest` is missing), it creates an immutable Git tag such as `1.6.1`,
 and moves the lightweight `latest` Git tag to that commit. It then calls the container
@@ -108,17 +108,24 @@ version bumps; compatible dependency updates use a fourth component in Git tags.
 
 CI uses the same Dockerfile as local builds and persists the intermediate build cache.
 It smoke-tests the candidate image before pushing versioned and `latest` image tags
-to GHCR. The daily container check rebuilds the source at the `latest` Git tag only
+to GHCR. Starting Release manually also rebuilds an already-tagged version, using
+its existing application tag and a new container revision. The daily container check rebuilds the source at the `latest` Git tag only
 when Node's base image, Libation, or Debian packages change. Unreleased branch changes
 are not included. Moving Node/OS/Libation versions and the target CPU architecture can
 still change build results; the shared Dockerfile guarantees the same build process.
 
-Release handles explicit application version bumps on `master`. Update is the only
-scheduled workflow: it runs daily and can also be started manually. Both use
-`scripts/tag-version.sh` to compare the application version with the `latest` Git
-tag and publish immutable version tags. Both call the shared Build Container
-workflow to check, build, verify, and publish an image. Build Container has no
-schedule or standalone trigger.
+**Release application** handles explicit application version bumps on `master`.
+**Daily dependency & runtime updates** is the only scheduled workflow: it runs daily
+and can also be started manually. Release owns version comparison and Git tagging
+through `scripts/tag-version.sh`. When Update commits a dependency version, it
+explicitly dispatches Release for that exact commit and skips its own container
+checks. When production dependencies are unchanged, Update calls **Check & publish container**
+directly for runtime-only updates. The shared container workflow has no schedule
+or standalone trigger.
+
+The shared workflow accepts one optional input, `version_tag`. Release supplies
+the application tag to build. Update leaves it empty to check runtime updates for
+Git `latest`, building only when a runtime component changed.
 
 Update checks only production npm dependencies without installing packages or
 compiling the application. `scripts/update-production-dependencies.ts` selects the
@@ -137,8 +144,11 @@ alongside code releases.
 When production dependencies change, Update increments the fourth component in
 `package.json` and synchronizes both root version fields in `package-lock.json`.
 For example, `1.7.0` becomes `1.7.0.1`, then `1.7.0.2`. It commits the manifests
-and lockfile, then runs the shared version-tagging script, which tags that exact
-version and moves `latest`. Retries reuse the existing application tag.
+and lockfile, then requests Release, which tags that exact version, moves Git
+`latest`, and builds the image. The Release run title includes the requested
+version and identifies dependency updates as its source. Each run links to the
+other in its summary. A successful Update handoff means Release was requested;
+the separate Release run reports whether the image was published.
 
 This private app supports four-part versions in npm installation and builds, but
 four-part versions are not SemVer: `npm version` cannot manage them. Automatic
@@ -147,24 +157,41 @@ set the next three-part version (for example, `npm pkg set version=1.7.1`) and
 synchronize the lockfile with `npm install --package-lock-only --ignore-scripts`
 before committing. That resets the automatic sequence; its next update is `1.7.1.1`.
 
-A committed version that was not tagged due to a failed run is retried on the next
-check. There is no workflow dispatch chain or extra trigger token. GitHub's built-in
-token reads registry metadata and writes dependency commits; local Docker builds
-need no token. The repository must allow the workflow to push to `master`.
+If the Release handoff fails after a dependency commit, rerun the failed dispatch
+job or start Release manually. Update does not look for unreleased commits.
+GitHub's built-in token reads registry metadata, writes dependency
+commits and dispatches Release; no extra trigger token is needed. Pushes using that
+token do not themselves trigger Release. The dispatch job has `actions: write`.
+Update and Release share one concurrency group; Update requests Release without
+waiting, then exits so Release can start. Local Docker builds need no token.
+The repository must allow the workflow to push to `master`.
 
-Maintenance script unit tests run in Check Maintenance when `scripts/**`, the
+Maintenance script unit tests run in **Test maintenance scripts** when `scripts/**`, the
 Dockerfile, or workflow files change. They do not run as part of daily maintenance.
 Candidate images still run the functional Libation login and audio smoke checks
 before publication. Libation asset digests are update/cache keys, not download
 checksum validation.
 
-Update then calls Build Container even when npm is unchanged, so it can check for
-Node base image, Debian package, and Libation updates. Unchanged inputs skip the
-image build. New application/dependency versions or changed runtime components
+When production dependencies are unchanged, Update calls the shared container workflow
+to check for Node base image, Debian package, and Libation updates at Git `latest`.
+Unchanged inputs skip the image build. New application/dependency versions or changed runtime components
 produce one candidate image, which is smoke-tested before publication. Docker
 reuses the application build stage when only runtime layers change; a Node base
 image change also rebuilds the native dependencies. No application compilation
 runs merely because the daily schedule fired.
+
+The Actions list uses explicit run titles to distinguish release requests, daily
+updates, manual updates, and maintenance tests. Run titles describe the trigger;
+GitHub evaluates them before update results are known. The run summary shows the
+actual dependency changes and container decision. Container checks and publishing
+are separate jobs: the publish job displays the target version and all build
+reasons, or is skipped when nothing changed. Dependency commits, tag creation,
+Release dispatch, container-only checks, and Debian checks are also skipped when
+they are unnecessary. Publication summaries
+report build, smoke-check, and push outcomes, including failures.
+Checks use the maintenance scripts from the workflow's own commit; application
+metadata and Docker builds still use the selected application tag. Workflow-only
+improvements therefore do not require an application release to take effect.
 
 Published container tags always have five numeric components. A code release
 `1.7.0` first builds image `1.7.0.0.0`; dependency revision `1.7.0.1` builds image
@@ -173,12 +200,13 @@ Published container tags always have five numeric components. A code release
 the fifth tracks container rebuilds. `latest` still points to the newest published
 image. Existing historical tags are preserved.
 
-Start Release manually on `master` to initialize tags, or let Update initialize
-them on its next run. To retry a failed build, rerun the failed jobs or start Update.
-Existing version tags must identify the exact versioned commit. If tagging succeeded
-but building failed, unchanged runtime checks detect the missing published version
-and retry it. Failed builds leave the previously published image in place. Compatible
-version numbers alone cannot guarantee a regression-free update.
+Start Release manually on `master` to initialize tags or recover a failed release.
+It rebuilds even when that application version is already tagged; no version bump
+is needed. Update does not detect missing publications or repair failed releases.
+Existing version tags identify the exact versioned commit. Concurrency serializes
+Update and Release runs; there is no additional handling for rerunning obsolete
+jobs after a newer release. Use a manual Release of the current version to recover.
+Compatible version numbers alone cannot guarantee a regression-free update.
 
 ## Scripts
 

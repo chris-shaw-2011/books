@@ -1,48 +1,56 @@
-name: Build Container
+name: Check & publish container
 
 on:
   workflow_call:
     inputs:
-      new_version_created:
-        description: True when invoked after tagging a new application version.
-        required: false
-        type: boolean
-        default: false
       version_tag:
-        description: Application tag to build; maintenance checks default to latest.
+        description: Build this application tag; leave empty to check runtime updates for latest.
         required: false
         type: string
-        default: latest
+        default: ""
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  build-container:
+  check:
+    name: ${{ inputs.version_tag && format('Prepare release {0}', inputs.version_tag) || 'Check runtime updates for latest' }}
+    outputs:
+      target-version: ${{ steps.decision.outputs.target-version }}
+      publish-name: ${{ steps.decision.outputs.publish-name }}
+      app-version: ${{ steps.app-version.outputs.version }}
+      commit: ${{ steps.app-version.outputs.commit }}
+      base-digest: ${{ steps.current-base.outputs.digest }}
+      libation-sha256: ${{ steps.current-libation.outputs.sha256 }}
+      libation-url: ${{ steps.current-libation.outputs.url }}
     runs-on: ubuntu-latest
     # Release and Update serialize publishing through their books-release group.
     steps:
-      - name: Checkout tagged application source
+      - name: Check out maintenance scripts used by this workflow
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+
+      - name: Check out tagged application inputs
         uses: actions/checkout@v7
         with:
           ref: refs/tags/${{ inputs.version_tag || 'latest' }}
-          fetch-depth: 0
+          path: application
 
       - name: Read application version
         id: app-version
         run: |
           set -euo pipefail
-          version="$(jq -r .version package.json)"
-          commit="$(git rev-parse HEAD)"
+          version="$(jq -r .version application/package.json)"
+          commit="$(git -C application rev-parse HEAD)"
           {
             echo "version=${version}"
             echo "commit=${commit}"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Normalize image name
-        id: image-name
-        run: echo "value=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+      - name: Set container image name
+        run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -54,28 +62,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Resolve base image reference from Dockerfile
-        id: base-image
-        run: |
-          set -euo pipefail
-
-          base_ref="$(awk 'toupper($1) == "FROM" { image=$2 } END { print image }' Dockerfile)"
-
-          echo "Resolved base image reference: ${base_ref}"
-          echo "ref=${base_ref}" >> "$GITHUB_OUTPUT"
-
-      - name: Resolve current base image digest
+      - name: Resolve current Node base image
         id: current-base
-        env:
-          BASE_IMAGE_REF: ${{ steps.base-image.outputs.ref }}
         run: |
           set -euo pipefail
-
-          base_digest="$(docker buildx imagetools inspect "$BASE_IMAGE_REF" --format '{{json .Manifest}}' | jq -er .digest)"
-
-          echo "Current base image reference: ${BASE_IMAGE_REF}"
-          echo "Current base image digest: ${base_digest}"
-          echo "digest=${base_digest}" >> "$GITHUB_OUTPUT"
+          base_ref="$(awk 'toupper($1) == "FROM" { image=$2 } END { print image }' application/Dockerfile)"
+          base_digest="$(docker buildx imagetools inspect "$base_ref" --format '{{json .Manifest}}' | jq -er .digest)"
+          echo "Current base image: $base_ref@$base_digest"
+          echo "digest=$base_digest" >> "$GITHUB_OUTPUT"
 
       - name: Set up current Node for release resolution
         uses: actions/setup-node@v6
@@ -86,89 +80,50 @@ jobs:
         id: current-libation
         run: |
           set -euo pipefail
-          node scripts/resolve-libation-release.ts amd64 > /tmp/libation-release.json
-          version="$(node -p 'require("/tmp/libation-release.json").version')"
-          sha256="$(node -p 'require("/tmp/libation-release.json").sha256')"
-          url="$(node -p 'require("/tmp/libation-release.json").url')"
-          echo "Current Libation version: ${version}"
-          echo "Current Libation SHA256: ${sha256}"
-          {
-            echo "version=${version}"
-            echo "sha256=${sha256}"
-            echo "url=${url}"
-          } >> "$GITHUB_OUTPUT"
+          node scripts/resolve-libation-release.ts amd64 \
+            | jq -r 'to_entries[] | "\(.key)=\(.value)"' \
+            | tee -a "$GITHUB_OUTPUT"
 
       - name: Read latest uploaded container metadata
         id: latest-image
         env:
-          IMAGE_NAME: ${{ steps.image-name.outputs.value }}
+          RELEASE_REQUESTED: ${{ inputs.version_tag != '' }}
         run: |
           set -euo pipefail
 
-          found=false
-          version=""
-          base_digest=""
-          release_version=""
-          libation_sha256=""
-
           if pull_output="$(docker pull "${IMAGE_NAME}:latest" 2>&1)"; then
-            found=true
-            version="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "${IMAGE_NAME}:latest")"
-            base_digest="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.base.digest" }}' "${IMAGE_NAME}:latest")"
-            release_version="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.release.version" }}' "${IMAGE_NAME}:latest")"
-            libation_sha256="$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.libation.sha256" }}' "${IMAGE_NAME}:latest")"
-          elif ! grep -Eq 'manifest unknown|manifest .*not found|name unknown' <<< "$pull_output"; then
+            docker inspect "${IMAGE_NAME}:latest" | jq -r '
+              .[0].Config.Labels |
+              "found=true",
+              "version=\(.["org.opencontainers.image.version"])",
+              "base-digest=\(.["org.opencontainers.image.base.digest"])",
+              "release-version=\(.["org.opencontainers.image.release.version"])",
+              "libation-sha256=\(.["org.opencontainers.image.libation.sha256"])"
+            ' | tee -a "$GITHUB_OUTPUT"
+          elif [ "$RELEASE_REQUESTED" = true ] && grep -Eq 'manifest unknown|manifest .*not found|name unknown' <<< "$pull_output"; then
+            printf 'found=false\nversion=\nbase-digest=\nrelease-version=\nlibation-sha256=\n' | tee -a "$GITHUB_OUTPUT"
+          else
             printf '%s\n' "$pull_output"
             exit 1
           fi
 
-          if [ "${found}" = "true" ]; then
-            echo "Previous latest image found: ${IMAGE_NAME}:latest"
-            echo "Previous version label: ${version}"
-            echo "Previous release version label: ${release_version}"
-            echo "Previous base digest label: ${base_digest}"
-            echo "Previous Libation SHA256 label: ${libation_sha256}"
-          else
-            echo "No previous latest image found at ${IMAGE_NAME}:latest"
-          fi
-
-          {
-            echo "found=${found}"
-            echo "version=${version}"
-            echo "base-digest=${base_digest}"
-            echo "release-version=${release_version}"
-            echo "libation-sha256=${libation_sha256}"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Check installed Debian packages for upgrades
+      - name: Check Debian upgrades when no release, base image or Libation update requires a build
         id: apt-updates
-        env:
-          IMAGE_NAME: ${{ steps.image-name.outputs.value }}
-          PREVIOUS_FOUND: ${{ steps.latest-image.outputs.found }}
-          PREVIOUS_RELEASE_VERSION: ${{ steps.latest-image.outputs.release-version }}
-          RELEASE_VERSION: ${{ steps.app-version.outputs.version }}
-          PREVIOUS_BASE_DIGEST: ${{ steps.latest-image.outputs.base-digest }}
-          CURRENT_BASE_DIGEST: ${{ steps.current-base.outputs.digest }}
-          PREVIOUS_LIBATION_SHA256: ${{ steps.latest-image.outputs.libation-sha256 }}
-          CURRENT_LIBATION_SHA256: ${{ steps.current-libation.outputs.sha256 }}
+        if: >-
+          inputs.version_tag == '' &&
+          steps.latest-image.outputs.found == 'true' &&
+          steps.latest-image.outputs.base-digest == steps.current-base.outputs.digest &&
+          steps.latest-image.outputs.libation-sha256 == steps.current-libation.outputs.sha256
         run: |
           set -euo pipefail
-
-          count=0
-          if [ "${PREVIOUS_FOUND}" = "true" ] \
-            && [ "${PREVIOUS_RELEASE_VERSION}" = "${RELEASE_VERSION}" ] \
-            && [ "${PREVIOUS_BASE_DIGEST}" = "${CURRENT_BASE_DIGEST}" ] \
-            && [ "${PREVIOUS_LIBATION_SHA256}" = "${CURRENT_LIBATION_SHA256}" ]; then
-            count="$(docker run --rm --interactive --user root --entrypoint sh "${IMAGE_NAME}:latest" -s < scripts/check-apt-updates.sh)"
-          fi
-
+          count="$(docker run --rm --interactive --user root --entrypoint sh "${IMAGE_NAME}:latest" -s < scripts/check-apt-updates.sh)"
           echo "Available Debian package upgrades: ${count}"
           echo "count=${count}" >> "$GITHUB_OUTPUT"
 
       - name: Decide whether to build and what version to use
         id: decision
         env:
-          RELEASE_CREATED: ${{ inputs.new_version_created }}
+          RELEASE_REQUESTED: ${{ inputs.version_tag != '' }}
           RELEASE_VERSION: ${{ steps.app-version.outputs.version }}
           PREVIOUS_FOUND: ${{ steps.latest-image.outputs.found }}
           PREVIOUS_VERSION: ${{ steps.latest-image.outputs.version }}
@@ -177,81 +132,44 @@ jobs:
           CURRENT_BASE_DIGEST: ${{ steps.current-base.outputs.digest }}
           CURRENT_LIBATION_SHA256: ${{ steps.current-libation.outputs.sha256 }}
           PREVIOUS_LIBATION_SHA256: ${{ steps.latest-image.outputs.libation-sha256 }}
-          APT_UPGRADE_COUNT: ${{ steps.apt-updates.outputs.count }}
-        run: |
-          set -euo pipefail
+          APT_UPGRADE_COUNT: ${{ steps.apt-updates.outputs.count || '0' }}
+          APT_CHECKED: ${{ steps.apt-updates.outcome }}
+          CURRENT_LIBATION_VERSION: ${{ steps.current-libation.outputs.version }}
+        run: bash scripts/plan-container-build.sh
 
-          should_build=false
-          target_version=""
-          reason=""
+      - name: Report container update check failure
+        if: failure()
+        run: echo '## Container update check failed — see the failed step; no image was built or published.' >> "$GITHUB_STEP_SUMMARY"
 
-          echo "Decision inputs:"
-          echo "  release_created=${RELEASE_CREATED}"
-          echo "  release_version=${RELEASE_VERSION}"
-          echo "  previous_found=${PREVIOUS_FOUND}"
-          echo "  previous_version=${PREVIOUS_VERSION}"
-          echo "  previous_release_version=${PREVIOUS_RELEASE_VERSION}"
-          echo "  previous_base_digest=${PREVIOUS_BASE_DIGEST}"
-          echo "  current_base_digest=${CURRENT_BASE_DIGEST}"
-          echo "  previous_libation_sha256=${PREVIOUS_LIBATION_SHA256}"
-          echo "  current_libation_sha256=${CURRENT_LIBATION_SHA256}"
-          echo "  apt_upgrade_count=${APT_UPGRADE_COUNT}"
+  publish:
+    name: ${{ needs.check.outputs.publish-name }}
+    needs: check
+    if: needs.check.outputs.target-version != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out application ${{ needs.check.outputs.app-version }}
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.check.outputs.commit }}
 
-          if [ "${RELEASE_CREATED}" = "true" ]; then
-            should_build=true
-            reason="new application version tagged"
-          else
-            if [ "${PREVIOUS_FOUND}" = "true" ] \
-              && [ "${PREVIOUS_RELEASE_VERSION}" = "${RELEASE_VERSION}" ] \
-              && [ "${PREVIOUS_BASE_DIGEST}" = "${CURRENT_BASE_DIGEST}" ] \
-              && [ "${PREVIOUS_LIBATION_SHA256}" = "${CURRENT_LIBATION_SHA256}" ] \
-              && [ "${APT_UPGRADE_COUNT}" = "0" ]; then
-              should_build=false
-              reason="base image, Libation and Debian packages unchanged for latest release"
-            else
-              should_build=true
+      - name: Set container image name
+        run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
 
-              if [ "${PREVIOUS_FOUND}" != "true" ]; then
-                reason="no previous uploaded image"
-              elif [ "${PREVIOUS_RELEASE_VERSION}" != "${RELEASE_VERSION}" ]; then
-                reason="latest release has no corresponding container tag yet"
-              elif [ "${PREVIOUS_LIBATION_SHA256}" != "${CURRENT_LIBATION_SHA256}" ]; then
-                reason="Libation package changed"
-              elif [ "${APT_UPGRADE_COUNT}" != "0" ]; then
-                reason="Debian packages have available upgrades"
-              else
-                reason="base image digest changed"
-              fi
-            fi
-          fi
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
 
-          if [ "$should_build" = true ]; then
-            prefix="$RELEASE_VERSION"
-            if [[ "$prefix" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-              prefix="${prefix}.0"
-            fi
-            escaped_prefix="${prefix//./\\.}"
-            revision=0
-            if [[ "$PREVIOUS_VERSION" =~ ^${escaped_prefix}\.([0-9]+)$ ]]; then
-              revision=$((10#${BASH_REMATCH[1]} + 1))
-            fi
-            target_version="${prefix}.${revision}"
-          fi
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-          echo "Decision result:"
-          echo "  should_build=${should_build}"
-          echo "  target_version=${target_version}"
-          echo "  reason=${reason}"
-
-          {
-            echo "should-build=${should_build}"
-            echo "target-version=${target_version}"
-            echo "reason=${reason}"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Build candidate image
-        if: steps.decision.outputs.should-build == 'true'
+      - name: Build ${{ needs.check.outputs.target-version }}
+        id: build
         uses: docker/build-push-action@v7
+        env:
+          DOCKER_BUILD_SUMMARY: "false"
         with:
           context: .
           file: Dockerfile
@@ -261,41 +179,29 @@ jobs:
           cache-from: type=gha,scope=books-container
           cache-to: type=gha,scope=books-container,mode=max
           build-args: |
-            APP_VERSION=${{ steps.decision.outputs.target-version }}
-            LIBATION_RELEASE_SHA256=${{ steps.current-libation.outputs.sha256 }}
-            LIBATION_PACKAGE_URL=${{ steps.current-libation.outputs.url }}
+            APP_VERSION=${{ needs.check.outputs.target-version }}
+            LIBATION_RELEASE_SHA256=${{ needs.check.outputs.libation-sha256 }}
+            LIBATION_PACKAGE_URL=${{ needs.check.outputs.libation-url }}
             APT_REFRESH=${{ github.run_id }}
-          tags: books-candidate:${{ github.sha }}
+          tags: books-candidate:${{ needs.check.outputs.commit }}
           labels: |
-            org.opencontainers.image.version=${{ steps.decision.outputs.target-version }}
-            org.opencontainers.image.revision=${{ steps.app-version.outputs.commit }}
-            org.opencontainers.image.release.version=${{ steps.app-version.outputs.version }}
-            org.opencontainers.image.release.created=${{ inputs.new_version_created }}
-            org.opencontainers.image.base.name=${{ steps.base-image.outputs.ref }}
-            org.opencontainers.image.base.digest=${{ steps.current-base.outputs.digest }}
-            org.opencontainers.image.libation.version=${{ steps.current-libation.outputs.version }}
-            org.opencontainers.image.libation.sha256=${{ steps.current-libation.outputs.sha256 }}
+            org.opencontainers.image.version=${{ needs.check.outputs.target-version }}
+            org.opencontainers.image.revision=${{ needs.check.outputs.commit }}
+            org.opencontainers.image.release.version=${{ needs.check.outputs.app-version }}
+            org.opencontainers.image.base.digest=${{ needs.check.outputs.base-digest }}
+            org.opencontainers.image.libation.sha256=${{ needs.check.outputs.libation-sha256 }}
 
-      - name: Verify candidate runtime before publishing
-        if: steps.decision.outputs.should-build == 'true'
-        run: docker run --rm --network none --entrypoint node books-candidate:${{ github.sha }} /home/node/app/check-docker-runtime.ts
+      - name: Verify Libation login and audio tools in ${{ needs.check.outputs.target-version }}
+        id: verify
+        run: docker run --rm --network none --entrypoint node books-candidate:${{ needs.check.outputs.commit }} /home/node/app/check-docker-runtime.ts
 
-      - name: Push container image
-        if: steps.decision.outputs.should-build == 'true'
+      - name: Publish ${{ needs.check.outputs.target-version }} and update container latest
+        id: publish
         env:
-          IMAGE_NAME: ${{ steps.image-name.outputs.value }}
-          TARGET_VERSION: ${{ steps.decision.outputs.target-version }}
-          CANDIDATE_IMAGE: books-candidate:${{ github.sha }}
-          SOURCE_COMMIT: ${{ steps.app-version.outputs.commit }}
+          TARGET_VERSION: ${{ needs.check.outputs.target-version }}
+          CANDIDATE_IMAGE: books-candidate:${{ needs.check.outputs.commit }}
         run: |
           set -euo pipefail
-
-          # A failed container job may be retried after a newer release was published.
-          latest_commit="$(git ls-remote origin refs/tags/latest | cut -f1)"
-          if [ "$latest_commit" != "$SOURCE_COMMIT" ]; then
-            echo "A newer application version is latest; refusing to publish this older run."
-            exit 1
-          fi
 
           echo "Pushing tags:"
           echo "  ${IMAGE_NAME}:${TARGET_VERSION}"
@@ -306,3 +212,29 @@ jobs:
 
           docker push "${IMAGE_NAME}:${TARGET_VERSION}"
           docker push "${IMAGE_NAME}:latest"
+
+      - name: Record container publication outcome
+        if: always()
+        env:
+          TARGET_VERSION: ${{ needs.check.outputs.target-version }}
+          BUILD: ${{ steps.build.outcome }}
+          VERIFY: ${{ steps.verify.outcome }}
+          PUBLISH: ${{ steps.publish.outcome }}
+        run: |
+          {
+            if [ "$PUBLISH" = success ]; then
+              echo "## Published container $TARGET_VERSION"
+              echo
+              echo "Image: \`$IMAGE_NAME:$TARGET_VERSION\`"
+              echo
+              echo "Container \`latest\` now points to the same image."
+            else
+              echo "## Container $TARGET_VERSION was not fully published"
+              echo
+              echo 'See the failed or cancelled step. Start Release manually to retry.'
+            fi
+            echo
+            echo '| Build | Runtime verification | Publish |'
+            echo '| --- | --- | --- |'
+            echo "| $BUILD | $VERIFY | $PUBLISH |"
+          } >> "$GITHUB_STEP_SUMMARY"

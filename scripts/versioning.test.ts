@@ -14,7 +14,7 @@ void test("code versions keep three parts and automatic dependency revisions use
 		mkdirSync(repo)
 		const output = join(root, "output")
 		const env = {
-			...process.env, GITHUB_OUTPUT: output,
+			...process.env, GITHUB_OUTPUT: output, GITHUB_STEP_SUMMARY: join(root, "summary"), GITHUB_EVENT_NAME: "push",
 			GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1",
 			GIT_AUTHOR_NAME: "Test", GIT_AUTHOR_EMAIL: "test@example.invalid",
 			GIT_COMMITTER_NAME: "Test", GIT_COMMITTER_EMAIL: "test@example.invalid",
@@ -43,9 +43,11 @@ void test("code versions keep three parts and automatic dependency revisions use
 			assert.equal(lock.packages[""]?.version, expected)
 		}
 
-		const tag = () => {
+		const tag = (check = false, event = "push") => {
+			env.GITHUB_EVENT_NAME = event
 			writeFileSync(output, "")
-			run("bash", [fileURLToPath(new URL("./tag-version.sh", import.meta.url))])
+			writeFileSync(env.GITHUB_STEP_SUMMARY, "")
+			run("bash", [fileURLToPath(new URL("./tag-version.sh", import.meta.url)), ...(check ? ["--check"] : [])])
 			return Object.fromEntries(readFileSync(output, "utf8").trim().split("\n").map(line => line.split("="))) as Record<string, string>
 		}
 		git("init", "--bare", join(root, "remote.git"))
@@ -53,7 +55,21 @@ void test("code versions keep three parts and automatic dependency revisions use
 		git("remote", "add", "origin", join(root, "remote.git"))
 		setVersion("1.7.0")
 		commit("code release")
+		assert.deepEqual(tag(true), {
+			"changed": "true", "version": "1.7.0", "build-version": "1.7.0", "release-name": "Release 1.7.0 — new application version",
+		})
+		assert.match(readFileSync(env.GITHUB_STEP_SUMMARY, "utf8"), /tagging and container publication requested/)
+		assert.equal(git("tag", "--list"), "", "checking a version must not create local tags")
+		assert.equal(git("ls-remote", "--tags", "origin"), "", "checking a version must not push tags")
 		assert.deepEqual(tag(), { changed: "true", version: "1.7.0" })
+		assert.deepEqual(tag(true), {
+			"changed": "false", "version": "1.7.0", "build-version": "", "release-name": "Release container — skipped, version 1.7.0 unchanged",
+		})
+		assert.match(readFileSync(env.GITHUB_STEP_SUMMARY, "utf8"), /publishing are skipped/)
+		assert.deepEqual(tag(true, "workflow_dispatch"), {
+			"changed": "false", "version": "1.7.0", "build-version": "1.7.0", "release-name": "Rebuild 1.7.0 — keep existing application tag",
+		})
+		assert.match(readFileSync(env.GITHUB_STEP_SUMMARY, "utf8"), /Using the existing application tag/)
 		assert.deepEqual(tag(), { changed: "false", version: "1.7.0" })
 
 		bump("1.7.0.1")

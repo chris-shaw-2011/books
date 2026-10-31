@@ -13,7 +13,7 @@ import { audioFiles, publishAudio, writeAsin } from "./Files.ts"
 import DownloadProgress from "./DownloadProgress.ts"
 import selectionItems from "./SelectionItems.ts"
 
-export function parseSeries(book: Record<string, unknown>): BookSeries[] {
+function parseSeries(book: Record<string, unknown>): BookSeries[] {
 	// Libation's ExportDto formats SeriesOrder as "1 : Name, 2 : Other name".
 	const value = book.SeriesOrder
 	if (typeof value !== "string" || !value.trim()) return []

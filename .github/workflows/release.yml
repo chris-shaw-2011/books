@@ -1,11 +1,25 @@
-name: Release
+name: Release application
+run-name: "Release application — ${{ inputs.update_run && format('{0} from dependency updates', inputs.version) || github.event_name == 'workflow_dispatch' && format('manual request by @{0}', github.actor) || github.event.head_commit.message }}"
 
 on:
   push:
     branches: [master]
     paths:
       - package.json
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Application version for the run title (set by Update).
+        type: string
+        default: ""
+      commit:
+        description: Source commit to release (blank uses the selected ref; set by Update).
+        type: string
+        default: ""
+      update_run:
+        description: Originating Update run ID (blank for a manual release).
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -17,25 +31,41 @@ concurrency:
 
 jobs:
   tag:
+    name: Check application release version
     if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     outputs:
-      changed: ${{ steps.version.outputs.changed }}
-      version: ${{ steps.version.outputs.version }}
+      build-version: ${{ steps.version.outputs.build-version }}
+      release-name: ${{ steps.version.outputs.release-name }}
     steps:
-      - name: Checkout
+      - name: Check out application source selected for Release
         uses: actions/checkout@v7
         with:
+          ref: ${{ inputs.commit || github.sha }}
           fetch-depth: 0
 
-      - name: Tag application version
+      - name: Link the dependency Update that requested this release
+        if: inputs.update_run != ''
+        env:
+          UPDATE_RUN: ${{ inputs.update_run }}
+        run: echo "Requested by [dependency Update]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$UPDATE_RUN). This Release run owns tagging and container publication." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Compare package.json version with Git latest
         id: version
+        run: bash scripts/tag-version.sh --check
+
+      - name: Tag application ${{ steps.version.outputs.version }} and move Git latest
+        if: steps.version.outputs.changed == 'true'
         run: bash scripts/tag-version.sh
 
+      - name: Report release preparation failure
+        if: failure()
+        run: echo '## Release preparation failed — see the failed step; container publishing was not started.' >> "$GITHUB_STEP_SUMMARY"
+
   build-container:
+    name: ${{ needs.tag.outputs.release-name }}
     needs: tag
-    if: needs.tag.outputs.changed == 'true'
+    if: needs.tag.outputs.build-version != ''
     uses: ./.github/workflows/build-container.yml
     with:
-      new_version_created: true
-      version_tag: ${{ needs.tag.outputs.version }}
+      version_tag: ${{ needs.tag.outputs.build-version }}

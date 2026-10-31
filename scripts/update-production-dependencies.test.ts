@@ -71,7 +71,9 @@ void test("daily updates preserve dev dependencies and skip dev-only releases", 
 			return dir
 		}
 		const run = (cwd: string) => new Promise<{ status: number | null, output: string }>((resolve, reject) => {
-			const env = { ...process.env, npm_config_registry: registry, npm_config_cache: join(root, "cache"), npm_config_fetch_retries: "0", npm_config_update_notifier: "false", NPM_CONFIG_USERCONFIG: "/dev/null" }
+			writeFileSync(join(cwd, "github-output"), "")
+			writeFileSync(join(cwd, "github-summary"), "")
+			const env = { ...process.env, GITHUB_OUTPUT: join(cwd, "github-output"), GITHUB_STEP_SUMMARY: join(cwd, "github-summary"), npm_config_registry: registry, npm_config_cache: join(root, "cache"), npm_config_fetch_retries: "0", npm_config_update_notifier: "false", NPM_CONFIG_USERCONFIG: "/dev/null" }
 			const child = spawn(process.execPath, [script], { cwd, env })
 			let output = ""
 			child.stdout.on("data", data => {
@@ -87,6 +89,11 @@ void test("daily updates preserve dev dependencies and skip dev-only releases", 
 		const dir = fixture("production")
 		const result = await run(dir)
 		assert.equal(result.status, 0, result.output)
+		assert.equal(readFileSync(join(dir, "github-output"), "utf8"), "changed=true\ncount=2\n")
+		const summary = readFileSync(join(dir, "github-summary"), "utf8")
+		assert.match(summary, /fixture-leaf.*1\.0\.0.*1\.0\.1/)
+		assert.match(summary, /@fixture\/optional.*1\.0\.0.*1\.0\.1/)
+		assert.doesNotMatch(summary, /fixture-lint|fixture-build/)
 		const lock = JSON.parse(readFileSync(join(dir, "package-lock.json"), "utf8")) as { packages: Record<string, { version: string }> }
 		assert.equal(lock.packages["node_modules/fixture-runtime"]?.version, "1.0.0", "exact pins stay pinned")
 		assert.equal(lock.packages["node_modules/fixture-leaf"]?.version, "1.0.1", "production transitive dependencies update within range")
@@ -100,6 +107,8 @@ void test("daily updates preserve dev dependencies and skip dev-only releases", 
 		const unchanged = await run(dir)
 		assert.equal(unchanged.status, 0, unchanged.output)
 		assert.match(unchanged.output, /No production dependency changes/)
+		assert.equal(readFileSync(join(dir, "github-output"), "utf8"), "changed=false\ncount=0\n")
+		assert.match(readFileSync(join(dir, "github-summary"), "utf8"), /Production dependencies unchanged/)
 		assert.equal(readFileSync(join(dir, "package-lock.json"), "utf8"), stable, "dev-only updates cannot create a lockfile diff")
 
 		const devOnly = fixture("dev-only", false)
