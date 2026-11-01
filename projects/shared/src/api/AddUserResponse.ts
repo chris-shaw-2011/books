@@ -15,6 +15,7 @@ export default class AddUserResponse extends ApiMessage {
 
 	constructor(json?: Partial<AddUserResponse> | Partial<typia.Primitive<AddUserResponse>>) {
 		const data = json ?? {}
+
 		super()
 
 		this.successful = data.successful ?? false

@@ -11,10 +11,12 @@ function assertUploadTimes(directory: Directory, min: number | undefined, max: n
 void test("directory upload bounds include direct and nested books, skipping empty folders", () => {
 	const nested = new Directory({ items: [new Book({ uploadTime: 100 }), new Book({ uploadTime: 900 }), new Directory()] })
 	const directory = new Directory()
+
 	directory.items = [new Directory(), new Book({ uploadTime: 500 }), nested]
 	assertUploadTimes(directory, 100, 900)
 
 	const book = nested.items[0]
+
 	assert.ok(book instanceof Book)
 	book.uploadTime = new Date(1200)
 	assertUploadTimes(directory, 500, 1200)
@@ -32,6 +34,7 @@ void test("only books serialize upload times and library responses restore recur
 	const book = new Book({ id: "book", uploadTime: 1234 })
 	const directory = new Directory({ items: [new Directory({ items: [book] })] })
 	const json = JSON.stringify(new Books({ directory }))
+
 	assert.equal((json.match(/"uploadTime"/g) ?? []).length, 1)
 	assert.equal(json.includes("minUploadTime"), false)
 	assert.equal(json.includes("maxUploadTime"), false)
@@ -39,11 +42,14 @@ void test("only books serialize upload times and library responses restore recur
 	assert.equal(new Book(book.toJSON()).uploadTime.getTime(), 1234)
 
 	const restored = Books.fromUnknown(JSON.parse(json)).directory
+
 	assert.equal(restored.minUploadTime?.getTime(), 1234)
 	assert.equal(restored.maxUploadTime?.getTime(), 1234)
 	const nested = restored.items[0]
+
 	assert.ok(nested instanceof Directory)
 	const restoredBook = nested.items[0]
+
 	assert.ok(restoredBook instanceof Book)
 	assert.ok(restoredBook.uploadTime instanceof Date)
 	assert.equal(restoredBook.uploadTime.getTime(), 1234)
@@ -52,11 +58,13 @@ void test("only books serialize upload times and library responses restore recur
 void test("Audible snapshot restoration calculates bounds without restoring legacy folder timestamps", () => {
 	const directory = new AudibleImportDirectory()
 	const nested = new AudibleImportDirectory()
+
 	nested.items = [new AudibleImportBook({ asin: "ONE", uploadTime: new Date(100), percentage: 42 })]
 	directory.items = [nested, new AudibleImportBook({ asin: "TWO", uploadTime: new Date(900) })]
 	const snapshot = { id: "snapshot", phase: "selecting", operation: "", currentTitle: "", total: 0, skipped: 0, downloaded: 0, failed: 0, remaining: 0, activity: [], books: [{ ...directory.toJSON(), uploadTime: 9999 }] }
 	const restored = AudibleImportResponse.snapshotFromUnknown(JSON.parse(JSON.stringify(snapshot)))
 	const folder = restored.books[0]
+
 	assert.ok(folder instanceof AudibleImportDirectory)
 	assert.ok(folder.items[0] instanceof AudibleImportDirectory)
 	assert.equal("uploadTime" in folder, false)
@@ -66,6 +74,7 @@ void test("Audible snapshot restoration calculates bounds without restoring lega
 	assert.equal(audibleBooks(restored.books)[0]?.percentage, 42)
 	const sorted = orderItems(restored.books, "Uploaded - Descending")
 	const sortedFolder = sorted[0]
+
 	assert.ok(sortedFolder instanceof AudibleImportDirectory)
 	assert.ok(sortedFolder.items[1] instanceof AudibleImportDirectory)
 	assert.equal(audibleBooks(sortedFolder.items)[1], audibleBooks(folder.items)[0])
@@ -76,9 +85,11 @@ void test("Audible directories recursively construct import children and inherit
 		new AudibleImportDirectory({ items: [new AudibleImportBook({ asin: "ONE", percentage: 42, importStatus: "downloading", uploadTime: new Date(1234) })] }),
 	] })
 	const restored = AudibleImportDirectory.fromUnknown(JSON.parse(JSON.stringify(source)))
+
 	assert.ok(restored instanceof Directory)
 	assert.ok(restored.items[0] instanceof AudibleImportDirectory)
 	const book = audibleBooks(restored.items)[0]
+
 	assert.ok(book instanceof AudibleImportBook)
 	assert.equal(book.percentage, 42)
 	assert.equal(book.importStatus, "downloading")
@@ -95,9 +106,11 @@ void test("upload comparators use recursive directory bounds before children are
 	const nested = new Directory({ items: [new Book({ uploadTime: 900 }), new Book({ uploadTime: 100 })] })
 	const folder = new Directory({ items: [new Directory(), nested] })
 	const middle = new Book({ uploadTime: 500 })
+
 	assert.ok(itemOrders["Uploaded - Ascending"](folder, middle) < 0)
 	assert.ok(itemOrders["Uploaded - Descending"](folder, middle) < 0)
 	const empty = new Directory()
+
 	assert.ok(itemOrders["Uploaded - Ascending"](empty, middle) < 0)
 	assert.ok(itemOrders["Uploaded - Descending"](empty, middle) > 0)
 })

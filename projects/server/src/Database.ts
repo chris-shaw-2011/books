@@ -210,7 +210,11 @@ function normalizeBookStatusesValue(value: SQLOutputValue) {
 
 	try {
 		const statuses: unknown = JSON.parse(value)
-		if (typeof statuses !== "object" || statuses === null || Array.isArray(statuses)) return "{}"
+
+		if (typeof statuses !== "object" || statuses === null || Array.isArray(statuses)) {
+			return "{}"
+		}
+
 		return JSON.stringify(statuses)
 	}
 	catch {
@@ -275,6 +279,7 @@ function assertSupportedSchema(database: DatabaseSync, dbLocation: string) {
 
 	if (version === 0 && tableNames.length === 0) {
 		initializeDatabase(database)
+
 		return
 	}
 
@@ -558,6 +563,7 @@ class DatabaseClass implements SettingsStore {
 			catch {
 				// Ignore rollback errors when SQLite already aborted the transaction.
 			}
+
 			throw error
 		}
 	}

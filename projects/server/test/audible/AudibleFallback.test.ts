@@ -18,27 +18,39 @@ void test("falls back through high-quality AAC sources when preferred downloads 
 		spawn: async (args, directory): Promise<AudibleProcess> => {
 			let onData: (data: string) => void = () => undefined
 			let onExit: (code: number) => void = () => undefined
+
 			return {
 				write: () => setImmediate(() => onExit(0)),
 				kill: () => onExit(1),
-				onData: callback => { onData = callback },
+				onData: callback => {
+					onData = callback
+				},
 				onExit: callback => {
 					onExit = callback
 					setImmediate(() => {
 						void (async () => {
 							if (args[0] === "login-external") {
 								onData(`${loginUrl}\r\n`)
+
 								return
 							}
-							if (args[0] === "export" && args[2]) await fs.writeFile(args[2], JSON.stringify([libationBook({ AudibleProductId: "B000000001", Title: "Fallback" })]))
+
+							if (args[0] === "export" && args[2]) {
+								await fs.writeFile(args[2], JSON.stringify([libationBook({ AudibleProductId: "B000000001", Title: "Fallback" })]))
+							}
+
 							if (args[0] === "liberate") {
 								attempts.push(args)
+
 								if (attempts.length < 3) {
 									onExit(1)
+
 									return
 								}
+
 								await fs.writeFile(path.join(directory, "audio", "Fallback.m4b"), "fixture")
 							}
+
 							onExit(0)
 						})()
 					})
@@ -49,14 +61,28 @@ void test("falls back through high-quality AAC sources when preferred downloads 
 		hasAsin: async () => false,
 		publish: async () => new Book({ name: "Fallback" }),
 	}, path.join(root, "sessions"))
+
 	try {
 		const started = await service.start("reader", "reader@example.com", "us")
+
 		assert.ok(started)
-		for (let i = 0; i < 100 && !service.snapshot("reader")?.loginUrl; i++) await new Promise(resolve => setTimeout(resolve, 5))
+
+		for (let i = 0; i < 100 && !service.snapshot("reader")?.loginUrl; i++) {
+			await new Promise(resolve => setTimeout(resolve, 5))
+		}
+
 		service.redirect("reader", started.id, redirectUrl)
-		for (let i = 0; i < 100 && service.snapshot("reader")?.phase !== "selecting"; i++) await new Promise(resolve => setTimeout(resolve, 5))
+
+		for (let i = 0; i < 100 && service.snapshot("reader")?.phase !== "selecting"; i++) {
+			await new Promise(resolve => setTimeout(resolve, 5))
+		}
+
 		service.select("reader", started.id, ["B000000001"])
-		for (let i = 0; i < 100 && service.snapshot("reader")?.phase !== "complete"; i++) await new Promise(resolve => setTimeout(resolve, 5))
+
+		for (let i = 0; i < 100 && service.snapshot("reader")?.phase !== "complete"; i++) {
+			await new Promise(resolve => setTimeout(resolve, 5))
+		}
+
 		assert.equal(service.snapshot("reader")?.downloaded, 1)
 		assert.equal(attempts.length, 3)
 		assert.ok(attempts[0]?.includes("Request_xHE_AAC=true"))

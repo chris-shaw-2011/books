@@ -56,6 +56,7 @@ const EditSettings = (props: Props) => {
 
 			if (ret.successful) {
 				props.onSettingsSaved()
+
 				return
 			}
 			else {

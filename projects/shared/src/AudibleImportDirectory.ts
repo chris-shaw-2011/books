@@ -12,6 +12,7 @@ export default class AudibleImportDirectory extends Directory {
 
 	constructor(json?: Partial<AudibleImportDirectory> | Partial<typia.Primitive<AudibleImportDirectory>>) {
 		const data = json ?? {}
+
 		super({ ...data, items: [] })
 		this.items = data.items?.map(item => item.type === "Book" ? new AudibleImportBook(item) : new AudibleImportDirectory(item)) ?? []
 	}

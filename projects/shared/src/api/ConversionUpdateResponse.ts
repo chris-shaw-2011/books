@@ -18,6 +18,7 @@ export default class ConversionUpdateResponse extends ApiMessage {
 
 	constructor(json?: Partial<ConversionUpdateResponse> | Partial<typia.Primitive<ConversionUpdateResponse>>) {
 		const data = json ?? {}
+
 		super()
 
 		this.conversionPercent = data.conversionPercent ?? 0

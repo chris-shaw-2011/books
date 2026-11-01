@@ -14,6 +14,7 @@ export default class SettingsRequired extends ApiMessage {
 
 	constructor(json?: Partial<SettingsRequired>) {
 		const data = json ?? {}
+
 		super()
 
 		this.message = data.message ?? ""

@@ -16,10 +16,16 @@ export default class AudibleImportResponse extends ApiMessage {
 
 	constructor(json?: Partial<AudibleImportResponse> | Partial<typia.Primitive<AudibleImportResponse>>) {
 		const data = json ?? {}
+
 		super()
 
-		if (data.snapshot) this.snapshot = AudibleImportResponse.restoreSnapshot(data.snapshot)
-		if (data.errorMessage) this.errorMessage = data.errorMessage
+		if (data.snapshot) {
+			this.snapshot = AudibleImportResponse.restoreSnapshot(data.snapshot)
+		}
+
+		if (data.errorMessage) {
+			this.errorMessage = data.errorMessage
+		}
 	}
 
 	static snapshotFromUnknown(json: unknown): AudibleImportSnapshot {

@@ -70,12 +70,15 @@ const DropdownButton = <T extends string>({ id, title, options, onSelect, onClic
 		if (naturalRight > window.innerWidth - viewportPadding) {
 			offsetX = window.innerWidth - viewportPadding - naturalRight
 		}
+
 		if (naturalLeft + offsetX < viewportPadding) {
 			offsetX += viewportPadding - (naturalLeft + offsetX)
 		}
+
 		if (naturalBottom > window.innerHeight - viewportPadding) {
 			offsetY = window.innerHeight - viewportPadding - naturalBottom
 		}
+
 		if (naturalTop + offsetY < viewportPadding) {
 			offsetY += viewportPadding - (naturalTop + offsetY)
 		}
@@ -115,39 +118,46 @@ const DropdownButton = <T extends string>({ id, title, options, onSelect, onClic
 		switch (event.key) {
 			case "ArrowDown":
 				event.preventDefault()
+
 				if (open) {
 					focusItem(activeIndex + 1)
 				}
 				else {
 					openAndFocus(0)
 				}
+
 				break
 			case "ArrowUp":
 				event.preventDefault()
+
 				if (open) {
 					focusItem(activeIndex < 0 ? -1 : activeIndex - 1)
 				}
 				else {
 					openAndFocus(-1)
 				}
+
 				break
 			case "Home":
 				if (open) {
 					event.preventDefault()
 					focusItem(0)
 				}
+
 				break
 			case "End":
 				if (open) {
 					event.preventDefault()
 					focusItem(-1)
 				}
+
 				break
 			case "Escape":
 				if (open) {
 					event.preventDefault()
 					closeAndFocusToggle()
 				}
+
 				break
 			case "Tab":
 				setOpen(false)
@@ -186,7 +196,9 @@ const DropdownButton = <T extends string>({ id, title, options, onSelect, onClic
 								onSelect(option.value, event)
 								closeAndFocusToggle()
 							}}
-							ref={element => { itemButtonsRef.current[index] = element }}
+							ref={element => {
+								itemButtonsRef.current[index] = element
+							}}
 							role="menuitem"
 							tabIndex={-1}
 							type="button"

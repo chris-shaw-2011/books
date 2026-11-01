@@ -20,13 +20,20 @@ void test("daily updates preserve dev dependencies and skip dev-only releases", 
 	const server = createServer((request, response) => {
 		requests++
 		response.setHeader("content-type", "application/json")
+
 		if (request.url?.startsWith("/-/npm/v1/security/")) {
 			response.writeHead(failAudit ? 503 : 200)
 			response.end(JSON.stringify(failAudit ? { error: "Fixture registry failure" } : {}))
+
 			return
 		}
+
 		const name = decodeURIComponent(request.url?.slice(1) ?? "")
-		if (name.includes("/-/")) tarballs++
+
+		if (name.includes("/-/")) {
+			tarballs++
+		}
+
 		const versions = Object.fromEntries(["1.0.0", "1.0.1", "2.0.0"].map(version => [version, {
 			name,
 			version,
@@ -36,18 +43,22 @@ void test("daily updates preserve dev dependencies and skip dev-only releases", 
 				integrity: `sha512-${Buffer.from(version).toString("base64")}`,
 			},
 		}]))
+
 		response.end(JSON.stringify({ name, "dist-tags": { latest: "2.0.0" }, versions }))
 	})
+
 	try {
 		await new Promise<void>((resolve, reject) => {
 			server.once("error", reject)
 			server.listen(0, "127.0.0.1", resolve)
 		})
 		const address = server.address()
+
 		assert.ok(address && typeof address !== "string")
 		registry = `http://127.0.0.1:${address.port}`
 		const fixture = (name: string, production = true) => {
 			const dir = join(root, name)
+
 			mkdirSync(join(dir, "projects/app"), { recursive: true })
 			const pkg = { name: "fixture", version: "1.0.0.1", private: true, workspaces: ["projects/*"], scripts: { postinstall: "touch installed-marker" } }
 			const app = {
@@ -56,9 +67,14 @@ void test("daily updates preserve dev dependencies and skip dev-only releases", 
 				devDependencies: { "fixture-lint": "^1.0.0", "fixture-build": "^1.0.0" },
 			}
 			const packages: Record<string, unknown> = { "": pkg, "projects/app": app, "node_modules/fixture-app": { resolved: "projects/app", link: true } }
+
 			for (const dependency of ["fixture-runtime", "fixture-leaf", "@fixture/optional", "fixture-lint", "fixture-build"]) {
 				const dev = ["fixture-lint", "fixture-build"].includes(dependency)
-				if (!production && !dev) continue
+
+				if (!production && !dev) {
+					continue
+				}
+
 				packages[`node_modules/${dependency}`] = {
 					version: "1.0.0", resolved: `${registry}/${dependency}/-/1.0.0.tgz`, integrity: `sha512-${Buffer.from("1.0.0").toString("base64")}`,
 					...(dev && { dev: true }),
@@ -66,9 +82,11 @@ void test("daily updates preserve dev dependencies and skip dev-only releases", 
 					...(dependency === "fixture-runtime" && { dependencies: { "fixture-leaf": "^1.0.0" } }),
 				}
 			}
+
 			writeFileSync(join(dir, "package.json"), JSON.stringify(pkg))
 			writeFileSync(join(dir, "projects/app/package.json"), JSON.stringify(app))
 			writeFileSync(join(dir, "package-lock.json"), `${JSON.stringify({ name: "fixture", version: "1.0.0.1", lockfileVersion: 3, requires: true, packages }, null, "\t")}\n`)
+
 			return dir
 		}
 		const run = (cwd: string) => new Promise<{ status: number | null, output: string }>((resolve, reject) => {
@@ -77,6 +95,7 @@ void test("daily updates preserve dev dependencies and skip dev-only releases", 
 			const env = { ...process.env, GITHUB_OUTPUT: join(cwd, "github-output"), GITHUB_STEP_SUMMARY: join(cwd, "github-summary"), npm_config_registry: registry, npm_config_cache: join(root, "cache"), npm_config_fetch_retries: "0", npm_config_update_notifier: "false", NPM_CONFIG_USERCONFIG: "/dev/null" }
 			const child = spawn(process.execPath, ["--require", fileURLToPath(import.meta.resolve("ttsc/register")), script], { cwd, env })
 			let output = ""
+
 			child.stdout.on("data", data => {
 				output += String(data)
 			})
@@ -89,13 +108,16 @@ void test("daily updates preserve dev dependencies and skip dev-only releases", 
 
 		const dir = fixture("production")
 		const result = await run(dir)
+
 		assert.equal(result.status, 0, result.output)
 		assert.equal(readFileSync(join(dir, "github-output"), "utf8"), "changed=true\ncount=2\n")
 		const summary = readFileSync(join(dir, "github-summary"), "utf8")
+
 		assert.match(summary, /fixture-leaf.*1\.0\.0.*1\.0\.1/)
 		assert.match(summary, /@fixture\/optional.*1\.0\.0.*1\.0\.1/)
 		assert.doesNotMatch(summary, /fixture-lint|fixture-build/)
 		const lock = Lockfile.fromUnknown(JSON.parse(readFileSync(join(dir, "package-lock.json"), "utf8")))
+
 		assert.equal(lock.packages["node_modules/fixture-runtime"]?.version, "1.0.0", "exact pins stay pinned")
 		assert.equal(lock.packages["node_modules/fixture-leaf"]?.version, "1.0.1", "production transitive dependencies update within range")
 		assert.equal(lock.packages["node_modules/@fixture/optional"]?.version, "1.0.1", "scoped optional production dependencies update")
@@ -106,6 +128,7 @@ void test("daily updates preserve dev dependencies and skip dev-only releases", 
 		assert.equal(tarballs, 0)
 		const stable = readFileSync(join(dir, "package-lock.json"), "utf8")
 		const unchanged = await run(dir)
+
 		assert.equal(unchanged.status, 0, unchanged.output)
 		assert.match(unchanged.output, /No production dependency changes/)
 		assert.equal(readFileSync(join(dir, "github-output"), "utf8"), "changed=false\ncount=0\n")
@@ -115,6 +138,7 @@ void test("daily updates preserve dev dependencies and skip dev-only releases", 
 		const devOnly = fixture("dev-only", false)
 		const previousRequests = requests
 		const original = readFileSync(join(devOnly, "package-lock.json"), "utf8")
+
 		assert.equal((await run(devOnly)).status, 0)
 		assert.equal(requests, previousRequests)
 		assert.equal(readFileSync(join(devOnly, "package-lock.json"), "utf8"), original)

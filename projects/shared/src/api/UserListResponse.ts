@@ -14,6 +14,7 @@ export default class UserListResponse extends ApiMessage {
 
 	constructor(json?: Partial<UserListResponse> | Partial<typia.Primitive<UserListResponse>>) {
 		const data = json ?? {}
+
 		super()
 
 		this.users = data.users?.map(u => new User(u)) ?? []

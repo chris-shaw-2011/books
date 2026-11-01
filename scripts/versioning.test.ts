@@ -10,8 +10,10 @@ import { fileURLToPath } from "node:url"
 
 void test("code versions keep three parts and automatic dependency revisions use four", () => {
 	const root = mkdtempSync(join(tmpdir(), "books-versions-"))
+
 	try {
 		const repo = join(root, "work")
+
 		mkdirSync(repo)
 		const output = join(root, "output")
 		const env = {
@@ -22,7 +24,9 @@ void test("code versions keep three parts and automatic dependency revisions use
 		}
 		const run = (command: string, args: string[]) => {
 			const result = spawnSync(command, args, { cwd: repo, env, encoding: "utf8" })
+
 			assert.equal(result.status, 0, result.stdout + result.stderr)
+
 			return result.stdout.trim()
 		}
 		const git = (...args: string[]) => run("git", args)
@@ -33,12 +37,14 @@ void test("code versions keep three parts and automatic dependency revisions use
 		const commit = (message: string) => {
 			git("add", ".")
 			git("commit", "--allow-empty", "-m", message)
+
 			return git("rev-parse", "HEAD")
 		}
 		const bump = (expected: string) => {
 			assert.equal(run(process.execPath, ["--require", fileURLToPath(import.meta.resolve("ttsc/register")), fileURLToPath(new URL("./bump-update-version.ts", import.meta.url))]), expected)
 			const pkg = PackageManifest.fromUnknown(JSON.parse(readFileSync(join(repo, "package.json"), "utf8")))
 			const lock = VersionedLockfile.fromUnknown(JSON.parse(readFileSync(join(repo, "package-lock.json"), "utf8")))
+
 			assert.equal(pkg.version, expected)
 			assert.equal(lock.version, expected)
 			assert.equal(lock.packages[""].version, expected)
@@ -49,11 +55,14 @@ void test("code versions keep three parts and automatic dependency revisions use
 			writeFileSync(output, "")
 			writeFileSync(env.GITHUB_STEP_SUMMARY, "")
 			run("bash", [fileURLToPath(new URL("./tag-version.sh", import.meta.url)), ...(check ? ["--check"] : [])])
+
 			return Object.fromEntries(readFileSync(output, "utf8").trim().split("\n").map(line => {
 				const [key = "", value = ""] = line.split("=")
+
 				return [key, value] as const
 			}))
 		}
+
 		git("init", "--bare", join(root, "remote.git"))
 		git("init", "-b", "master")
 		git("remote", "add", "origin", join(root, "remote.git"))
@@ -78,6 +87,7 @@ void test("code versions keep three parts and automatic dependency revisions use
 
 		bump("1.7.0.1")
 		const first = commit("dependency update")
+
 		assert.deepEqual(tag(), { changed: "true", version: "1.7.0.1" })
 		assert.equal(git("rev-parse", "latest"), first)
 		assert.equal(git("rev-parse", "1.7.0.1"), first)

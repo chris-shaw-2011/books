@@ -7,7 +7,15 @@ interface Props extends React.InputHTMLAttributes<HTMLInputElement> {
 
 const CheckboxField = ({ label, indeterminate = false, ...props }: Props) => (
 	<label className={styles.checkbox}>
-		<input type="checkbox" {...props} ref={input => { if (input) input.indeterminate = indeterminate }} />
+		<input
+			type="checkbox"
+			{...props}
+			ref={input => {
+				if (input) {
+					input.indeterminate = indeterminate
+				}
+			}}
+		/>
 		{label}
 	</label>
 )

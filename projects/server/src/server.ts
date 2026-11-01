@@ -36,9 +36,14 @@ const server = Fastify({ logger: false, bodyLimit: 10_000_000_000, ajv: { custom
 const audibleImporter = createAudibleImporter(() => db.settings, async filePath => {
 	await bookList.fileAdded(filePath)
 	const book = bookList.findBookByPath(filePath)
-	if (!book) throw new Error("Imported book could not be indexed")
+
+	if (!book) {
+		throw new Error("Imported book could not be indexed")
+	}
+
 	return new shared.Book(book)
 }, asin => bookList.hasAsin(asin), { library: () => bookList.allBooks() })
+
 registerAudibleRoutes(server, audibleImporter)
 const rootPath = path.join(rootDir, "../../../../bin/projects/client")
 const immutableAssetOptions = { immutable: true, maxAge: "1y" } as const
@@ -278,6 +283,7 @@ server.post<{ Body: shared.AddUserRequest }>("/addUser", { preHandler: validateA
 		}
 		else {
 			const userId = crypto.randomUUID()
+
 			db.transaction(() => {
 				db.insertInvitedUser(userId, userRequest.user.email, userRequest.user.isAdmin)
 			})
@@ -468,7 +474,10 @@ server.post<{ Body: shared.ConversionUpdateRequest }>("/conversionUpdate", { pre
 
 		if (conversion.status === "Complete") {
 			const book = bookList.findBookByPath(conversion.convertedFilePath)
-			if (book) response.book = book
+
+			if (book) {
+				response.book = book
+			}
 		}
 	}
 	else {
@@ -498,10 +507,15 @@ server.post<{ Body: shared.AddFolderRequest }>("/addFolder", { preHandler: valid
 })
 
 server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preValidation: validateAdminRequest, schema: updateBookSchema, attachValidation: true }, async (request, reply) => {
-	if (request.validationError) return reply.code(400).send(new shared.UpdateBookResponse({ message: request.validationError.message }))
+	if (request.validationError) {
+		return reply.code(400).send(new shared.UpdateBookResponse({ message: request.validationError.message }))
+	}
+
 	const updateBookRequest = shared.UpdateBookRequest.fromUnknown(request.body)
-	// eslint-disable-next-line @stylistic/max-statements-per-line
-	const token = request.userToken ?? (() => { throw new Error() })()
+
+	const token = request.userToken ?? (() => {
+		throw new Error()
+	})()
 	const book = (await bookList.allBooks()).findById(updateBookRequest.newBook.id)
 	const newBook = updateBookRequest.newBook
 
@@ -516,6 +530,7 @@ server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preValidation: 
 
 	try {
 		await bookList.pauseUpdates()
+
 		if (newBook.series && newBook.seriesOrder !== undefined && book.fullPath !== newPath) {
 			await seriesDestination(db.settings.baseBooksPath, newBook.folderPath)
 		}

@@ -91,7 +91,9 @@ const BookLink = (props: BookProps) => {
 	const selectable = selecting && importBook?.importStatus === "available"
 	const selected = Boolean(selectable && controller?.selected.includes(book.asin))
 	const toggleSelection = () => {
-		if (selectable && controller && !controller.busy) controller.select(selected ? controller.selected.filter(asin => asin !== book.asin) : [...controller.selected, book.asin])
+		if (selectable && controller && !controller.busy) {
+			controller.select(selected ? controller.selected.filter(asin => asin !== book.asin) : [...controller.selected, book.asin])
+		}
 	}
 	const [changingStatus, setChangingStatus] = useState(false)
 	const [failedCover, setFailedCover] = useState<string>()
@@ -125,8 +127,10 @@ const BookLink = (props: BookProps) => {
 
 			if (ret.message) {
 				setEditingState({ status: "Editing", alertMessage: ret.message })
+
 				return
 			}
+
 			updateBooks(ret.books.directory)
 			setEditingState({ status: "ReadOnly" })
 
@@ -151,17 +155,24 @@ const BookLink = (props: BookProps) => {
 	}
 	const organizeSeries = () => {
 		const organization = suggestSeriesOrganization({ name: draft.series, order: draft.seriesOrder }, rootDirectory)
+
 		if (!organization || draft.seriesOrder === undefined) {
 			setEditingState({ status: "Editing", alertMessage: "Enter a reading order and choose a series with an unambiguous folder." })
+
 			return
 		}
+
 		updateDraft({ name: seriesBookTitle(draft.name, draft.seriesOrder, organization.padding), folderPath: organization.folderPath })
 	}
 	const changeSeriesOrder = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const value = event.target.value === "" ? undefined : event.target.valueAsNumber
+
 		updateDraft({ seriesOrder: value })
 		const prefix = /^(\d+)(?:\.\d+)?\s+-\s+/.exec(draft.name)?.[1]
-		if (prefix && value !== undefined && event.target.validity.valid) updateDraft({ name: seriesBookTitle(draft.name, value, prefix.startsWith("0") ? prefix.length : 1) })
+
+		if (prefix && value !== undefined && event.target.validity.valid) {
+			updateDraft({ name: seriesBookTitle(draft.name, value, prefix.startsWith("0") ? prefix.length : 1) })
+		}
 	}
 
 	const Content = editing ? "form" : "div"
@@ -175,9 +186,19 @@ const BookLink = (props: BookProps) => {
 			aria-disabled={importBook?.importStatus === "skipped" || undefined}
 			onClick={event => {
 				event.stopPropagation()
-				if (!(event.target instanceof Element)) return
-				if (event.target.closest("input, select, textarea, button, a, label, summary")) return
-				if (event.currentTarget.querySelector("details")?.contains(event.target)) return
+
+				if (!(event.target instanceof Element)) {
+					return
+				}
+
+				if (event.target.closest("input, select, textarea, button, a, label, summary")) {
+					return
+				}
+
+				if (event.currentTarget.querySelector("details")?.contains(event.target)) {
+					return
+				}
+
 				toggleSelection()
 			}}
 		>
@@ -187,35 +208,94 @@ const BookLink = (props: BookProps) => {
 					<div>
 						{alertMessage ? <Alert variant="danger">{alertMessage}</Alert> : null}
 						<div className={classnames(styles.title, styles.editable)}>
-							{selectable ? <CheckboxField label={book.name} checked={selected} disabled={controller?.busy} onChange={toggleSelection} /> : <EditableTextbox editing={editing} value={editing ? draft.name : book.name} placeholder="Title" onChange={e => { updateDraft({ name: e.target.value }) }} />}
+							{selectable ?
+									<CheckboxField label={book.name} checked={selected} disabled={controller?.busy} onChange={toggleSelection} /> :
+									(
+										<EditableTextbox
+											editing={editing}
+											value={editing ? draft.name : book.name}
+											placeholder="Title"
+											onChange={e => {
+												updateDraft({ name: e.target.value })
+											}}
+										/>
+									)}
 							{!editing && !selecting && book.download && token.user.isAdmin && (
 								<Edit onClick={editClick} />
 							)}
 						</div>
 						{Boolean(editing || book.comment) && (
 							<div className={classnames(styles.description, styles.editable)}>
-								{editing ? <TextareaAutosize value={draft.comment} minRows={3} placeholder="Description" required={true} onChange={e => { updateDraft({ comment: e.target.value }) }} /> : <Highlight text={book.comment} />}
+								{editing ?
+										(
+											<TextareaAutosize
+												value={draft.comment}
+												minRows={3}
+												placeholder="Description"
+												required={true}
+												onChange={e => {
+													updateDraft({ comment: e.target.value })
+												}}
+											/>
+										) :
+										<Highlight text={book.comment} />}
 							</div>
 						)}
 						{Boolean(editing || book.author || book.year) && (
 							<div className={classnames(styles.author, styles.editable)}>
-								<EditableTextboxField editing={editing} label="Author" value={editing ? draft.author : book.author} placeholder="Author" onChange={e => { updateDraft({ author: e.target.value }) }} />
+								<EditableTextboxField
+									editing={editing}
+									label="Author"
+									value={editing ? draft.author : book.author}
+									placeholder="Author"
+									onChange={e => {
+										updateDraft({ author: e.target.value })
+									}}
+								/>
 								{Boolean(editing || book.year) && (
 									<>
 										,&nbsp;
-										<EditableTextbox editing={editing} value={editing ? Number.isNaN(draft.year) ? "" : draft.year : book.year} placeholder="Year" type="number" min="1700" max={new Date().getFullYear()} size={4} className={styles.year} onChange={e => { updateDraft({ year: e.target.valueAsNumber }) }} />
+										<EditableTextbox
+											editing={editing}
+											value={editing ? Number.isNaN(draft.year) ? "" : draft.year : book.year}
+											placeholder="Year"
+											type="number"
+											min="1700"
+											max={new Date().getFullYear()}
+											size={4}
+											className={styles.year}
+											onChange={e => {
+												updateDraft({ year: e.target.valueAsNumber })
+											}}
+										/>
 									</>
 								)}
 							</div>
 						)}
 						{Boolean(editing || book.narrator) && (
 							<div className={classnames(styles.narrator, styles.editable)}>
-								<EditableTextboxField editing={editing} label="Narrator" value={editing ? draft.narrator : book.narrator} placeholder="Narrator" onChange={e => { updateDraft({ narrator: e.target.value }) }} />
+								<EditableTextboxField
+									editing={editing}
+									label="Narrator"
+									value={editing ? draft.narrator : book.narrator}
+									placeholder="Narrator"
+									onChange={e => {
+										updateDraft({ narrator: e.target.value })
+									}}
+								/>
 							</div>
 						)}
 						{Boolean(editing || book.genre) && (
 							<div className={classnames(styles.genre, styles.editable)}>
-								<EditableTextboxField editing={editing} label="Genre" value={editing ? draft.genre : book.genre} placeholder="Genre" onChange={e => { updateDraft({ genre: e.target.value }) }} />
+								<EditableTextboxField
+									editing={editing}
+									label="Genre"
+									value={editing ? draft.genre : book.genre}
+									placeholder="Genre"
+									onChange={e => {
+										updateDraft({ genre: e.target.value })
+									}}
+								/>
 							</div>
 						)}
 						{editing ?
@@ -229,7 +309,17 @@ const BookLink = (props: BookProps) => {
 											}}
 											onOrderChange={changeSeriesOrder}
 										/>
-										<Button type="button" disabled={!draft.series || draft.seriesOrder === undefined} onClick={event => { if (event.currentTarget.form?.reportValidity()) organizeSeries() }}>Use series folder and reading order</Button>
+										<Button
+											type="button"
+											disabled={!draft.series || draft.seriesOrder === undefined}
+											onClick={event => {
+												if (event.currentTarget.form?.reportValidity()) {
+													organizeSeries()
+												}
+											}}
+										>
+											Use series folder and reading order
+										</Button>
 									</div>
 								) :
 							book.series ? <p>{`${book.series}${book.seriesOrder !== undefined ? ` · ${book.seriesOrder}` : ""}`}</p> : null}

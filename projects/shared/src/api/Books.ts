@@ -16,6 +16,7 @@ export default class Books extends ApiMessage {
 
 	constructor(json?: Partial<Books> | Partial<typia.Primitive<Books>>) {
 		const data = json ?? {}
+
 		super()
 
 		this.bookStatuses = new BookStatuses(data.bookStatuses)

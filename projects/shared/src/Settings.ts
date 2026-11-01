@@ -11,6 +11,7 @@ export default class Settings {
 
 	constructor(json?: Partial<Settings>) {
 		const data = json ?? {}
+
 		this.baseBooksPath = data.baseBooksPath ?? process.env.DEFAULT_BASE_BOOKS_PATH ?? ""
 		this.inviteEmail = data.inviteEmail ?? process.env.DEFAULT_INVITE_EMAIL ?? ""
 		this.inviteEmailPassword = data.inviteEmailPassword ?? process.env.DEFAULT_INVITE_EMAIL_PASSWORD ?? ""

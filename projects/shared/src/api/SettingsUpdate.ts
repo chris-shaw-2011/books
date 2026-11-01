@@ -13,6 +13,7 @@ export default class SettingsUpdate extends ApiMessage {
 
 	constructor(json?: Partial<SettingsUpdate>) {
 		const data = json ?? {}
+
 		super()
 
 		this.settings = new Settings(data.settings)

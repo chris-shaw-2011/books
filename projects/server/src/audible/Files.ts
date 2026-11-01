@@ -61,7 +61,7 @@ export async function publishAudio(source: string, destination: string, name: st
 				return target
 			}
 			catch (error) {
-				if ((error as NodeJS.ErrnoException).code !== "EEXIST") {
+				if (!(error instanceof Error) || !("code" in error) || error.code !== "EEXIST") {
 					throw error
 				}
 			}

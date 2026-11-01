@@ -56,8 +56,24 @@ const PasswordChange = ({ onClose, user, actionButtonText, changeHappeningText, 
 					<div className={styles.header}>{actionButtonText}</div>
 					<div className={styles.body}>
 						<label className={styles.email}>{user.email}</label>
-						<TextboxField label="New Password" type="password" placeholder="New Password" required={true} onChange={e => { mergeState({ password: e.currentTarget.value || "" }) }} />
-						<TextboxField label="Confirm New Password" type="password" placeholder="Confirm New Password" required={true} onChange={e => { mergeState({ confirmedPassword: e.currentTarget.value || "" }) }} />
+						<TextboxField
+							label="New Password"
+							type="password"
+							placeholder="New Password"
+							required={true}
+							onChange={e => {
+								mergeState({ password: e.currentTarget.value || "" })
+							}}
+						/>
+						<TextboxField
+							label="Confirm New Password"
+							type="password"
+							placeholder="Confirm New Password"
+							required={true}
+							onChange={e => {
+								mergeState({ confirmedPassword: e.currentTarget.value || "" })
+							}}
+						/>
 						{!passwordsMatch && <Alert variant="danger">Passwords must match</Alert>}
 					</div>
 					<div className={styles.footer}>

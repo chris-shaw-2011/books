@@ -73,8 +73,11 @@ const FolderSelection = ({ value, onChange }: FolderSelectionProps) => {
 	const { logOut } = use(AppContext)
 	const [open, setOpen] = useState(false)
 	const listRef = useRef<HTMLDivElement>(null)
+
 	useEffect(() => {
-		if (open) listRef.current?.getElementsByClassName(styles.selected)[0]?.scrollIntoView({ behavior: "auto", block: "nearest" })
+		if (open) {
+			listRef.current?.getElementsByClassName(styles.selected)[0]?.scrollIntoView({ behavior: "auto", block: "nearest" })
+		}
 	}, [open])
 	const [newFolderState, setNewFolderState] = useState(defaultNewFolderState)
 	const mergeNewFolderState = (obj: Partial<FolderState>) => {
@@ -90,6 +93,7 @@ const FolderSelection = ({ value, onChange }: FolderSelectionProps) => {
 
 		const api = (await import("./api/AdminApi").catch(handleDynamicImportFailure)).default
 		const result = await api.addFolder(value, newFolderName, logOut)
+
 		updateBooks(result.directory)
 		onChange(`${value}${!value.endsWith("/") ? "/" : ""}${newFolderName}`)
 		setNewFolderState(defaultNewFolderState)

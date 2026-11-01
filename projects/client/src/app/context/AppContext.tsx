@@ -34,10 +34,10 @@ AppContext.displayName = "AppContext"
 export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 	const [loginMessage, setLoginMessage] = useState("")
 	const [inviteUserId, setInviteUserId] = useState(window.location.pathname.includes("/invite/") ? window.location.pathname.replace("/invite/", "") : "")
-	const [cookies, setCookies] = useCookies([cookieName], { doNotParse: true })
+	const [cookies, setCookies] = useCookies<typeof cookieName, { loginCookie?: unknown }>([cookieName], { doNotParse: true })
 	const [searchWords, setSearchWords] = useState<readonly string[]>([])
 	const [visibleComponent, setVisibleComponent] = useState<VisibleComponent>("Books")
-	const loginCookie = cookies.loginCookie as string | undefined
+	const loginCookie = typeof cookies.loginCookie === "string" ? cookies.loginCookie : undefined
 	const token = useMemo(() => {
 		if (loginCookie) {
 			try {
@@ -74,6 +74,7 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 			window.history.replaceState({}, document.title, "/")
 			setInviteUserId("")
 		}
+
 		setCookies(cookieName, JSON.stringify(t), { maxAge: 12 * 30 * 24 * 60 * 60, path: "/", sameSite: "strict" })
 		setLoginMessage("")
 		setVisibleComponent("Books")

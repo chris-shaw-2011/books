@@ -30,7 +30,7 @@ const ItemListTabContent = ({ items, toolbarControls }: BookTabProps) => {
 					title={`Sorted: ${sort}`}
 					id={sortId}
 					onSelect={setSort}
-					options={(Object.keys(itemOrders) as ItemOrder[]).map(value => ({ label: value, value }))}
+					options={Object.keys(itemOrders).filter((value): value is ItemOrder => Object.hasOwn(itemOrders, value)).map(value => ({ label: value, value }))}
 					variant="secondary"
 				/>
 				{toolbarControls}

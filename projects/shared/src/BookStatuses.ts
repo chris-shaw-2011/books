@@ -15,7 +15,9 @@ export default class BookStatuses extends Map<string, BookWithStatus> {
 			})
 		}
 		else if (json) {
-			for (const [key, status] of Object.entries(json)) this.set(key, new BookWithStatus(status))
+			for (const [key, status] of Object.entries(json)) {
+				this.set(key, new BookWithStatus(status))
+			}
 		}
 	}
 

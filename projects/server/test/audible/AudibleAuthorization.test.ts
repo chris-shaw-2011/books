@@ -8,6 +8,7 @@ import { User } from "@books/shared"
 
 void test("an authenticated non-admin cannot update book metadata through the API", async () => {
 	const directory = await fs.mkdtemp(path.join(os.tmpdir(), "books-auth-test-"))
+
 	process.env.BOOKS_DB_LOCATION = path.join(directory, "books.sqlite")
 	const { default: db } = await import("../../src/Database.ts")
 	const { default: ServerToken } = await import("../../src/ServerToken.ts")
@@ -19,6 +20,7 @@ void test("an authenticated non-admin cannot update book metadata through the AP
 		const user = new User({ id: randomUUID(), email: "reader@example.com", isAdmin: false })
 		const authorization = randomUUID()
 		const token = await ServerToken.create(user, authorization, db.settings.checksumSecret)
+
 		AuthorizationExpiration.set(authorization, getNewAuthorizationExpiration())
 		const response = await server.inject({
 			method: "POST",

@@ -9,6 +9,7 @@ export function validateRequest(request: FastifyRequest, reply: FastifyReply, do
 		reply.code(401).send(new shared.Unauthorized("Please Log In"))
 
 		done()
+
 		return
 	}
 
@@ -23,6 +24,7 @@ export function validateRequest(request: FastifyRequest, reply: FastifyReply, do
 		reply.code(401).send(new shared.Unauthorized("Session Expired, Please Log In Again"))
 
 		done()
+
 		return
 	}
 

@@ -9,12 +9,18 @@ interface AdminNavOptionsProps {
 
 const AdminNavOptions = ({ setVisibleComponent }: AdminNavOptionsProps) => (
 	<>
-		<SelectListItem onClick={e => { setVisibleComponent(e, "Users") }}>
+		<SelectListItem onClick={e => {
+			setVisibleComponent(e, "Users")
+		}}
+		>
 			<Users />
 			{" "}
 			Manage Users
 		</SelectListItem>
-		<SelectListItem onClick={e => { setVisibleComponent(e, "Settings") }}>
+		<SelectListItem onClick={e => {
+			setVisibleComponent(e, "Settings")
+		}}
+		>
 			<Gear />
 			{" "}
 			Settings

@@ -13,6 +13,7 @@ export default class AddUserRequest extends ApiMessage {
 
 	constructor(json?: Partial<AddUserRequest> | Partial<typia.Primitive<AddUserRequest>>) {
 		const data = json ?? {}
+
 		super()
 
 		this.user = new User(data.user)

@@ -20,6 +20,7 @@ export function registerAudibleRoutes(server: FastifyInstance, importer: Audible
 
 		try {
 			request.body = AudibleStartRequest.fromUnknown(request.body)
+
 			return new AudibleImportResponse({ snapshot: await importer.start(request.userToken?.user.id ?? "", request.body?.account, request.body?.marketplace) })
 		}
 		catch (error) {
@@ -48,10 +49,18 @@ export function registerAudibleRoutes(server: FastifyInstance, importer: Audible
 
 	server.post<AudibleSelection>("/audible/select", { preValidation: validateRequest, schema: audibleSelectionSchema, attachValidation: true }, (request, reply) => {
 		reply.header("Cache-Control", "no-store")
-		if (request.validationError) return reply.code(400).send(new AudibleImportResponse({ errorMessage: request.validationError.message }))
+
+		if (request.validationError) {
+			return reply.code(400).send(new AudibleImportResponse({ errorMessage: request.validationError.message }))
+		}
+
 		try {
 			request.body = AudibleSelectionRequest.fromUnknown(request.body)
-			if (Object.keys(request.body.organizations ?? {}).length && !request.userToken?.user.isAdmin) return reply.code(403).send(new AudibleImportResponse({ errorMessage: "Only administrators can organize series in the library" }))
+
+			if (Object.keys(request.body.organizations ?? {}).length && !request.userToken?.user.isAdmin) {
+				return reply.code(403).send(new AudibleImportResponse({ errorMessage: "Only administrators can organize series in the library" }))
+			}
+
 			return new AudibleImportResponse({ snapshot: importer.select(request.userToken?.user.id ?? "", request.body?.sessionId, request.body?.asins, request.body?.organizations) })
 		}
 		catch (error) {
@@ -61,6 +70,7 @@ export function registerAudibleRoutes(server: FastifyInstance, importer: Audible
 
 	server.get("/audible/status", validateRequestPreHandler, (request, reply) => {
 		reply.header("Cache-Control", "no-store")
+
 		return new AudibleImportResponse({ snapshot: importer.snapshot(request.userToken?.user.id ?? "") })
 	})
 
@@ -99,6 +109,7 @@ export function registerAudibleRoutes(server: FastifyInstance, importer: Audible
 	server.post<AudibleCancel>("/audible/cancel", validateRequestPreHandler, async (request, reply) => {
 		try {
 			request.body = AudibleSessionRequest.fromUnknown(request.body)
+
 			return new AudibleImportResponse({ snapshot: await importer.cancel(request.userToken?.user.id ?? "", request.body?.sessionId) })
 		}
 		catch {
@@ -109,6 +120,7 @@ export function registerAudibleRoutes(server: FastifyInstance, importer: Audible
 	server.post<AudibleReview>("/audible/review", validateRequestPreHandler, async (request, reply) => {
 		try {
 			request.body = AudibleReviewRequest.fromUnknown(request.body)
+
 			return new AudibleImportResponse({ snapshot: importer.review(request.userToken?.user.id ?? "", request.body?.sessionId, request.body?.asin) })
 		}
 		catch {
@@ -120,6 +132,7 @@ export function registerAudibleRoutes(server: FastifyInstance, importer: Audible
 		for (const stream of streams) {
 			stream.end()
 		}
+
 		await importer.shutdown()
 	})
 }

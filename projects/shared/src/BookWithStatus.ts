@@ -11,6 +11,7 @@ export default class BookWithStatus {
 
 	constructor(json?: Partial<BookWithStatus> | Partial<typia.Primitive<BookWithStatus>>) {
 		const data = json ?? {}
+
 		this.status = data.status ?? "Unread"
 		this.dateStatusSet = new Date(data.dateStatusSet ?? 0)
 	}

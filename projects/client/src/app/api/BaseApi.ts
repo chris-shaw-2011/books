@@ -38,6 +38,7 @@ export default abstract class BaseApi {
 		}
 
 		const json: unknown = await response.json()
+
 		return json
 	}
 
@@ -82,6 +83,7 @@ export default abstract class BaseApi {
 
 	private resultType<T extends ApiMessage>(json: unknown, expectedResponseType: ApiResponseClass<T>) {
 		const receivedType = typeof json === "object" && json !== null && "type" in json ? json.type : undefined
+
 		if (receivedType === "AccessDenied") {
 			return AccessDenied.fromUnknown(json)
 		}
@@ -90,6 +92,7 @@ export default abstract class BaseApi {
 		}
 		else {
 			const typeChecker = new expectedResponseType()
+
 			if (typeof receivedType === "string" && typeChecker.type !== receivedType) {
 				return new UnexpectedApiMessageType(receivedType, typeChecker.type)
 			}

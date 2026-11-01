@@ -9,8 +9,10 @@ import { fileURLToPath } from "node:url"
 
 void test("counts available upgrades from the installed image and propagates APT failures", () => {
 	const directory = mkdtempSync(join(tmpdir(), "books-apt-check-"))
+
 	try {
 		const apt = join(directory, "apt-get")
+
 		writeFileSync(apt, [
 			"#!/bin/sh",
 			"if [ \"$1\" = \"update\" ]; then exit \"${MOCK_UPDATE_EXIT:-0}\"; fi",
@@ -23,8 +25,10 @@ void test("counts available upgrades from the installed image and propagates APT
 			encoding: "utf8",
 			env: { ...process.env, PATH: `${directory}:${process.env.PATH}`, MOCK_PLAN: plan, ...extra },
 		})
+
 		assert.equal(run("0 upgraded, 0 newly installed").stdout.trim(), "0")
 		const upgrades = run("Inst curl [1] (2 Debian)\nInst ffmpeg [1] (2 Debian)\n2 upgraded, 0 newly installed")
+
 		assert.equal(upgrades.status, 0)
 		assert.equal(upgrades.stdout.trim(), "2")
 		assert.notEqual(run("", { MOCK_UPDATE_EXIT: "1" }).status, 0)

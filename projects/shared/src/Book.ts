@@ -29,6 +29,7 @@ export default class Book extends ItemBase {
 
 	constructor(json?: Partial<Book> | Partial<typia.Primitive<Book>>, status?: Status) {
 		const data = json ?? {}
+
 		super(data)
 
 		this.uploadTime = new Date(data.uploadTime ?? 0)

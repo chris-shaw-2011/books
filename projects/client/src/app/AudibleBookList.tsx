@@ -21,6 +21,7 @@ const AudibleBookList = ({ snapshot, busy, onSelect, onReview }: Props) => {
 	const [organizationEdits, setOrganizationEdits] = useState<Record<string, SeriesDraft | undefined>>({})
 	const controller = useMemo(() => {
 		const available = audibleBooks(snapshot.books).filter(book => book.importStatus === "available")
+
 		return {
 			selecting: snapshot.phase === "selecting",
 			busy,
@@ -28,8 +29,12 @@ const AudibleBookList = ({ snapshot, busy, onSelect, onReview }: Props) => {
 			selected: available.filter(book => selected.includes(book.asin)).map(book => book.asin),
 			select: setSelected,
 			organizationFor: (book: AudibleImportBook) => {
-				if (Object.hasOwn(organizationEdits, book.asin)) return organizationEdits[book.asin]
+				if (Object.hasOwn(organizationEdits, book.asin)) {
+					return organizationEdits[book.asin]
+				}
+
 				const series = book.seriesChoices.length === 1 ? book.seriesChoices[0] : undefined
+
 				return series && suggestSeriesOrganization(series, rootDirectory)
 			},
 			setOrganization: (asin: string, organization: SeriesDraft | undefined) => setOrganizationEdits(previous => ({ ...previous, [asin]: organization })),
@@ -39,6 +44,7 @@ const AudibleBookList = ({ snapshot, busy, onSelect, onReview }: Props) => {
 	const { selecting, available, selected: selection, organizationFor } = controller
 	const items = useMemo(() => {
 		const visible = showImported ? snapshot.books : filterImportedBooks(snapshot.books)
+
 		return selecting ? visible : audibleBooks(visible).filter(book => book.importStatus !== "available")
 	}, [snapshot.books, selecting, showImported])
 	const Content = selecting ? "form" : "div"
@@ -47,15 +53,23 @@ const AudibleBookList = ({ snapshot, busy, onSelect, onReview }: Props) => {
 		<AudibleImportContext value={controller}>
 			<section aria-label="Audible books" className={selecting ? styles.selection : undefined}>
 				<Content onSubmit={event => {
-					if (!selecting) return
+					if (!selecting) {
+						return
+					}
+
 					event.preventDefault()
 					const organizations: Record<string, SeriesOrganization> = {}
+
 					if (token.user.isAdmin) {
 						for (const book of available.filter(book => selection.includes(book.asin))) {
 							const proposal = organizationFor(book)
-							if (proposal?.series.order !== undefined) organizations[book.asin] = { ...proposal, series: { ...proposal.series, order: proposal.series.order } }
+
+							if (proposal?.series.order !== undefined) {
+								organizations[book.asin] = { ...proposal, series: { ...proposal.series, order: proposal.series.order } }
+							}
 						}
 					}
+
 					onSelect(selection, organizations)
 				}}
 				>

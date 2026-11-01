@@ -15,6 +15,7 @@ export default class Directory extends ItemBase {
 
 	constructor(json?: Partial<Directory> | Partial<typia.Primitive<Directory>>, bookStatuses?: BookStatuses) {
 		const data = json ?? {}
+
 		super(data)
 
 		this.hasBooks = data.hasBooks ?? false
@@ -23,19 +24,29 @@ export default class Directory extends ItemBase {
 
 	get maxUploadTime(): Date | undefined {
 		let latest: Date | undefined
+
 		for (const item of this.items) {
 			const time = item.type === "Book" ? item.uploadTime : item.maxUploadTime
-			if (time && (!latest || time > latest)) latest = time
+
+			if (time && (!latest || time > latest)) {
+				latest = time
+			}
 		}
+
 		return latest
 	}
 
 	get minUploadTime(): Date | undefined {
 		let earliest: Date | undefined
+
 		for (const item of this.items) {
 			const time = item.type === "Book" ? item.uploadTime : item.minUploadTime
-			if (time && (!earliest || time < earliest)) earliest = time
+
+			if (time && (!earliest || time < earliest)) {
+				earliest = time
+			}
 		}
+
 		return earliest
 	}
 
@@ -55,14 +66,22 @@ export default class Directory extends ItemBase {
 	}
 
 	findBookByAsin(asin: string): Book | undefined {
-		if (!asin) return
+		if (!asin) {
+			return
+		}
+
 		for (const item of this.items) {
 			if (item.type === "Book") {
-				if (item.asin === asin) return item
+				if (item.asin === asin) {
+					return item
+				}
 			}
 			else {
 				const book = item.findBookByAsin(asin)
-				if (book) return book
+
+				if (book) {
+					return book
+				}
 			}
 		}
 	}

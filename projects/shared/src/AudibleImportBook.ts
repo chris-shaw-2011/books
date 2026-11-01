@@ -16,6 +16,7 @@ export default class AudibleImportBook extends Book {
 
 	constructor(json?: Partial<AudibleImportBook> | Partial<typia.Primitive<AudibleImportBook>>) {
 		const data = json ?? {}
+
 		super(data)
 		this.importStatus = data.importStatus ?? "available"
 		this.seriesOptions = data.seriesOptions?.map(series => ({ ...series })) ?? []
@@ -53,9 +54,14 @@ export default class AudibleImportBook extends Book {
 		// Libation formats SeriesOrder as "1 : Name, 2 : Other name".
 		return value.split(/,\s*(?=[\d.-]+\s*:)/).flatMap(entry => {
 			const match = /^\s*([^:]*?)\s*:\s*(.+?)\s*$/.exec(entry)
-			if (!match) return []
+
+			if (!match) {
+				return []
+			}
+
 			const text = match[1]?.trim()
 			const order = Number(text)
+
 			return [{ name: match[2] ?? "", order: text && Number.isFinite(order) && order >= 0 ? order : undefined }]
 		})
 	}

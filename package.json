@@ -1,6 +1,6 @@
 {
 	"name": "books-monorepo",
-	"version": "1.7.5.3",
+	"version": "1.7.6.0",
 	"engines": {
 		"npm": ">=10.9.2",
 		"node": ">=26.5.0"
@@ -35,10 +35,10 @@
 	},
 	"type": "module",
 	"devDependencies": {
-		"@chris-shaw-2011/lint": "1.4.4",
+		"@chris-shaw-2011/lint": "1.5.0",
 		"concurrently": "^10.0.6",
 		"source-map-explorer": "^2.5.3",
-		"ttsc": "^0.34.3",
+		"ttsc": "^0.35.0",
 		"typescript": "^7.0.2"
 	},
 	"overrides": {

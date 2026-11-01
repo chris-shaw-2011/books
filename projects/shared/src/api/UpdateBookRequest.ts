@@ -13,6 +13,7 @@ export default class UpdateBookRequest extends ApiMessage {
 
 	constructor(json?: Partial<UpdateBookRequest> | Partial<typia.Primitive<UpdateBookRequest>>) {
 		const data = json ?? {}
+
 		super()
 
 		// Trim any spaces when doing an UpdateBookRequest

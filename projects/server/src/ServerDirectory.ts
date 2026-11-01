@@ -25,6 +25,7 @@ export default class ServerDirectory extends Directory {
 
 	findById(id: string, searchDir?: ServerDirectory): ServerDirectory | ServerBook | undefined {
 		const items = searchDir?.items ?? this.items
+
 		for (const item of items) {
 			if (item.id === id) {
 				return item
@@ -102,6 +103,7 @@ export default class ServerDirectory extends Directory {
 			else if (p.isFile() && (p.name.endsWith(".m4b") || p.name.endsWith(".mp3")) && (!updatePathFullPath || fullPath === updatePathFullPath)) {
 				if (!this.items.find(i => i.fullPath === fullPath)) {
 					const book = new ServerBook()
+
 					book.parent = this
 
 					await book.updateMetadata(fullPath)

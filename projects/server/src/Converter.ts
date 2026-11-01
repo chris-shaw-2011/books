@@ -17,6 +17,7 @@ const keepIntermediateFiles = false
 
 function toString(data: unknown) {
 	let ret = ""
+
 	if (data?.toString) {
 		// eslint-disable-next-line @typescript-eslint/no-base-to-string
 		ret = data.toString()
@@ -543,6 +544,7 @@ export default class Converter {
 				"-of", "csv=p=0",
 				`"${inputFilePath}"`,
 			]
+
 			outputDuration = parseFloat(await this.runFfprobe(inputFilePath, probeArgs)) - skipSecondsFromEnd - 2
 		}
 
@@ -608,6 +610,7 @@ export default class Converter {
 
 	private async runFfmpeg(outputFilePath: string, args: string[]) {
 		const executable = process.env.FFMPEG_PATH ?? ffmpegPath
+
 		if (!executable) {
 			throw Error("ffprobePath is null")
 		}
@@ -617,6 +620,7 @@ export default class Converter {
 
 	private async runFfprobe(inputFilePath: string, args: string[]) {
 		const executable = process.env.FFPROBE_PATH ?? ffprobePath
+
 		if (!executable) {
 			throw Error("ffprobePath is null")
 		}

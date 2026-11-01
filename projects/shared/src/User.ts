@@ -12,6 +12,7 @@ export default class User {
 
 	constructor(json?: Partial<User> | Partial<typia.Primitive<User>>) {
 		const data = json ?? {}
+
 		this.email = data.email ?? ""
 
 		if (data.password !== undefined) {

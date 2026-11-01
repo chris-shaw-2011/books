@@ -32,8 +32,25 @@ const LogIn = () => {
 				<div className={styles.header}>Log In</div>
 				<div className={styles.body}>
 					{logInState.failedMessage ? <Alert variant="danger">{logInState.failedMessage}</Alert> : loginMessage ? <Alert variant="danger">{loginMessage}</Alert> : null}
-					<TextboxField label="Email address" type="email" placeholder="Enter email" required={true} onChange={e => { setEmail(e.currentTarget.value) }} autoFocus={true} />
-					<TextboxField label="Password" type="password" placeholder="Password" required={true} onChange={e => { setPassword(e.currentTarget.value || "") }} />
+					<TextboxField
+						label="Email address"
+						type="email"
+						placeholder="Enter email"
+						required={true}
+						onChange={e => {
+							setEmail(e.currentTarget.value)
+						}}
+						autoFocus={true}
+					/>
+					<TextboxField
+						label="Password"
+						type="password"
+						placeholder="Password"
+						required={true}
+						onChange={e => {
+							setPassword(e.currentTarget.value || "")
+						}}
+					/>
 				</div>
 				<div className={styles.footer}>
 					{!logInState.loggingIn ? <OkButton value="Log In" /> : <Loading text="Logging In..." />}

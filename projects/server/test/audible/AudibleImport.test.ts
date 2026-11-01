@@ -12,11 +12,16 @@ const loginUrl = "https://www.amazon.com/ap/signin?secret=never-stream-this"
 const redirectUrl = "https://www.audible.com/ap/maplanding?openid.oa2.authorization_code=secret"
 const waitFor = async (condition: () => boolean) => {
 	for (let i = 0; i < 200; i++) {
-		if (condition()) return
+		if (condition()) {
+			return
+		}
+
 		await new Promise(resolve => setTimeout(resolve, 5))
 	}
+
 	throw new Error("Timed out waiting for import")
 }
+
 void test("parses Libation exports including purchased and Plus and excludes podcasts", () => {
 	const parsed = parseLibrary(JSON.stringify([libationBook({
 		AudibleProductId: "B000000001",
@@ -32,6 +37,7 @@ void test("parses Libation exports including purchased and Plus and excludes pod
 		Title: "Podcast",
 		ContentType: "PodcastEpisode",
 	})]))
+
 	assert.deepEqual(parsed.map(book => [book.asin, book.name]), [["B000000001", "Purchased"], ["B000000002", "Plus"]])
 	assert.ok(parsed.every(book => book instanceof Book))
 	assert.throws(() => parseLibrary(JSON.stringify({
@@ -70,36 +76,46 @@ void test("interactive login, progress, queue, partial failure, repeat duplicate
 					setImmediate(() => exit(0))
 				},
 			}
+
 			setImmediate(() => {
 				void (async () => {
 					if (args[0] === "login-external") {
 						data(`${loginUrl}\r\n`)
+
 						return
 					}
-					if (args[0] === "export") await fs.writeFile(args[2]!, JSON.stringify([libationBook({
-						AudibleProductId: "B000000001",
-						Title: "Already present",
-					}), libationBook({
-						AudibleProductId: "B000000002",
-						Title: "Plus",
-					}), libationBook({
-						AudibleProductId: "B000000003",
-						Title: "Bad download",
-					}), libationBook({
-						AudibleProductId: "B000000004",
-						Title: "Last book",
-					})]))
+
+					if (args[0] === "export") {
+						await fs.writeFile(args[2]!, JSON.stringify([libationBook({
+							AudibleProductId: "B000000001",
+							Title: "Already present",
+						}), libationBook({
+							AudibleProductId: "B000000002",
+							Title: "Plus",
+						}), libationBook({
+							AudibleProductId: "B000000003",
+							Title: "Bad download",
+						}), libationBook({
+							AudibleProductId: "B000000004",
+							Title: "Last book",
+						})]))
+					}
+
 					if (args[0] === "liberate") {
 						if (args[1] === "B000000003") {
 							exit(1)
+
 							return
 						}
+
 						await fs.writeFile(path.join(directory, "audio", "complete.m4b"), "mock completed audio")
 						data(" 42% ")
 					}
+
 					exit(0)
 				})()
 			})
+
 			return child
 		},
 		hasAsin: async asin => asin === "B000000001" || imported.has(asin),
@@ -108,6 +124,7 @@ void test("interactive login, progress, queue, partial failure, repeat duplicate
 		},
 		publish: async (_file, title) => {
 			imported.add(title.asin)
+
 			return new Book({
 				id: title.asin,
 				name: title.name,
@@ -118,8 +135,10 @@ void test("interactive login, progress, queue, partial failure, repeat duplicate
 	const unsubscribe = service.subscribe("user", snapshot => {
 		events.push(snapshot)
 	})
+
 	try {
 		const started = await service.start("user", "email@example.com", "us")
+
 		assert.ok(started)
 		await waitFor(() => Boolean(service.snapshot("user")?.loginUrl))
 		assert.equal(service.snapshot("user")?.loginUrl, loginUrl)
@@ -127,6 +146,7 @@ void test("interactive login, progress, queue, partial failure, repeat duplicate
 		assert.throws(() => service.redirect("another-user", started.id, redirectUrl))
 		assert.throws(() => service.redirect("user", started.id, "https://evil.example/maplanding"))
 		const settings: unknown = JSON.parse(await fs.readFile(path.join(sessionDirectory, "Settings.json"), "utf8"))
+
 		assert.deepEqual(settings, {
 			...qualitySettings,
 			Books: path.join(sessionDirectory, "audio"),
@@ -146,12 +166,17 @@ void test("interactive login, progress, queue, partial failure, repeat duplicate
 		assert.equal(service.snapshot("user")?.books.length, 4)
 		assert.equal(audibleBooks(service.snapshot("user")?.books ?? [])[0]?.importStatus, "skipped")
 		assert.throws(() => service.select("other", started.id, ["B000000002"]), /not found/)
-		for (const asins of [["B000000001"], ["unknown"]]) assert.throws(() => service.select("user", started.id, asins))
+
+		for (const asins of [["B000000001"], ["unknown"]]) {
+			assert.throws(() => service.select("user", started.id, asins))
+		}
+
 		service.select("user", started.id, ["B000000002", "B000000003", "B000000004"])
 		service.select("user", started.id, ["B000000004", "B000000002", "B000000003"])
 		assert.throws(() => service.select("user", started.id, ["B000000002"]), /not waiting/)
 		await waitFor(() => service.snapshot("user")?.phase === "complete")
 		const complete = service.snapshot("user")!
+
 		assert.equal(complete.downloaded, 2)
 		assert.equal(complete.failed, 1)
 		assert.equal(complete.skipped, 1)
@@ -170,11 +195,13 @@ void test("interactive login, progress, queue, partial failure, repeat duplicate
 		assert.equal(audibleBooks(service.snapshot("user")?.books ?? [])[1]?.reviewed, true)
 		service.review("user", started.id, "B000000004")
 		let reconnect: unknown
+
 		service.subscribe("user", snapshot => {
 			reconnect = snapshot
 		})()
 		assert.deepEqual(reconnect, service.snapshot("user", false))
 		const second = await service.start("user", "email@example.com", "us")
+
 		await waitFor(() => Boolean(service.snapshot("user")?.loginUrl))
 		service.redirect("user", second!.id, redirectUrl)
 		await waitFor(() => service.snapshot("user")?.phase === "selecting")
@@ -198,6 +225,7 @@ void test("cancels authentication and removes credentials", async () => {
 	const service = new AudibleImportService({
 		spawn: async (_args, dir) => {
 			directory = dir
+
 			return {
 				write: () => undefined,
 				kill: () => {
@@ -215,8 +243,10 @@ void test("cancels authentication and removes credentials", async () => {
 		hasAsin: async () => false,
 		publish: async () => new Book(),
 	}, path.join(root, "sessions"))
+
 	try {
 		const started = await service.start("user", "email@example.com", "us")
+
 		await waitFor(() => Boolean(service.snapshot("user")?.loginUrl))
 		await service.cancel("user", started!.id)
 		assert.equal(service.snapshot("user")?.phase, "cancelled")
@@ -232,12 +262,15 @@ void test("cancels authentication and removes credentials", async () => {
 })
 void test("publishes complete files across staging locations without overwriting filename collisions", async () => {
 	const root = await fs.mkdtemp(path.join(os.tmpdir(), "audible-publish-"))
+
 	try {
 		const source = path.join(root, "source.m4b")
 		const target = path.join(root, "library")
+
 		await fs.writeFile(source, "complete")
 		const first = await publishAudio(source, target, "Book")
 		const second = await publishAudio(source, target, "Book")
+
 		assert.notEqual(first, second)
 		assert.equal(await fs.readFile(first, "utf8"), "complete")
 		assert.deepEqual((await fs.readdir(target)).sort(), ["Book (1).m4b", "Book.m4b"])
@@ -276,12 +309,16 @@ void test("real M4B validation and embedded ASIN survives metadata edits, moves,
 	const {
 		default: ServerDirectory,
 	} = await import("../../src/ServerDirectory.ts")
+
 	assert.ok(ffmpegPath)
 	const root = await fs.mkdtemp(path.join(os.tmpdir(), "audible-media-"))
+
 	try {
 		const source = path.join(root, "Book.m4b")
+
 		await promisify(execFile)(ffmpegPath, ["-y", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=0.2", "-c:a", "aac", source])
 		const mp3 = path.join(root, "Regular book.mp3")
+
 		await promisify(execFile)(ffmpegPath, ["-y", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=440:duration=0.2", "-c:a", "libmp3lame", mp3])
 		assert.equal(readAsin(mp3), "")
 		assert.deepEqual(await audioFiles(root), [source])
@@ -300,16 +337,20 @@ void test("real M4B validation and embedded ASIN survives metadata edits, moves,
 		await validateM4b(source)
 		assert.equal(readAsin(source), "B000000001")
 		const directory = new ServerDirectory()
+
 		directory.fullPath = root
 		const book = new ServerBook()
+
 		book.parent = directory
 		await book.updateMetadata(source)
 		directory.items.push(book)
 		assert.equal(book.asin, "B000000001")
 		assert.equal(directory.hasAsin("B000000001"), true)
 		const moved = path.join(root, "another-folder")
+
 		await fs.mkdir(moved)
 		const renamed = path.join(moved, "Renamed.m4b")
+
 		await fs.rename(source, renamed)
 		await book.updateMetadata(renamed)
 		assert.equal(directory.hasAsin("B000000001"), true)
@@ -317,6 +358,7 @@ void test("real M4B validation and embedded ASIN survives metadata edits, moves,
 		directory.deleteBook(path.parse(renamed))
 		assert.equal(directory.hasAsin("B000000001"), false)
 		const invalid = path.join(root, "invalid.m4b")
+
 		await fs.writeFile(invalid, "partial download")
 		await assert.rejects(validateM4b(invalid))
 	}
@@ -330,6 +372,7 @@ void test("real M4B validation and embedded ASIN survives metadata edits, moves,
 void test("startup removes abandoned credential directories and shutdown terminates live PTY sessions", async () => {
 	const root = await fs.mkdtemp(path.join(os.tmpdir(), "audible-stale-"))
 	const sessions = path.join(root, "sessions")
+
 	await fs.mkdir(path.join(sessions, "session-abandoned"), {
 		recursive: true,
 	})
@@ -355,6 +398,7 @@ void test("startup removes abandoned credential directories and shutdown termina
 		hasAsin: async () => false,
 		publish: async () => new Book(),
 	}, sessions)
+
 	try {
 		await service.start("user", "user@example.com", "us")
 		await waitFor(() => Boolean(service.snapshot("user")?.loginUrl))
@@ -379,7 +423,11 @@ void test("failed login and unavailable Libation report safe errors and remove t
 			spawn: async (_args, dir) => {
 				directory = dir
 				await fs.writeFile(path.join(dir, "AccountsSettings.json"), "refresh-token-secret")
-				if (unavailable) throw new Error("Sensitive process error: refresh-token-secret")
+
+				if (unavailable) {
+					throw new Error("Sensitive process error: refresh-token-secret")
+				}
+
 				return {
 					write: () => undefined,
 					kill: () => undefined,
@@ -395,6 +443,7 @@ void test("failed login and unavailable Libation report safe errors and remove t
 			hasAsin: async () => false,
 			publish: async () => new Book(),
 		}, path.join(root, "sessions"))
+
 		try {
 			await service.start("user", "user@example.com", "us")
 			await waitFor(() => service.snapshot("user")?.phase === "failed")

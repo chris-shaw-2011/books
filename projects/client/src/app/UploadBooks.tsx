@@ -107,8 +107,10 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 		}
 		request.send(data)
 	}
+
 	useEffect(() => {
 		const controller = new AbortController()
+
 		async function getConversionUpdate() {
 			const ret = await Api.conversionUpdate(conversionId, percent, ToConverterStatus(status), workingFileNames, logOut, controller.signal)
 
@@ -142,7 +144,16 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 			<div>
 				<form>
 					<div>
-						<input className={styles.uploadInput} type="file" required={true} placeholder="Specify File" accept={AllowedUploadFileExtensions.join(",")} onChange={e => { uploadFile(e.currentTarget.files) }} />
+						<input
+							className={styles.uploadInput}
+							type="file"
+							required={true}
+							placeholder="Specify File"
+							accept={AllowedUploadFileExtensions.join(",")}
+							onChange={e => {
+								uploadFile(e.currentTarget.files)
+							}}
+						/>
 					</div>
 				</form>
 			</div>

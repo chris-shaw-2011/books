@@ -31,15 +31,27 @@ const Navigation = () => {
 	openClassName[styles.open] = open
 
 	return (
-		<div className={classnames(styles.downArrow, openClassName)} onClick={() => { setOpen(s => !s) }} ref={ref}>
+		<div
+			className={classnames(styles.downArrow, openClassName)}
+			onClick={() => {
+				setOpen(s => !s)
+			}}
+			ref={ref}
+		>
 			<DownArrow />
 			<SelectList className={styles.navlist} open={open}>
-				<SelectListItem onClick={e => { setVisibleComponent(e, "Upload") }}>
+				<SelectListItem onClick={e => {
+					setVisibleComponent(e, "Upload")
+				}}
+				>
 					<Upload />
 					{" "}
 					Upload Books
 				</SelectListItem>
-				<SelectListItem onClick={e => { setVisibleComponent(e, "Audible") }}>
+				<SelectListItem onClick={e => {
+					setVisibleComponent(e, "Audible")
+				}}
+				>
 					<Upload />
 					{" "}
 					Import Audible Books
@@ -50,12 +62,18 @@ const Navigation = () => {
 					</Suspense>
 				)}
 				<hr />
-				<SelectListItem onClick={e => { setVisibleComponent(e, "ChangePassword") }}>
+				<SelectListItem onClick={e => {
+					setVisibleComponent(e, "ChangePassword")
+				}}
+				>
 					<Lock />
 					{" "}
 					Change Password
 				</SelectListItem>
-				<SelectListItem onClick={() => { appContext.logOut() }}>
+				<SelectListItem onClick={() => {
+					appContext.logOut()
+				}}
+				>
 					<LogOut />
 					{" "}
 					Log Out

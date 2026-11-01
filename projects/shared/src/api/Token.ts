@@ -15,6 +15,7 @@ export default class Token extends ApiMessage {
 
 	constructor(json?: Partial<Token> | Partial<typia.Primitive<Token>>) {
 		const data = json ?? {}
+
 		super()
 
 		this.user = new User(data.user)
@@ -30,10 +31,15 @@ export default class Token extends ApiMessage {
 		if (json) {
 			try {
 				const token = Token.fromUnknown(JSON.parse(json))
-				if (token.isValid()) return token
+
+				if (token.isValid()) {
+					return token
+				}
 			}
 			catch (error) {
-				if (!(error instanceof SyntaxError) && !(error instanceof typia.TypeGuardError)) throw error
+				if (!(error instanceof SyntaxError) && !(error instanceof typia.TypeGuardError)) {
+					throw error
+				}
 			}
 		}
 

@@ -136,6 +136,7 @@ const Authenticated = ({ token }: Props) => {
 	if (!state) {
 		return <Loading />
 	}
+
 	return (
 		<LoggedInAppContext value={loggedInAppContextValue}>
 			<ItemListTabs items={state} />

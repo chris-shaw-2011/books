@@ -14,8 +14,14 @@ const productionPackages = (lock: Lockfile) => Object.entries(lock.packages)
 const names = [...new Set(productionPackages(before).map(([path]) => path.slice(path.lastIndexOf("node_modules/") + "node_modules/".length)))].sort()
 const runNpm = (args: string[]) => {
 	const result = spawnSync("npm", args, { stdio: "inherit" })
-	if (result.error) throw result.error
-	if (result.status !== 0) process.exit(result.status ?? 1)
+
+	if (result.error) {
+		throw result.error
+	}
+
+	if (result.status !== 0) {
+		process.exit(result.status ?? 1)
+	}
 }
 
 if (names.length) {
@@ -31,19 +37,24 @@ const current = new Map(productionPackages(after))
 const changes = [...new Set([...previous.keys(), ...current.keys()])].filter(path => {
 	const a = previous.get(path)
 	const b = current.get(path)
+
 	return !a || !b || a.version !== b.version || a.resolved !== b.resolved || a.integrity !== b.integrity
 })
 const changed = changes.length > 0
+
 if (!changed) {
 	// npm may normalize metadata or dev entries. Neither warrants a release.
 	writeFileSync(lockPath, original)
 	process.stdout.write("No production dependency changes.\n")
 }
+
 if (process.env.GITHUB_OUTPUT) {
 	appendFileSync(process.env.GITHUB_OUTPUT, `changed=${changed}\ncount=${changes.length}\n`)
 }
+
 if (process.env.GITHUB_STEP_SUMMARY) {
 	const rows = changes.map(path => `| \`${path.replace(/^node_modules\//, "")}\` | ${previous.get(path)?.version ?? "—"} | ${current.get(path)?.version ?? "removed"} |`)
+
 	appendFileSync(process.env.GITHUB_STEP_SUMMARY, changed ?
 		`## Production dependency updates\n\n${changes.length} locked production packages changed.\n\n| Package | Before | After |\n| --- | --- | --- |\n${rows.join("\n")}\n` :
 		"## Production dependencies unchanged\n\nNo compatible production updates or security fixes were applied. No dependency commit or automatic version bump is needed.\n")

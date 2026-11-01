@@ -17,6 +17,7 @@ class BookList {
 
 	async loadBooks() {
 		const releaser = await this.mutex.acquire()
+
 		this.loading = true
 
 		await this.watcher.close()

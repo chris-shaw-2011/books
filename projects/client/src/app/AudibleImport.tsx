@@ -51,6 +51,7 @@ const connectAudibleEvents = (events: EventSource, callbacks: ProgressCallbacks)
 	events.onmessage = (event: MessageEvent<string>) => {
 		try {
 			const snapshot = AudibleImportResponse.snapshotFromUnknown(JSON.parse(event.data))
+
 			callbacks.stateUpdated(prev => mergeProgress(prev?.snapshot, snapshot))
 		}
 		catch {
@@ -64,6 +65,7 @@ const connectAudibleEvents = (events: EventSource, callbacks: ProgressCallbacks)
 const wait = (milliseconds: number, signal: AbortSignal) => new Promise<void>(resolve => {
 	if (signal.aborted) {
 		resolve()
+
 		return
 	}
 
@@ -95,6 +97,7 @@ const AudibleSignIn = ({ loginUrl, busy, onSubmit }: { loginUrl: string, busy: b
 
 		if (!loginWindow) {
 			setBlocked(true)
+
 			return
 		}
 
@@ -211,6 +214,7 @@ const AudibleImport = ({ onClose }: { onClose: () => void }) => {
 				void refreshStatus(signal)
 			}
 		}
+
 		void refreshStatus(controller.signal)
 
 		return () => {
@@ -225,6 +229,7 @@ const AudibleImport = ({ onClose }: { onClose: () => void }) => {
 
 		try {
 			const response = await action()
+
 			setSnapshotState(prev => mergeAudibleImportState(prev, response))
 
 			if (response.snapshot?.phase === "authenticating") {
@@ -273,7 +278,16 @@ const AudibleImport = ({ onClose }: { onClose: () => void }) => {
 					)}
 					{snapshot?.phase === "authenticating" && (
 						loginUrl ?
-								<AudibleSignIn key={snapshot.id} loginUrl={loginUrl} busy={busy} onSubmit={address => { void request(() => LoggedInApi.audibleRedirect(snapshot.id, address, logOut)) }} /> :
+								(
+									<AudibleSignIn
+										key={snapshot.id}
+										loginUrl={loginUrl}
+										busy={busy}
+										onSubmit={address => {
+											void request(() => LoggedInApi.audibleRedirect(snapshot.id, address, logOut))
+										}}
+									/>
+								) :
 								<Loading text="Preparing your Amazon sign-in link…" />
 					)}
 					{snapshot && snapshot.phase !== "authenticating" && !showSetup && (
@@ -330,7 +344,9 @@ const AudibleImport = ({ onClose }: { onClose: () => void }) => {
 							key={snapshot.id}
 							snapshot={snapshot}
 							busy={busy}
-							onSelect={(asins, organizations) => { void request(() => LoggedInApi.audibleSelect(snapshot.id, asins, logOut, organizations)) }}
+							onSelect={(asins, organizations) => {
+								void request(() => LoggedInApi.audibleSelect(snapshot.id, asins, logOut, organizations))
+							}}
 							onReview={asin => {
 								void request(() => LoggedInApi.audibleReview(snapshot.id, asin, logOut))
 							}}
@@ -339,7 +355,16 @@ const AudibleImport = ({ onClose }: { onClose: () => void }) => {
 					{snapshot && !active && !hasReviews && !showSetup && <OkButton type="button" value="Import more books or try again" onClick={() => setShowSetup(true)} />}
 				</ModalBody>
 				<ModalFooter>
-					{active && <Button disabled={busy} onClick={() => { void request(() => LoggedInApi.audibleCancel(snapshot.id, logOut)) }}>Stop import</Button>}
+					{active && (
+						<Button
+							disabled={busy}
+							onClick={() => {
+								void request(() => LoggedInApi.audibleCancel(snapshot.id, logOut))
+							}}
+						>
+							Stop import
+						</Button>
+					)}
 					<CancelButton onClick={onClose} value="Close" />
 				</ModalFooter>
 			</ModalDialog>

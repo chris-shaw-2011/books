@@ -103,6 +103,7 @@ const UserList = (props: Props) => {
 		}
 	}
 	const cancelAddUser = () => setAddingUserState(defaultAddingUserState)
+
 	useEffect(() => {
 		async function getUsers() {
 			const ret = await (await AdminApi()).users(logOut)
@@ -132,9 +133,17 @@ const UserList = (props: Props) => {
 										placeholder="Enter email"
 										required={true}
 										autoFocus={true}
-										onChange={e => { mergeAddingUserState({ email: e.currentTarget.value || "" }) }}
+										onChange={e => {
+											mergeAddingUserState({ email: e.currentTarget.value || "" })
+										}}
 									/>
-									<CheckboxField type="checkbox" label="Is Admin?" onChange={e => { mergeAddingUserState({ isAdmin: e.currentTarget.checked }) }} />
+									<CheckboxField
+										type="checkbox"
+										label="Is Admin?"
+										onChange={e => {
+											mergeAddingUserState({ isAdmin: e.currentTarget.checked })
+										}}
+									/>
 									{addingUserState.message && <Alert variant="primary">{addingUserState.message}</Alert>}
 								</ModalBody>
 								<ModalFooter>

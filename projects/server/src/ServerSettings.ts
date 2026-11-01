@@ -46,9 +46,9 @@ export default class ServerSettings extends Settings {
 		const dbSettings = db.getSettingRows()
 
 		dbSettings.forEach(row => {
-			const key = row.key as ValidSettings
+			const key = SettingKeys.find(setting => setting === row.key)
 
-			if (SettingKeys.includes(key)) {
+			if (key !== undefined) {
 				settings[key] = row.value
 			}
 			else {

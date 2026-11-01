@@ -11,11 +11,15 @@ import Progress from "./Progress"
 const AudibleBookControls = ({ book }: { book: AudibleImportBook }) => {
 	const controller = use(AudibleImportContext)
 	const { token } = use(LoggedInAppContext)
+
 	return (
 		<>
 			{book.importStatus === "skipped" && <CheckboxField label="Already in Books" checked={true} disabled={true} />}
 			{controller?.selecting && book.importStatus === "available" && token.user.isAdmin && controller.selected.includes(book.asin) && book.seriesChoices.length > 0 && (
-				<details onInvalidCapture={event => { event.currentTarget.open = true }}>
+				<details onInvalidCapture={event => {
+					event.currentTarget.open = true
+				}}
+				>
 					<summary>Series organization</summary>
 					<AudibleSeriesReview book={book} />
 				</details>

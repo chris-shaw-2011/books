@@ -14,8 +14,12 @@ export type ItemOrder = keyof typeof itemOrders
 
 export function orderItems(items: readonly Item[], order: ItemOrder): Item[] {
 	return items.toSorted(itemOrders[order]).map(item => {
-		if (item.type === "Book") return item
+		if (item.type === "Book") {
+			return item
+		}
+
 		const directory = item instanceof AudibleImportDirectory ? new AudibleImportDirectory() : new Directory()
+
 		return Object.assign(directory, item, { items: orderItems(item.items, order) })
 	})
 }

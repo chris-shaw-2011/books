@@ -21,24 +21,40 @@ interface SeriesMetadata {
 const readSeriesMetadata = (file: TagLibFile): SeriesMetadata => {
 	const tag = file.getTag(file instanceof Mpeg4File ? TagTypes.Apple : TagTypes.Id3v2, false)
 	const value = (name: string) => {
-		if (tag instanceof Mpeg4AppleTag) return tag.getItunesStrings("com.pilabor.tone", name)[0] ?? ""
-		if (tag instanceof Id3v2Tag) return tag.frames.find((frame): frame is Id3v2UserTextInformationFrame => frame instanceof Id3v2UserTextInformationFrame && frame.description === name)?.text[0] ?? ""
+		if (tag instanceof Mpeg4AppleTag) {
+			return tag.getItunesStrings("com.pilabor.tone", name)[0] ?? ""
+		}
+
+		if (tag instanceof Id3v2Tag) {
+			return tag.frames.find((frame): frame is Id3v2UserTextInformationFrame => frame instanceof Id3v2UserTextInformationFrame && frame.description === name)?.text[0] ?? ""
+		}
+
 		return ""
 	}
 	const text = value("PART").trim()
 	const order = Number(text)
+
 	return { series: value("SERIES"), seriesOrder: text && Number.isFinite(order) && order >= 0 ? order : undefined }
 }
 
 const setSeriesMetadata = (tag: Tag, metadata: Partial<SeriesMetadata>) => {
-	if (metadata.series === undefined) return
+	if (metadata.series === undefined) {
+		return
+	}
+
 	for (const [name, value] of [["SERIES", metadata.series], ["PART", metadata.seriesOrder?.toString() ?? ""]] as const) {
-		if (tag instanceof Mpeg4AppleTag) tag.setItunesStrings("com.pilabor.tone", name, value)
+		if (tag instanceof Mpeg4AppleTag) {
+			tag.setItunesStrings("com.pilabor.tone", name, value)
+		}
 		else if (tag instanceof Id3v2Tag) {
 			const existing = tag.frames.find((frame): frame is Id3v2UserTextInformationFrame => frame instanceof Id3v2UserTextInformationFrame && frame.description === name)
 			const frame = existing ?? Id3v2UserTextInformationFrame.fromDescription(name)
+
 			frame.text = [value]
-			if (!existing) tag.addFrame(frame)
+
+			if (!existing) {
+				tag.addFrame(frame)
+			}
 		}
 	}
 }
@@ -75,6 +91,7 @@ const updateMpeg4ChunkOffsets = (box: Mpeg4IsoChunkOffsetBox | Mpeg4IsoChunkLarg
 	if (!Number.isSafeInteger(sizeDifference)) {
 		throw new Error("Argument out of range: sizeDifference must be a safe JS integer")
 	}
+
 	if (!Number.isSafeInteger(after) || after < 0) {
 		throw new Error("Argument out of range: after must be a safe, positive JS integer")
 	}

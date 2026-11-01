@@ -46,7 +46,11 @@ const DirectoryLink = (props: DirectoryProps) => {
 				event.currentTarget.open = true
 				setOpen(id, true)
 			}}
-			onToggle={event => { if (event.target === event.currentTarget) setOpen(id, event.currentTarget.open) }}
+			onToggle={event => {
+				if (event.target === event.currentTarget) {
+					setOpen(id, event.currentTarget.open)
+				}
+			}}
 		>
 			<summary className={classnames(styles.inner, itemStyles.inner)}>
 				{isOpen ? <FolderOpen /> : <FolderClosed />}

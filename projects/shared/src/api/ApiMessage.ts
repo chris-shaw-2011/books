@@ -6,7 +6,10 @@ export default abstract class ApiMessage {
 	protected assignDefined<T extends ApiMessage>(this: T, source: Partial<T>) {
 		for (const key in source) {
 			const value = source[key]
-			if (value !== undefined) this[key] = value
+
+			if (value !== undefined) {
+				this[key] = value
+			}
 		}
 	}
 }

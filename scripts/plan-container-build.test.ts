@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url"
 
 void test("container decisions skip unchanged inputs, explain every change and preserve version numbering", () => {
 	const dir = mkdtempSync(join(tmpdir(), "books-container-plan-"))
+
 	try {
 		const output = join(dir, "output")
 		const summary = join(dir, "summary")
@@ -26,43 +27,57 @@ void test("container decisions skip unchanged inputs, explain every change and p
 					APT_UPGRADE_COUNT: "0", APT_CHECKED: "success", ...overrides,
 				},
 			})
+
 			assert.equal(result.status, 0, result.stdout + result.stderr)
+
 			return {
-				values: Object.fromEntries(readFileSync(output, "utf8").trim().split("\n").map(line => line.split("="))) as Record<string, string>,
+				values: Object.fromEntries(readFileSync(output, "utf8").trim().split("\n").map(line => {
+					const [key = "", value = ""] = line.split("=")
+
+					return [key, value] as const
+				})),
 				summary: readFileSync(summary, "utf8"),
 			}
 		}
 		const unchanged = plan()
+
 		assert.equal(unchanged.values["target-version"], "")
 		assert.equal(unchanged.values["publish-name"], "Publish container — skipped, no updates")
 		assert.match(unchanged.summary, /No container build/)
 		assert.match(unchanged.summary, /publishing are skipped/)
 
 		const base = plan({ CURRENT_BASE_DIGEST: "sha256:new-base", PREVIOUS_VERSION: "1.7.5.0.9", APT_CHECKED: "skipped" })
+
 		assert.equal(base.values["target-version"], "1.7.5.0.10")
 		assert.equal(base.values["publish-name"], "Publish 1.7.5.0.10 — Node base image updated")
 		assert.match(base.summary, /Check skipped/)
 
 		const libation = plan({ CURRENT_LIBATION_SHA256: "new-libation" })
+
 		assert.equal(libation.values["target-version"], "1.7.5.0.1")
 		assert.equal(libation.values["publish-name"], "Publish 1.7.5.0.1 — Libation 14.2.5 available")
 
 		const apt = plan({ APT_UPGRADE_COUNT: "3" })
+
 		assert.equal(apt.values["target-version"], "1.7.5.0.1")
 		assert.match(apt.values["publish-name"] ?? "", /3 Debian package upgrades/)
 
 		const release = plan({ RELEASE_REQUESTED: "true", RELEASE_VERSION: "1.7.5.1", CURRENT_BASE_DIGEST: "new", CURRENT_LIBATION_SHA256: "new" })
+
 		assert.equal(release.values["target-version"], "1.7.5.1.0")
 		assert.match(release.values["publish-name"] ?? "", /Publish 1\.7\.5\.1\.0 — application release 1\.7\.5\.1 requested; Node base image updated; Libation 14\.2\.5 available/)
 
 		const unpublished = plan({ RELEASE_VERSION: "1.7.6" })
+
 		assert.equal(unpublished.values["target-version"], "", "a version mismatch alone must not automatically recover a failed release")
 
 		const manual = plan({ RELEASE_REQUESTED: "true" })
+
 		assert.equal(manual.values["target-version"], "1.7.5.0.1")
 		assert.equal(manual.values["publish-name"], "Publish 1.7.5.0.1 — application release 1.7.5 requested")
 
 		const first = plan({ RELEASE_REQUESTED: "true", PREVIOUS_FOUND: "false", PREVIOUS_VERSION: "", PREVIOUS_RELEASE_VERSION: "" })
+
 		assert.equal(first.values["target-version"], "1.7.5.0.0")
 		assert.equal(first.values["publish-name"], "Publish 1.7.5.0.0 — application release 1.7.5 requested")
 	}

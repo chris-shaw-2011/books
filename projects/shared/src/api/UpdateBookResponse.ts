@@ -14,6 +14,7 @@ export default class UpdateBookResponse extends ApiMessage {
 
 	constructor(json?: Partial<UpdateBookResponse> | Partial<typia.Primitive<UpdateBookResponse>>) {
 		const data = json ?? {}
+
 		super()
 
 		this.message = data.message ?? ""
