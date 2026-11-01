@@ -66,6 +66,8 @@ npm start
 Client: [http://localhost:3000](http://localhost:3000)
 Server: [http://localhost:3001](http://localhost:3001)
 
+JSON inputs are validated against the existing TypeScript models with Typia. The npm scripts run its transform through `ttsc`, `ttsc/register`, and the Vite plugin; use `node --require ttsc/register path/to/script.ts` when running a TypeScript entry point directly. Type changes automatically update the checks on the next run or build, without separate schema files or a generation command. Typia usage belongs in `projects/shared`; callers pass `JSON.parse` results to the shared model’s `fromUnknown` factory for validation. Constructors accept typed data, retain defaults, and restore dates and nested class instances. A cold build compiles and caches Typia’s native plugin, so it takes longer than subsequent builds. Tests use one file worker to avoid concurrent compiler-loader emits for the same project.
+
 ### Build for Production
 
 ```sh
@@ -213,6 +215,8 @@ Compatible version numbers alone cannot guarantee a regression-free update.
 - `npm start` - Start client and server in development
 - `npm run build` - Build all packages for production
 - `npm run lint` - Run lint checks
+- `npm test --workspaces --if-present` - Run client and server tests
+- `npm run test:scripts` - Run maintenance script tests
 - `npm run analyze` - Analyze client bundle size
 
 For Audible container requirements, image checks, and interactive account testing, see [Audible import container verification](docs/audible-docker.md).

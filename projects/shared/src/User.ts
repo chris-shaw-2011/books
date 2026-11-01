@@ -1,22 +1,28 @@
+import typia from "typia"
 export default class User {
+	static fromUnknown(json: unknown) {
+		return new User(typia.assert<typia.Primitive<User>>(json))
+	}
+
 	email: string
 	password?: string
 	id: string
 	isAdmin: boolean
 	lastLogin?: Date
 
-	constructor(json?: Partial<User>) {
-		this.email = json?.email ?? ""
+	constructor(json?: Partial<User> | Partial<typia.Primitive<User>>) {
+		const data = json ?? {}
+		this.email = data.email ?? ""
 
-		if (json?.password !== undefined) {
-			this.password = json.password
+		if (data.password !== undefined) {
+			this.password = data.password
 		}
 
-		this.id = json?.id ?? ""
-		this.isAdmin = json?.isAdmin ?? false
+		this.id = data.id ?? ""
+		this.isAdmin = data.isAdmin ?? false
 
-		if (json?.lastLogin) {
-			this.lastLogin = new Date(json.lastLogin)
+		if (data.lastLogin !== undefined) {
+			this.lastLogin = new Date(data.lastLogin)
 		}
 	}
 

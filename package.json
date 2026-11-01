@@ -16,7 +16,7 @@
 		"start-client": "npm start -w @books/client",
 		"start-server": "npm start -w @books/server",
 		"install-packages": "npm install",
-		"build": "npm run copy-package && npm run build-client && npm run build-shared && npm run build-server",
+		"build": "npm run copy-package && npm run build-scripts && npm run build-client && npm run build-shared && npm run build-server",
 		"build-client": "npm run build --workspace=@books/client",
 		"build-server": "npm run build --workspace=@books/server",
 		"build-shared": "npm run build --workspace=@books/shared",
@@ -29,13 +29,16 @@
 		"analyze": "source-map-explorer 'bin/client/*.js'",
 		"knip": "knip --config knip.config.ts --reporter compact",
 		"sherif": "sherif",
-		"verify": "npm run lint && npm run knip && npm run sherif"
+		"verify": "npm run lint && npm run knip && npm run sherif",
+		"test:scripts": "node --require ttsc/register --test --test-concurrency=1 scripts/*.test.ts",
+		"build-scripts": "ttsc --project scripts/tsconfig.build.json"
 	},
 	"type": "module",
 	"devDependencies": {
 		"@chris-shaw-2011/lint": "1.4.4",
 		"concurrently": "^10.0.6",
 		"source-map-explorer": "^2.5.3",
+		"ttsc": "^0.34.3",
 		"typescript": "^7.0.2"
 	},
 	"overrides": {

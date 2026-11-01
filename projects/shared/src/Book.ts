@@ -1,3 +1,4 @@
+import typia from "typia"
 import ItemBase from "./Item.ts"
 
 export const StatusValues = ["Unread", "Read", "Skipped"] as const
@@ -5,6 +6,10 @@ export const StatusValues = ["Unread", "Read", "Skipped"] as const
 export type Status = typeof StatusValues[number]
 
 export default class Book extends ItemBase {
+	static fromUnknown(json: unknown) {
+		return new Book(typia.assert<typia.Primitive<Book>>(json))
+	}
+
 	uploadTime: Date
 	author: string
 	numBytes: number
@@ -22,23 +27,24 @@ export default class Book extends ItemBase {
 
 	override readonly type = "Book"
 
-	constructor(json?: Omit<Partial<Book>, "uploadTime"> & { uploadTime?: Date | number }, status?: Status) {
-		super(json)
+	constructor(json?: Partial<Book> | Partial<typia.Primitive<Book>>, status?: Status) {
+		const data = json ?? {}
+		super(data)
 
-		this.uploadTime = new Date(json?.uploadTime ?? 0)
-		this.author = json?.author?.trim() ?? ""
-		this.numBytes = json?.numBytes ?? 0
-		this.cover = json?.cover ?? ""
-		this.download = json?.download ?? ""
-		this.status = json?.status ?? "Unread"
-		this.year = json?.year ?? 0
-		this.comment = json?.comment?.trim() ?? ""
-		this.duration = json?.duration ?? 0
-		this.narrator = json?.narrator?.trim() ?? ""
-		this.genre = json?.genre?.trim() ?? ""
-		this.asin = json?.asin ?? ""
-		this.series = json?.series ?? ""
-		this.seriesOrder = json?.seriesOrder
+		this.uploadTime = new Date(data.uploadTime ?? 0)
+		this.author = data.author?.trim() ?? ""
+		this.numBytes = data.numBytes ?? 0
+		this.cover = data.cover ?? ""
+		this.download = data.download ?? ""
+		this.status = data.status ?? "Unread"
+		this.year = data.year ?? 0
+		this.comment = data.comment?.trim() ?? ""
+		this.duration = data.duration ?? 0
+		this.narrator = data.narrator?.trim() ?? ""
+		this.genre = data.genre?.trim() ?? ""
+		this.asin = data.asin ?? ""
+		this.series = data.series ?? ""
+		this.seriesOrder = data.seriesOrder
 
 		if (status !== undefined) {
 			this.status = status

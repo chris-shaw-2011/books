@@ -1,7 +1,12 @@
+import typia from "typia"
 import BookWithStatus from "./BookWithStatus.ts"
 
 export default class BookStatuses extends Map<string, BookWithStatus> {
-	constructor(json?: Record<string, Partial<BookWithStatus>> | BookStatuses) {
+	static fromUnknown(json: unknown) {
+		return new BookStatuses(typia.assert<typia.Primitive<BookStatuses>>(json))
+	}
+
+	constructor(json?: BookStatuses | Record<string, Partial<BookWithStatus> | Partial<typia.Primitive<BookWithStatus>>>) {
 		super()
 
 		if (json instanceof BookStatuses) {
@@ -10,11 +15,7 @@ export default class BookStatuses extends Map<string, BookWithStatus> {
 			})
 		}
 		else if (json) {
-			Object.keys(json).forEach(key => {
-				const statusData = json[key]
-
-				this.set(key, new BookWithStatus(statusData))
-			})
+			for (const [key, status] of Object.entries(json)) this.set(key, new BookWithStatus(status))
 		}
 	}
 

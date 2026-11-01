@@ -30,7 +30,7 @@ const mergeAudibleImportState = (previous: AudibleImportState | undefined, next:
 	return ret
 }
 
-const mergeProgress = (previous: AudibleImportSnapshot | undefined, next: AudibleImportSnapshot) => new AudibleImportResponse({
+const mergeProgress = (previous: AudibleImportSnapshot | undefined, next: AudibleImportSnapshot) => ({
 	snapshot:
 	{
 		...next,
@@ -48,9 +48,10 @@ const connectAudibleEvents = (events: EventSource, callbacks: ProgressCallbacks)
 		callbacks.connection(true)
 	}
 	events.onerror = () => callbacks.connection(false)
-	events.onmessage = event => {
+	events.onmessage = (event: MessageEvent<string>) => {
 		try {
-			callbacks.stateUpdated(prev => mergeProgress(prev?.snapshot, AudibleImportResponse.restoreSnapshot(JSON.parse(event.data as string) as AudibleImportSnapshot)))
+			const snapshot = AudibleImportResponse.snapshotFromUnknown(JSON.parse(event.data))
+			callbacks.stateUpdated(prev => mergeProgress(prev?.snapshot, snapshot))
 		}
 		catch {
 			callbacks.stateUpdated(prev => ({ ...prev, ...{ errorMessage: "Unable to read progress." } }))

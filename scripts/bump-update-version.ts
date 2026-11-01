@@ -1,11 +1,9 @@
+import { PackageManifest, VersionedLockfile } from "../projects/shared/src/PackageMetadata.ts"
 import { readFileSync, writeFileSync } from "node:fs"
 import process from "node:process"
 
-const pkg = JSON.parse(readFileSync("package.json", "utf8")) as { version: string }
-const lock = JSON.parse(readFileSync("package-lock.json", "utf8")) as {
-	version: string,
-	packages: { "": { version: string } },
-}
+const pkg = PackageManifest.fromUnknown(JSON.parse(readFileSync("package.json", "utf8")))
+const lock = VersionedLockfile.fromUnknown(JSON.parse(readFileSync("package-lock.json", "utf8")))
 if (!/^\d+\.\d+\.\d+(\.\d+)?$/.test(pkg.version)) {
 	throw new Error(`Invalid application version: ${pkg.version}`)
 }

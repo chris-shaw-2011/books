@@ -43,6 +43,12 @@ export { default as AudibleSelectionRequest } from "./api/AudibleSelectionReques
 export { unnumberedTitle, seriesBookTitle, suggestSeriesOrganization } from "./Series.ts"
 export type { BookSeries, SeriesOrganization } from "./Series.ts"
 export { default as AudibleImportBook } from "./AudibleImportBook.ts"
+export type { default as LibationBook } from "./LibationBook.ts"
 export { default as AudibleImportDirectory } from "./AudibleImportDirectory.ts"
 
 export { audibleBooks } from "./AudibleImport.ts"
+
+export { ClientManifest } from "./ClientManifest.ts"
+export { Chapters, type Chapter } from "./Chapters.ts"
+export { AudioProbe } from "./AudioProbe.ts"
+export { LibationLibrary } from "./LibationBook.ts"

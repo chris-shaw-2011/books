@@ -38,16 +38,19 @@ jobs:
         with:
           node-version: current
 
+      - name: Install maintenance dependencies
+        run: sh scripts/install-maintenance.sh
+
       - name: Resolve compatible production updates and security fixes
         id: dependencies
-        run: node scripts/update-production-dependencies.ts
+        run: node --require ttsc/register scripts/update-production-dependencies.ts
 
       - name: Commit ${{ steps.dependencies.outputs.count }} production package changes and bump automatic version
         id: version
         if: steps.dependencies.outputs.changed == 'true'
         run: |
           set -euo pipefail
-          version="$(node scripts/bump-update-version.ts)"
+          version="$(node --require ttsc/register scripts/bump-update-version.ts)"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json package-lock.json

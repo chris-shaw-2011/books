@@ -19,13 +19,13 @@
 	},
 	"main": "./src/index.ts",
 	"scripts": {
-		"start": "node ./src/index.ts",
+		"start": "node --require ttsc/register ./src/index.ts",
 		"start-production": "node ./src/index.js",
-		"build": "tsc --project ./tsconfig.build.json && npm run copy-package && npm run copy-audible-hack",
-		"migrate-db": "node ./src/migrateDatabase.ts",
+		"build": "ttsc --project ./tsconfig.build.json && npm run copy-package && npm run copy-audible-hack",
+		"migrate-db": "node --require ttsc/register ./src/migrateDatabase.ts",
 		"copy-package": "node ../../scripts/copy.ts ./package.json ../../bin/projects/server/",
 		"copy-audible-hack": "node ../../scripts/copy.ts ./src/inAudible-NG ../../bin/projects/server/src/inAudible-NG",
-		"test": "node --test ./test/**/*.test.ts",
+		"test": "node --require ttsc/register --test --test-concurrency=1 ./test/**/*.test.ts",
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix"
 	},

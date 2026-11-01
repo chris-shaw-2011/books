@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
-import { audibleBooks, AudibleImportBook, AudibleImportDirectory, AudibleImportResponse, Book, Books, Directory, type AudibleImportSnapshot } from "@books/shared"
+import { audibleBooks, AudibleImportBook, AudibleImportDirectory, AudibleImportResponse, Book, Books, Directory } from "@books/shared"
 import { itemOrders, orderItems } from "../src/app/ItemOrder.ts"
 
 function assertUploadTimes(directory: Directory, min: number | undefined, max: number | undefined) {
@@ -38,7 +38,7 @@ void test("only books serialize upload times and library responses restore recur
 	assert.equal("uploadTime" in directory, false)
 	assert.equal(new Book(book.toJSON()).uploadTime.getTime(), 1234)
 
-	const restored = new Books(JSON.parse(json) as Books).directory
+	const restored = Books.fromUnknown(JSON.parse(json)).directory
 	assert.equal(restored.minUploadTime?.getTime(), 1234)
 	assert.equal(restored.maxUploadTime?.getTime(), 1234)
 	const nested = restored.items[0]
@@ -54,8 +54,8 @@ void test("Audible snapshot restoration calculates bounds without restoring lega
 	const nested = new AudibleImportDirectory()
 	nested.items = [new AudibleImportBook({ asin: "ONE", uploadTime: new Date(100), percentage: 42 })]
 	directory.items = [nested, new AudibleImportBook({ asin: "TWO", uploadTime: new Date(900) })]
-	const snapshot = { books: [{ ...directory.toJSON(), uploadTime: 9999 }] }
-	const restored = AudibleImportResponse.restoreSnapshot(JSON.parse(JSON.stringify(snapshot)) as AudibleImportSnapshot)
+	const snapshot = { id: "snapshot", phase: "selecting", operation: "", currentTitle: "", total: 0, skipped: 0, downloaded: 0, failed: 0, remaining: 0, activity: [], books: [{ ...directory.toJSON(), uploadTime: 9999 }] }
+	const restored = AudibleImportResponse.snapshotFromUnknown(JSON.parse(JSON.stringify(snapshot)))
 	const folder = restored.books[0]
 	assert.ok(folder instanceof AudibleImportDirectory)
 	assert.ok(folder.items[0] instanceof AudibleImportDirectory)
@@ -75,7 +75,7 @@ void test("Audible directories recursively construct import children and inherit
 	const source = new AudibleImportDirectory({ id: "series", name: "Series", folderPath: "/Series", hasBooks: true, items: [
 		new AudibleImportDirectory({ items: [new AudibleImportBook({ asin: "ONE", percentage: 42, importStatus: "downloading", uploadTime: new Date(1234) })] }),
 	] })
-	const restored = new AudibleImportDirectory(JSON.parse(JSON.stringify(source)) as AudibleImportDirectory)
+	const restored = AudibleImportDirectory.fromUnknown(JSON.parse(JSON.stringify(source)))
 	assert.ok(restored instanceof Directory)
 	assert.ok(restored.items[0] instanceof AudibleImportDirectory)
 	const book = audibleBooks(restored.items)[0]

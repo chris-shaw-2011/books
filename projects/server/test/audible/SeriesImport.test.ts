@@ -12,6 +12,7 @@ import { createAudibleImporter, parseLibrary, type AudibleProcess } from "../../
 import { readAudioMetadata, writeAudioMetadata } from "../../src/AudioMetadata.ts"
 import selectionItems from "../../src/audible/SelectionItems.ts"
 import { seriesDestination } from "../../src/SeriesOrganization.ts"
+import libationBook from "./LibationBook.ts"
 
 void test("series suggestions reuse folders and padding, support prequels and novellas, and refuse ambiguous folders", () => {
 	const root = new Directory({ items: [new Directory({ name: "Stormlight Series", folderPath: "/Stormlight Series", items: [new Book({ name: "01 - First" })] })] })
@@ -32,13 +33,13 @@ void test("series suggestions reuse folders and padding, support prequels and no
 })
 
 void test("parses Libation series order without treating a title or publication date as a series", () => {
-	const result = parseLibrary([
-		{ AudibleProductId: "ONE", Title: "First", SeriesOrder: "2.5 : Stormlight, 7 : Cosmere", SeriesNames: "Stormlight, Cosmere" },
-		{ AudibleProductId: "TWO", Title: "Book 2", DatePublished: "2020-01-01", SeriesOrder: "" },
-		{ AudibleProductId: "THREE", Title: "Box set", SeriesOrder: "1-3 : A series, with a comma" },
-		{ AudibleProductId: "FOUR", Title: "Prequel", SeriesOrder: "0 : Prequel series" },
-		{ AudibleProductId: "FIVE", Title: "Unknown", SeriesOrder: " : Unknown series" },
-	])
+	const result = parseLibrary(JSON.stringify([
+		libationBook({ AudibleProductId: "ONE", Title: "First", SeriesOrder: "2.5 : Stormlight, 7 : Cosmere", SeriesNames: "Stormlight, Cosmere" }),
+		libationBook({ AudibleProductId: "TWO", Title: "Book 2", DatePublished: "2020-01-01", SeriesOrder: "" }),
+		libationBook({ AudibleProductId: "THREE", Title: "Box set", SeriesOrder: "1-3 : A series, with a comma" }),
+		libationBook({ AudibleProductId: "FOUR", Title: "Prequel", SeriesOrder: "0 : Prequel series" }),
+		libationBook({ AudibleProductId: "FIVE", Title: "Unknown", SeriesOrder: " : Unknown series" }),
+	]))
 	assert.deepEqual(result[0]?.seriesChoices, [{ name: "Stormlight", order: 2.5 }, { name: "Cosmere", order: 7 }])
 	assert.deepEqual(result[1]?.seriesChoices, [])
 	assert.deepEqual(result[2]?.seriesChoices, [{ name: "A series, with a comma", order: undefined }])
@@ -86,8 +87,8 @@ void test("reviewed Audible series imports publish numbered books with persisten
 			if (args[0] !== "login-external") setImmediate(() => {
 				void (async () => {
 					if (args[0] === "export") await fs.writeFile(args[2] ?? "", JSON.stringify([
-						{ AudibleProductId: "SERIES1", Title: "Prequel", SeriesOrder: "5 : A Series" },
-						{ AudibleProductId: "SOLO1", Title: "Standalone" },
+						libationBook({ AudibleProductId: "SERIES1", Title: "Prequel", SeriesOrder: "5 : A Series" }),
+						libationBook({ AudibleProductId: "SOLO1", Title: "Standalone" }),
 					]))
 					if (args[0] === "liberate") await fs.copyFile(path.join(root, "fixture.m4b"), path.join(directory, "audio", "download.m4b"))
 					exit(0)
@@ -121,7 +122,7 @@ void test("reviewed Audible series imports publish numbered books with persisten
 		assert.equal(metadata.seriesOrder, 0)
 		assert.equal(metadata.title, "00 - Prequel")
 		assert.equal(metadata.asin, "SERIES1")
-		assert.equal(new Book(JSON.parse(JSON.stringify(indexed[0])) as Book).seriesOrder, 0)
+		assert.equal(Book.fromUnknown(JSON.parse(JSON.stringify(indexed[0]))).seriesOrder, 0)
 		writeAudioMetadata(target, { ...metadata, seriesOrder: 2.5, title: "02.5 - Prequel" })
 		assert.equal(readAudioMetadata(target).seriesOrder, 2.5)
 		assert.equal(readAudioMetadata(target).asin, "SERIES1")
@@ -184,7 +185,7 @@ void test("server selection snapshots contain nested series folders and one copy
 	assert.equal(audibleBooks(tree)[0]?.author, "Author")
 	assert.equal(audibleBooks(tree)[0]?.duration, 3600)
 	assert.equal(audibleBooks(tree)[2]?.importStatus, "skipped")
-	const restored = new AudibleImportResponse(JSON.parse(JSON.stringify({ snapshot: { id: "tree", phase: "selecting", books: tree } })) as AudibleImportResponse)
+	const restored = AudibleImportResponse.fromUnknown(JSON.parse(JSON.stringify({ type: "AudibleImportResponse", snapshot: { id: "tree", phase: "selecting", operation: "", currentTitle: "", total: 0, skipped: 0, downloaded: 0, failed: 0, remaining: 0, activity: [], books: tree } })))
 	assert.ok(restored.snapshot?.books[0] instanceof AudibleImportDirectory)
 	assert.ok(audibleBooks(restored.snapshot.books)[0] instanceof AudibleImportBook)
 	assert.ok(restored.snapshot.books[0].minUploadTime instanceof Date)

@@ -6,7 +6,7 @@ import fs from "fs"
 import path from "path"
 import sanitize from "sanitize-filename"
 import unzipper from "unzipper"
-import { type ConverterStatus } from "@books/shared"
+import { Chapters, type Chapter, type ConverterStatus } from "@books/shared"
 import bookList from "./BookList.ts"
 import { setTimeout as promiseSetTimeout } from "timers/promises"
 import { readAudioMetadata } from "./AudioMetadata.ts"
@@ -346,7 +346,7 @@ export default class Converter {
 				concatFile = `${outputFilePath}.concat.txt`
 
 				for (const file of files) {
-					const fileChapters = JSON.parse(await this.runFfprobe(file, ["-v", "error", "-print_format", "json", "-show_chapters", `"${file}"`])) as Chapters
+					const fileChapters = Chapters.fromUnknown(JSON.parse(await this.runFfprobe(file, ["-v", "error", "-print_format", "json", "-show_chapters", `"${file}"`])))
 					// eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
 					const lastChapter = chapters.findLast(() => true)
 
@@ -720,20 +720,4 @@ export default class Converter {
 
 		return a.every((val, index) => val === b[index])
 	}
-}
-
-interface ChapterTag {
-	title: string,
-}
-
-interface Chapter {
-	id: number,
-	time_base: string,
-	start: number,
-	end: number,
-	tags: ChapterTag,
-}
-
-interface Chapters {
-	chapters: Chapter[],
 }

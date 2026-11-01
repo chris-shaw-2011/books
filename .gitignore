@@ -3,6 +3,7 @@
 # dependencies
 bin
 node_modules
+.ttsc/
 /.pnp
 .pnp.js
 

@@ -1,15 +1,15 @@
-import type { ApiMessage, ApiMessageType } from "@books/shared"
+import type { ApiMessageType } from "@books/shared"
 
 export default class UnexpectedApiMessageType {
-	receivedApiMessage: ApiMessage
+	receivedType: string
 	expectedType: ApiMessageType
 
 	get message() {
-		return `Unexpected response received, expected: ${this.expectedType}, received: ${this.receivedApiMessage.type}`
+		return `Unexpected response received, expected: ${this.expectedType}, received: ${this.receivedType}`
 	}
 
-	constructor(receivedApiMessage: ApiMessage, expectedType: ApiMessageType) {
-		this.receivedApiMessage = receivedApiMessage
+	constructor(receivedType: string, expectedType: ApiMessageType) {
+		this.receivedType = receivedType
 		this.expectedType = expectedType
 	}
 }

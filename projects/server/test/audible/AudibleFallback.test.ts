@@ -6,6 +6,7 @@ import path from "node:path"
 import test from "node:test"
 import { Book } from "@books/shared"
 import { AudibleImportService, type AudibleProcess } from "../../src/audible/ImportService.ts"
+import libationBook from "./LibationBook.ts"
 
 const loginUrl = "https://www.amazon.com/ap/signin?state=test"
 const redirectUrl = "https://www.amazon.com/ap/maplanding?openid.oa2.authorization_code=test"
@@ -29,7 +30,7 @@ void test("falls back through high-quality AAC sources when preferred downloads 
 								onData(`${loginUrl}\r\n`)
 								return
 							}
-							if (args[0] === "export" && args[2]) await fs.writeFile(args[2], JSON.stringify([{ AudibleProductId: "B000000001", Title: "Fallback" }]))
+							if (args[0] === "export" && args[2]) await fs.writeFile(args[2], JSON.stringify([libationBook({ AudibleProductId: "B000000001", Title: "Fallback" })]))
 							if (args[0] === "liberate") {
 								attempts.push(args)
 								if (attempts.length < 3) {

@@ -7,6 +7,7 @@ import path from "node:path"
 import { audibleBooks, Book } from "@books/shared"
 import { AudibleImportService, parseLibrary, qualitySettings, safeAmazonUrl, type AudibleProcess } from "../../src/audible/ImportService.ts"
 import { publishAudio } from "../../src/audible/Files.ts"
+import libationBook from "./LibationBook.ts"
 const loginUrl = "https://www.amazon.com/ap/signin?secret=never-stream-this"
 const redirectUrl = "https://www.audible.com/ap/maplanding?openid.oa2.authorization_code=secret"
 const waitFor = async (condition: () => boolean) => {
@@ -16,29 +17,26 @@ const waitFor = async (condition: () => boolean) => {
 	}
 	throw new Error("Timed out waiting for import")
 }
-void test("parses pinned Libation JSON including purchased and Plus, excludes podcasts and uses ASIN only", () => {
-	const parsed = parseLibrary([{
+void test("parses Libation exports including purchased and Plus and excludes podcasts", () => {
+	const parsed = parseLibrary(JSON.stringify([libationBook({
 		AudibleProductId: "B000000001",
 		Title: "Purchased",
 		IsAudiblePlus: false,
 		ContentType: "Product",
-	}, {
+	}), libationBook({
 		AudibleProductId: "B000000002",
 		Title: "Plus",
 		IsAudiblePlus: true,
-	}, {
+	}), libationBook({
 		AudibleProductId: "B000000003",
 		Title: "Podcast",
 		ContentType: "PodcastEpisode",
-	}, {
-		AudibleProductId: "",
-		Title: "Purchased",
-	}])
+	})]))
 	assert.deepEqual(parsed.map(book => [book.asin, book.name]), [["B000000001", "Purchased"], ["B000000002", "Plus"]])
 	assert.ok(parsed.every(book => book instanceof Book))
-	assert.throws(() => parseLibrary({
+	assert.throws(() => parseLibrary(JSON.stringify({
 		unexpected: true,
-	}))
+	})))
 	assert.equal(safeAmazonUrl("https://amazon.com.evil.example/ap/signin"), false)
 	assert.equal(safeAmazonUrl("http://www.amazon.com/ap/signin"), false)
 	assert.equal(safeAmazonUrl(loginUrl), true)
@@ -78,19 +76,19 @@ void test("interactive login, progress, queue, partial failure, repeat duplicate
 						data(`${loginUrl}\r\n`)
 						return
 					}
-					if (args[0] === "export") await fs.writeFile(args[2]!, JSON.stringify([{
+					if (args[0] === "export") await fs.writeFile(args[2]!, JSON.stringify([libationBook({
 						AudibleProductId: "B000000001",
 						Title: "Already present",
-					}, {
+					}), libationBook({
 						AudibleProductId: "B000000002",
 						Title: "Plus",
-					}, {
+					}), libationBook({
 						AudibleProductId: "B000000003",
 						Title: "Bad download",
-					}, {
+					}), libationBook({
 						AudibleProductId: "B000000004",
 						Title: "Last book",
-					}]))
+					})]))
 					if (args[0] === "liberate") {
 						if (args[1] === "B000000003") {
 							exit(1)
@@ -128,14 +126,18 @@ void test("interactive login, progress, queue, partial failure, repeat duplicate
 		assert.equal(service.snapshot("another-user"), undefined)
 		assert.throws(() => service.redirect("another-user", started.id, redirectUrl))
 		assert.throws(() => service.redirect("user", started.id, "https://evil.example/maplanding"))
-		const settings = JSON.parse(await fs.readFile(path.join(sessionDirectory, "Settings.json"), "utf8")) as Record<string, unknown>
-		for (const [key, value] of Object.entries(qualitySettings)) assert.equal(settings[key], value)
-		assert.deepEqual(settings.Serilog, {
-			MinimumLevel: "Fatal",
-			WriteTo: [{
-				Name: "File",
-				Args: { path: path.join(sessionDirectory, "libation.log") },
-			}],
+		const settings: unknown = JSON.parse(await fs.readFile(path.join(sessionDirectory, "Settings.json"), "utf8"))
+		assert.deepEqual(settings, {
+			...qualitySettings,
+			Books: path.join(sessionDirectory, "audio"),
+			InProgress: path.join(sessionDirectory, "inprogress"),
+			Serilog: {
+				MinimumLevel: "Fatal",
+				WriteTo: [{
+					Name: "File",
+					Args: { path: path.join(sessionDirectory, "libation.log") },
+				}],
+			},
 		})
 		service.redirect("user", started.id, redirectUrl)
 		assert.equal(loginInput, `${redirectUrl}\r`)

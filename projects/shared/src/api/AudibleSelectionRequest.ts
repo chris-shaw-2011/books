@@ -1,16 +1,20 @@
+import typia from "typia"
 import ApiMessage from "./ApiMessage.ts"
 import type { SeriesOrganization } from "../Series.ts"
 
 export default class AudibleSelectionRequest extends ApiMessage {
 	override readonly type = "AudibleSelectionRequest"
-	sessionId: string
-	asins: string[]
+
+	static fromUnknown(json: unknown) {
+		return new AudibleSelectionRequest(typia.assert<ConstructorParameters<typeof AudibleSelectionRequest>[0]>(json))
+	}
+
+	sessionId = ""
+	asins: string[] = []
 	organizations?: Record<string, SeriesOrganization>
 
 	constructor(json?: Partial<AudibleSelectionRequest>) {
 		super()
-		this.sessionId = json?.sessionId ?? ""
-		this.asins = json?.asins ?? []
-		if (json?.organizations) this.organizations = json.organizations
+		this.assignDefined(typia.plain.clone<Partial<AudibleSelectionRequest>>(json ?? {}))
 	}
 }

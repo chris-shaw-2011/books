@@ -1,18 +1,24 @@
+import typia from "typia"
 import Book from "./Book.ts"
 import BookStatuses from "./BookStatuses.ts"
 import ItemBase, { type Item } from "./Item.ts"
 
 export default class Directory extends ItemBase {
+	static fromUnknown(json: unknown) {
+		return new Directory(typia.assert<typia.Primitive<Directory>>(json))
+	}
+
 	override readonly type = "Directory"
 
 	items: Item[]
 	hasBooks: boolean
 
-	constructor(json?: Partial<Directory>, bookStatuses?: BookStatuses) {
-		super(json)
+	constructor(json?: Partial<Directory> | Partial<typia.Primitive<Directory>>, bookStatuses?: BookStatuses) {
+		const data = json ?? {}
+		super(data)
 
-		this.hasBooks = json?.hasBooks ?? false
-		this.items = json?.items?.map(item => item.type === "Book" ? new Book(item, bookStatuses?.get(item.id)?.status) : new Directory(item, bookStatuses)) ?? []
+		this.hasBooks = data.hasBooks ?? false
+		this.items = data.items?.map(item => item.type === "Book" ? new Book(item, bookStatuses?.get(item.id)?.status) : new Directory(item, bookStatuses)) ?? []
 	}
 
 	get maxUploadTime(): Date | undefined {

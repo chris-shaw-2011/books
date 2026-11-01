@@ -53,7 +53,8 @@ void test("selected series destinations and custom reading orders are sent for i
 	try {
 		const organizations = { ONE: { series: { name: "Series", order: 0 }, folderPath: "/Series", padding: 2 } }
 		await LoggedInApi.audibleSelect("session", ["ONE"], onFailure, organizations)
-		assert.deepEqual(JSON.parse(sent?.body as string), { type: "AudibleSelectionRequest", sessionId: "session", asins: ["ONE"], organizations })
+		assert.ok(typeof sent?.body === "string")
+		assert.deepEqual(JSON.parse(sent.body), { type: "AudibleSelectionRequest", sessionId: "session", asins: ["ONE"], organizations })
 	}
 	finally { globalThis.fetch = originalFetch }
 })
@@ -65,7 +66,7 @@ const snapshot = (extra: Partial<AudibleImportSnapshot> = {}): AudibleImportSnap
 })
 
 void test("Audible responses restore books in progress snapshots", () => {
-	const first = AudibleImportResponse.restoreSnapshot(JSON.parse(JSON.stringify(snapshot())) as AudibleImportSnapshot)
+	const first = AudibleImportResponse.snapshotFromUnknown(JSON.parse(JSON.stringify(snapshot())))
 	const next = AudibleImportResponse.restoreSnapshot(snapshot({ downloaded: 2, remaining: 1, books: [...audibleBooks(first.books), new AudibleImportBook({ id: "two", asin: "ASIN2", importStatus: "complete" })] }))
 
 	assert.ok(audibleBooks(first.books)[0] instanceof Book)
@@ -85,7 +86,8 @@ void test("review requests acknowledge one book and recover the remaining server
 	try {
 		const response = await LoggedInApi.audibleReview("session", "ASIN1", onFailure)
 
-		assert.deepEqual(JSON.parse(sent?.body as string), { type: "AudibleReviewRequest", sessionId: "session", asin: "ASIN1" })
+		assert.ok(typeof sent?.body === "string")
+		assert.deepEqual(JSON.parse(sent.body), { type: "AudibleReviewRequest", sessionId: "session", asin: "ASIN1" })
 		assert.ok(response instanceof AudibleImportResponse)
 		assert.equal((response.snapshot && audibleBooks(response.snapshot.books)[0])?.asin, "ASIN2")
 	}
@@ -118,7 +120,10 @@ void test("Audible API methods use the expected routes and request bodies", asyn
 			["/audible/select", "POST"], ["/audible/cancel", "POST"], ["/audible/review", "POST"],
 		])
 		assert.equal(calls[0]?.init?.signal, signal)
-		assert.deepEqual(calls.slice(1).map(call => JSON.parse(call.init?.body as string) as object), [
+		assert.deepEqual(calls.slice(1).map((call): unknown => {
+			assert.ok(typeof call.init?.body === "string")
+			return JSON.parse(call.init.body)
+		}), [
 			{ type: "AudibleStartRequest", account: "reader@example.com", marketplace: "us" },
 			{ type: "AudibleRedirectRequest", sessionId: "session", redirectUrl: "https://amazon.com/redirect" },
 			{ type: "AudibleSelectionRequest", sessionId: "session", asins: ["ASIN1", "ASIN2"] },
@@ -173,11 +178,11 @@ void test("selection and per-book progress survive response restoration and reco
 	assert.equal(selecting.snapshot?.phase, "selecting")
 	assert.deepEqual(audibleBooks(selecting.snapshot.books).map(book => book.importStatus), ["available", "skipped"])
 
-	const reconnect = AudibleImportResponse.restoreSnapshot(JSON.parse(JSON.stringify(snapshot({ books: [
+	const reconnect = AudibleImportResponse.snapshotFromUnknown(JSON.parse(JSON.stringify(snapshot({ books: [
 		new AudibleImportBook({ id: "one", asin: "ASIN1", name: "Book one", importStatus: "complete", reviewed: true }),
 		new AudibleImportBook({ asin: "ASIN2", name: "Book two", importStatus: "downloading", percentage: 42 }),
 		new AudibleImportBook({ asin: "ASIN3", name: "Book three", importStatus: "queued" }),
-	] }))) as AudibleImportSnapshot)
+	] }))))
 	assert.ok(audibleBooks(reconnect.books)[0] instanceof AudibleImportBook)
 	assert.equal(audibleBooks(reconnect.books)[0]?.reviewed, true)
 	assert.equal(audibleBooks(reconnect.books)[1]?.percentage, 42)
@@ -186,7 +191,7 @@ void test("selection and per-book progress survive response restoration and reco
 
 void test("import books share Book metadata without aliases or nested copies", () => {
 	const source = new AudibleImportBook({ asin: "ONE", name: "Prequel", series: "A Series", seriesOrder: 0, importStatus: "downloading", status: "Read", uploadTime: new Date(1234) })
-	const restored = AudibleImportResponse.restoreSnapshot(JSON.parse(JSON.stringify(snapshot({ books: [source] }))) as AudibleImportSnapshot).books[0]
+	const restored = AudibleImportResponse.snapshotFromUnknown(JSON.parse(JSON.stringify(snapshot({ books: [source] })))).books[0]
 	assert.ok(restored instanceof AudibleImportBook)
 	assert.ok(restored instanceof Book)
 	assert.equal(restored.uploadTime.getTime(), 1234)
@@ -219,7 +224,7 @@ void test("ordering prepares every folder before rendering without changing the 
 	folder.items = [nested]
 	const regular = new Book({ name: "Middle", uploadTime: new Date(500) })
 	const items = [folder, regular]
-	for (const order of Object.keys(itemOrders) as (keyof typeof itemOrders)[]) {
+	for (const order of Object.keys(itemOrders).filter((order): order is keyof typeof itemOrders => Object.hasOwn(itemOrders, order))) {
 		const sorted = orderItems(items, order)
 		const alphabeticalAscending = order === "Alphabetically - Ascending"
 		assert.deepEqual(sorted.map(item => item.name), alphabeticalAscending ? ["Middle", "Zebra folder"] : ["Zebra folder", "Middle"])

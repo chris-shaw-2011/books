@@ -1,3 +1,4 @@
+import { PackageManifest, VersionedLockfile } from "../projects/shared/src/PackageMetadata.ts"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
@@ -35,12 +36,12 @@ void test("code versions keep three parts and automatic dependency revisions use
 			return git("rev-parse", "HEAD")
 		}
 		const bump = (expected: string) => {
-			assert.equal(run(process.execPath, [fileURLToPath(new URL("./bump-update-version.ts", import.meta.url))]), expected)
-			const pkg = JSON.parse(readFileSync(join(repo, "package.json"), "utf8")) as { version: string }
-			const lock = JSON.parse(readFileSync(join(repo, "package-lock.json"), "utf8")) as { version: string, packages: Record<string, { version: string }> }
+			assert.equal(run(process.execPath, ["--require", fileURLToPath(import.meta.resolve("ttsc/register")), fileURLToPath(new URL("./bump-update-version.ts", import.meta.url))]), expected)
+			const pkg = PackageManifest.fromUnknown(JSON.parse(readFileSync(join(repo, "package.json"), "utf8")))
+			const lock = VersionedLockfile.fromUnknown(JSON.parse(readFileSync(join(repo, "package-lock.json"), "utf8")))
 			assert.equal(pkg.version, expected)
 			assert.equal(lock.version, expected)
-			assert.equal(lock.packages[""]?.version, expected)
+			assert.equal(lock.packages[""].version, expected)
 		}
 
 		const tag = (check = false, event = "push") => {
@@ -48,7 +49,10 @@ void test("code versions keep three parts and automatic dependency revisions use
 			writeFileSync(output, "")
 			writeFileSync(env.GITHUB_STEP_SUMMARY, "")
 			run("bash", [fileURLToPath(new URL("./tag-version.sh", import.meta.url)), ...(check ? ["--check"] : [])])
-			return Object.fromEntries(readFileSync(output, "utf8").trim().split("\n").map(line => line.split("="))) as Record<string, string>
+			return Object.fromEntries(readFileSync(output, "utf8").trim().split("\n").map(line => {
+				const [key = "", value = ""] = line.split("=")
+				return [key, value] as const
+			}))
 		}
 		git("init", "--bare", join(root, "remote.git"))
 		git("init", "-b", "master")

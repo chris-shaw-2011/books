@@ -5,6 +5,8 @@ import {
 } from "@chris-shaw-2011/lint/knip"
 
 export default createKnipConfig({
+	// Knip treats transform-only TypeScript plugins as an empty import.
+	ignoreUnresolved: [/^$/],
 	workspaces: {
 		".": rootWorkspaceConfig({
 			entry: [

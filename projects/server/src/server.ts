@@ -42,16 +42,11 @@ const audibleImporter = createAudibleImporter(() => db.settings, async filePath 
 registerAudibleRoutes(server, audibleImporter)
 const rootPath = path.join(rootDir, "../../../../bin/projects/client")
 const immutableAssetOptions = { immutable: true, maxAge: "1y" } as const
-interface ClientManifestEntry {
-	file: string,
-	imports?: string[],
-	css?: string[],
-}
 let publicAssets: ReadonlySet<string> | undefined
 const getPublicAssets = () => {
 	if (!publicAssets) {
 		const manifestPath = path.join(rootPath, ".vite/manifest.json")
-		const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8")) as Record<string, ClientManifestEntry>
+		const manifest = shared.ClientManifest.fromUnknown(JSON.parse(fs.readFileSync(manifestPath, "utf8")))
 		const files = new Set<string>()
 		const addEntry = (key: string) => {
 			const entry = manifest[key]
@@ -168,7 +163,7 @@ void server.register(fastifyStatic, {
 })
 
 server.post<{ Body: shared.User }>("/auth", async (request, reply) => {
-	const req = new shared.LoginRequest(request.body)
+	const req = shared.LoginRequest.fromUnknown(request.body)
 
 	if (!req.password) {
 		return new shared.Unauthorized("You must specify a password")
@@ -213,7 +208,7 @@ server.post("/settings", { preHandler: validateAdminRequest }, (_, reply) => {
 })
 
 server.post<{ Body: shared.SettingsUpdate }>("/updateSettings", { preHandler: validateAdminRequest }, async (request, reply) => {
-	const settingsUpdate = new shared.SettingsUpdate(request.body)
+	const settingsUpdate = shared.SettingsUpdate.fromUnknown(request.body)
 	let settingsUpdated = false
 
 	if (settingsUpdate.settings.baseBooksPath !== db.settings.baseBooksPath) {
@@ -270,7 +265,7 @@ server.post("/users", { preHandler: validateAdminRequest }, () => {
 })
 
 server.post<{ Body: shared.AddUserRequest }>("/addUser", { preHandler: validateAdminRequest }, async request => {
-	const userRequest = new shared.AddUserRequest(request.body)
+	const userRequest = shared.AddUserRequest.fromUnknown(request.body)
 	let message = `${userRequest.user.email} has been invited`
 	let successful = false
 
@@ -307,7 +302,7 @@ server.post<{ Body: shared.AddUserRequest }>("/addUser", { preHandler: validateA
 					db.deleteUser(userId)
 				})
 
-				message = (e as Error).message
+				message = e instanceof Error ? e.message : "Could not invite user"
 			}
 		}
 	}
@@ -318,7 +313,7 @@ server.post<{ Body: shared.AddUserRequest }>("/addUser", { preHandler: validateA
 })
 
 server.post<{ Body: shared.DeleteUserRequest }>("/deleteUser", { preHandler: validateAdminRequest }, request => {
-	const userRequest = new shared.DeleteUserRequest(request.body)
+	const userRequest = shared.DeleteUserRequest.fromUnknown(request.body)
 
 	db.deleteUser(userRequest.userId)
 
@@ -328,7 +323,7 @@ server.post<{ Body: shared.DeleteUserRequest }>("/deleteUser", { preHandler: val
 })
 
 server.post<{ Body: shared.UserRequest }>("/user", async (request, reply) => {
-	const userRequest = new shared.UserRequest(request.body)
+	const userRequest = shared.UserRequest.fromUnknown(request.body)
 
 	const dbUser = db.getUserById(userRequest.userId)
 
@@ -343,7 +338,7 @@ server.post<{ Body: shared.UserRequest }>("/user", async (request, reply) => {
 })
 
 server.post<{ Body: shared.SetPasswordRequest }>("/setPassword", async (request, reply) => {
-	const setRequest = new shared.SetPasswordRequest(request.body)
+	const setRequest = shared.SetPasswordRequest.fromUnknown(request.body)
 	const hash = await passwordHash(setRequest.newPassword)
 
 	const user = db.transaction(() => {
@@ -369,7 +364,7 @@ server.post<{ Body: shared.SetPasswordRequest }>("/setPassword", async (request,
 })
 
 server.post<{ Body: shared.ChangePasswordRequest }>("/changePassword", { preHandler: validateRequest }, async (request, reply) => {
-	const changeRequest = new shared.ChangePasswordRequest(request.body)
+	const changeRequest = shared.ChangePasswordRequest.fromUnknown(request.body)
 	const token = request.userToken
 	const hash = await passwordHash(changeRequest.newPassword)
 
@@ -383,7 +378,7 @@ server.post<{ Body: shared.ChangePasswordRequest }>("/changePassword", { preHand
 })
 
 server.post<{ Body: shared.ChangeBookStatusRequest }>("/changeBookStatus", { preHandler: validateRequest }, async request => {
-	const statusRequest = new shared.ChangeBookStatusRequest(request.body)
+	const statusRequest = shared.ChangeBookStatusRequest.fromUnknown(request.body)
 	const token = request.userToken
 
 	if (!token) {
@@ -457,7 +452,7 @@ server.post("/upload", { preHandler: validateRequest }, async (request, reply) =
 
 // TODO: change this to a websocket
 server.post<{ Body: shared.ConversionUpdateRequest }>("/conversionUpdate", { preHandler: validateRequest }, async request => {
-	const updateRequest = new shared.ConversionUpdateRequest(request.body)
+	const updateRequest = shared.ConversionUpdateRequest.fromUnknown(request.body)
 	const conversion = conversions.get(updateRequest.conversionId)
 	const response = new shared.ConversionUpdateResponse({ conversionPercent: 100, converterStatus: "Complete" })
 
@@ -485,7 +480,7 @@ server.post<{ Body: shared.ConversionUpdateRequest }>("/conversionUpdate", { pre
 
 server.post<{ Body: shared.AddFolderRequest }>("/addFolder", { preHandler: validateAdminRequest }, async request => {
 	const token = request.userToken
-	const addFolderRequest = new shared.AddFolderRequest(request.body)
+	const addFolderRequest = shared.AddFolderRequest.fromUnknown(request.body)
 	const fullPath = path.join(db.settings.baseBooksPath, addFolderRequest.path, addFolderRequest.folderName)
 
 	if (!token) {
@@ -504,7 +499,7 @@ server.post<{ Body: shared.AddFolderRequest }>("/addFolder", { preHandler: valid
 
 server.post<{ Body: shared.UpdateBookRequest }>("/updateBook", { preValidation: validateAdminRequest, schema: updateBookSchema, attachValidation: true }, async (request, reply) => {
 	if (request.validationError) return reply.code(400).send(new shared.UpdateBookResponse({ message: request.validationError.message }))
-	const updateBookRequest = new shared.UpdateBookRequest(request.body)
+	const updateBookRequest = shared.UpdateBookRequest.fromUnknown(request.body)
 	// eslint-disable-next-line @stylistic/max-statements-per-line
 	const token = request.userToken ?? (() => { throw new Error() })()
 	const book = (await bookList.allBooks()).findById(updateBookRequest.newBook.id)

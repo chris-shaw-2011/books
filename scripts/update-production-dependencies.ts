@@ -1,19 +1,11 @@
+import { Lockfile } from "../projects/shared/src/PackageMetadata.ts"
 import { spawnSync } from "node:child_process"
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs"
 import process from "node:process"
 
-interface LockedPackage {
-	dev?: boolean,
-	link?: boolean,
-	version?: string,
-	resolved?: string,
-	integrity?: string,
-}
-interface Lockfile { packages: Record<string, LockedPackage> }
-
 const lockPath = "package-lock.json"
 const original = readFileSync(lockPath, "utf8")
-const before = JSON.parse(original) as Lockfile
+const before = Lockfile.fromUnknown(JSON.parse(original))
 const productionPackages = (lock: Lockfile) => Object.entries(lock.packages)
 	.filter(([path, pkg]) => path.includes("node_modules/") && !pkg.dev && !pkg.link)
 	.sort(([a], [b]) => a.localeCompare(b))
@@ -33,7 +25,7 @@ if (names.length) {
 	runNpm(["audit", "fix", "--package-lock-only", "--omit=dev", "--ignore-scripts", "--audit-level=none", "--no-fund", "--workspaces", "--include-workspace-root"])
 }
 
-const after = JSON.parse(readFileSync(lockPath, "utf8")) as Lockfile
+const after = Lockfile.fromUnknown(JSON.parse(readFileSync(lockPath, "utf8")))
 const previous = new Map(productionPackages(before))
 const current = new Map(productionPackages(after))
 const changes = [...new Set([...previous.keys(), ...current.keys()])].filter(path => {

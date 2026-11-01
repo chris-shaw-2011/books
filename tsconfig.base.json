@@ -15,6 +15,13 @@
 		"skipLibCheck": true,
 		"esModuleInterop": true,
 		"forceConsistentCasingInFileNames": true,
-		"resolveJsonModule": true
+		"resolveJsonModule": true,
+		"rewriteRelativeImportExtensions": true,
+		"plugins": [
+			{
+				"transform": "typia/lib/transform",
+				"finite": true
+			}
+		]
 	}
 }

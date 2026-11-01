@@ -11,6 +11,7 @@ import { audibleBooks, Book, User, type AudibleImportResponse, type Books } from
 import { createAudibleImporter, type AudibleProcess } from "../../src/audible/ImportService.ts"
 import { readAsin } from "../../src/audible/Files.ts"
 import { registerAudibleRoutes } from "../../src/audible/Routes.ts"
+import libationBook from "./LibationBook.ts"
 const waitFor = async (condition: () => boolean) => {
 	for (let attempt = 0; attempt < 300; attempt++) {
 		if (condition()) return
@@ -87,17 +88,17 @@ void test("Audible HTTP authentication publishes and indexes a real M4B while re
 					if (args[0] === "export") {
 						const exported = args[2]
 						assert.ok(exported)
-						await fs.writeFile(exported, JSON.stringify([{
+						await fs.writeFile(exported, JSON.stringify([libationBook({
 							AudibleProductId: "B000000001",
 							Title: "First audiobook",
 							SeriesOrder: "1 : Fixture Series",
 							IsAudiblePlus: false,
-						}, {
+						}), libationBook({
 							AudibleProductId: "B000000002",
 							Title: "Second audiobook",
 							SeriesOrder: "2 : Fixture Series",
 							IsAudiblePlus: true,
-						}]))
+						})]))
 					}
 					if (args[0] === "liberate") {
 						if (args[1] === "B000000002") {

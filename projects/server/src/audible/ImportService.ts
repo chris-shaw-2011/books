@@ -6,25 +6,12 @@ import { execFile } from "node:child_process"
 import { promisify } from "node:util"
 import { Mutex } from "async-mutex"
 import sanitize from "sanitize-filename"
-import { AudibleImportBook, Directory, seriesBookTitle, type Book, type AudibleImportSnapshot, type SeriesOrganization, type BookSeries } from "@books/shared"
+import { AudibleImportBook, Directory, seriesBookTitle, type Book, type AudibleImportSnapshot, type SeriesOrganization, LibationLibrary, AudioProbe } from "@books/shared"
 import { seriesDestination } from "../SeriesOrganization.ts"
 import { readAudioMetadata, writeAudioMetadata } from "../AudioMetadata.ts"
 import { audioFiles, publishAudio, writeAsin } from "./Files.ts"
 import DownloadProgress from "./DownloadProgress.ts"
 import selectionItems from "./SelectionItems.ts"
-
-function parseSeries(book: Record<string, unknown>): BookSeries[] {
-	// Libation's ExportDto formats SeriesOrder as "1 : Name, 2 : Other name".
-	const value = book.SeriesOrder
-	if (typeof value !== "string" || !value.trim()) return []
-	return value.split(/,\s*(?=[\d.-]+\s*:)/).flatMap(entry => {
-		const match = /^\s*([^:]*?)\s*:\s*(.+?)\s*$/.exec(entry)
-		if (!match) return []
-		const text = match[1]?.trim()
-		const order = Number(text)
-		return [{ name: match[2] ?? "", order: text && Number.isFinite(order) && order >= 0 ? order : undefined }]
-	})
-}
 
 export const qualitySettings = {
 	FileDownloadQuality: "High",
@@ -35,52 +22,12 @@ export const qualitySettings = {
 	ImportPlusTitles: true,
 }
 
-const coverUrl = (value: unknown) => {
-	if (typeof value !== "string") return
-	try {
-		const url = new URL(value)
-		if (url.protocol === "https:" && !url.username && !url.password) return url.href
-	}
-	catch { /* Missing or malformed covers are optional. */ }
-}
-
-const text = (value: unknown) => typeof value === "string" ? value : ""
-
-const coverFromId = (value: unknown) => {
-	// Libation ExportDto exposes PictureId/PictureLarge; PictureStorage uses this CDN.
-	if (typeof value === "string" && /^[a-zA-Z0-9+_-]{1,200}$/.test(value)) return `https://images-na.ssl-images-amazon.com/images/I/${encodeURIComponent(value)}._SL300_.jpg`
-}
-
-export function parseLibrary(json: unknown) {
-	const list = Array.isArray(json) ? json : json && typeof json === "object" ? Object.values(json).find(Array.isArray) : undefined
-	if (!Array.isArray(list)) throw new Error("Invalid Libation library export")
+export function parseLibrary(json: string) {
+	const rows = LibationLibrary.fromUnknown(JSON.parse(json))
 	const result = new Map<string, AudibleImportBook>()
-	for (const entry of list) {
-		if (!entry || typeof entry !== "object") continue
-		const row = entry as Record<string, unknown>
-		const nested = row.Book ?? row.book
-		const book = nested && typeof nested === "object" ? nested as Record<string, unknown> : row
-		const asin = book.asin ?? book.Asin ?? book.ASIN ?? book.AudibleProductId ?? book.ProductId
-		const title = book.title ?? book.Title
-		const series = parseSeries(book)
-		const year = new Date(text(book.DatePublished)).getUTCFullYear()
-		const image = coverUrl(book.PictureUrl ?? book.pictureUrl ?? book.CoverUrl ?? book.coverUrl ?? book.cover_url ?? book.ImageUrl ?? book.PictureLarge ?? book.PictureId) ?? coverFromId(book.PictureId) ?? coverFromId(book.PictureLarge)
-		const contentType = book.content_type ?? book.ContentType ?? book.contentType
-		const type = typeof contentType === "string" ? contentType.toLowerCase() : ""
-		if (typeof asin === "string" && asin && typeof title === "string" && !type.includes("podcast") && !type.includes("episode")) result.set(asin, new AudibleImportBook({
-			asin,
-			name: title,
-			cover: image ?? "",
-			author: text(book.AuthorNames),
-			narrator: text(book.NarratorNames),
-			comment: text(book.Description),
-			genre: text(book.CategoriesNames),
-			year: Number.isFinite(year) ? year : 0,
-			duration: typeof book.LengthInMinutes === "number" && Number.isFinite(book.LengthInMinutes) && book.LengthInMinutes > 0 ? book.LengthInMinutes * 60 : 0,
-			series: series.length === 1 ? series[0]?.name ?? "" : "",
-			seriesOrder: series.length === 1 ? series[0]?.order : undefined,
-			seriesOptions: series.length > 1 ? series : [],
-		}))
+	for (const row of rows) {
+		const book = AudibleImportBook.fromLibation(row)
+		if (!/podcast|episode/i.test(row.ContentType)) result.set(book.asin, book)
 	}
 	return [...result.values()]
 }
@@ -378,7 +325,7 @@ export class AudibleImportService {
 			await this.command(session, ["scan", "-o", "ImportPlusTitles=true"])
 			const exported = path.join(session.directory, "library.json")
 			await this.command(session, ["export", "-p", exported, "-j"])
-			const titles = parseLibrary(JSON.parse(await fs.readFile(exported, "utf8")))
+			const titles = parseLibrary(await fs.readFile(exported, "utf8"))
 			session.snapshot.total = titles.length
 			for (const title of titles) {
 				if (session.cancelled) throw new Error("Cancelled")
@@ -480,6 +427,7 @@ export class AudibleImportService {
 		catch (error) {
 			failed = true
 			if (!session.cancelled && error instanceof Error && error.message === "Selection expired") session.snapshot.error = "Your book selection expired. Start a new import and sign in again."
+			else if (!session.cancelled && (error instanceof SyntaxError || (error instanceof Error && error.message.startsWith("Invalid Libation library export")))) session.snapshot.error = "Libation returned an unexpected library export. The Libation integration needs investigation."
 			else if (!session.cancelled) session.snapshot.error = "Libation could not complete this operation. Check that Libation is installed, then start a new import and authenticate again."
 		}
 		finally {
@@ -554,16 +502,7 @@ export const validateM4b = async (file: string) => {
 	} = await promisify(execFile)(process.env.FFPROBE_PATH ?? ffprobePath ?? "ffprobe", ["-v", "error", "-show_format", "-show_streams", "-show_chapters", "-count_packets", "-of", "json", file], {
 		maxBuffer: 8 * 1024 * 1024,
 	})
-	const data = JSON.parse(stdout) as {
-		format?: {
-			duration?: string,
-		},
-		streams?: {
-			codec_type?: string,
-			codec_name?: string,
-			nb_read_packets?: string,
-		}[],
-	}
+	const data = AudioProbe.fromUnknown(JSON.parse(stdout))
 	if (stderr.trim() || !(Number(data.format?.duration) > 0) || !data.streams?.some(stream => stream.codec_type === "audio" && Number(stream.nb_read_packets) > 0 && ["aac", "alac", "mp3", "opus", "flac"].includes(stream.codec_name ?? ""))) throw new Error("Unreadable or incomplete audio")
 }
 export const createAudibleImporter = (settings: () => {

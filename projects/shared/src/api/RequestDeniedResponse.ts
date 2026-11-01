@@ -4,7 +4,7 @@ export default abstract class RequestDeniedResponse extends ApiMessage {
 	message: string
 	abstract code: number
 
-	constructor(value?: Partial<RequestDeniedResponse> | string) {
+	constructor(value?: string | Partial<RequestDeniedResponse>) {
 		super()
 
 		if (typeof value === "string") {

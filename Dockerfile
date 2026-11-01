@@ -4,7 +4,7 @@
 FROM node:current-slim AS build
 WORKDIR /build
 RUN apt-get update \
-	&& apt-get install -y --no-install-recommends python3 make g++ \
+	&& apt-get install -y --no-install-recommends ca-certificates python3 make g++ \
 	&& rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json ./
@@ -17,12 +17,14 @@ RUN npm pkg delete 'devDependencies.@chris-shaw-2011/lint' \
 	&& npm ci --include=dev --engine-strict
 
 COPY projects ./projects
-COPY scripts/copy.ts ./scripts/copy.ts
+COPY scripts ./scripts
 COPY tsconfig.base.json .env.production ./
 RUN npm run build
+# Typia's optional compiler peer can survive --omit=dev; emitted JavaScript only needs its runtime helpers.
 RUN cp package-lock.json bin/package-lock.json \
 	&& cd bin \
 	&& npm ci --omit=dev --engine-strict \
+	&& rm -rf node_modules/ttsc node_modules/@ttsc \
 	&& test -f projects/server/src/index.js \
 	&& test -f projects/client/index.html
 
@@ -46,16 +48,15 @@ RUN apt-get update \
 	&& ssl_package="$(apt-cache pkgnames | grep -E '^libssl[0-9]+(t64)?$' | sort -V | tail -1)" \
 	&& apt-get install -y --no-install-recommends "$icu_package" "$ssl_package" \
 	&& rm -rf /var/lib/apt/lists/*
+COPY --from=build --chown=node:node /build/bin /home/node/app/bin
 COPY scripts/install-libation.sh /tmp/install-libation.sh
-COPY scripts/resolve-libation-release.ts /tmp/resolve-libation-release.ts
 ARG LIBATION_PACKAGE_URL
 # This digest is a cache key, not a checksum validation.
 ARG LIBATION_RELEASE_SHA256
 RUN sh /tmp/install-libation.sh "$LIBATION_PACKAGE_URL" \
-	&& rm /tmp/install-libation.sh /tmp/resolve-libation-release.ts
+	&& rm /tmp/install-libation.sh
 
 WORKDIR /home/node/app
-COPY --from=build --chown=node:node /build/bin ./bin
 COPY --chown=node:node scripts/check-docker-runtime.ts ./check-docker-runtime.ts
 
 USER node

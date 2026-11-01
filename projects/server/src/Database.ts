@@ -209,17 +209,13 @@ function normalizeBookStatusesValue(value: SQLOutputValue) {
 	}
 
 	try {
-		const parsed = JSON.parse(value) as unknown
-
-		if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-			return JSON.stringify(parsed)
-		}
+		const statuses: unknown = JSON.parse(value)
+		if (typeof statuses !== "object" || statuses === null || Array.isArray(statuses)) return "{}"
+		return JSON.stringify(statuses)
 	}
 	catch {
 		return "{}"
 	}
-
-	return "{}"
 }
 
 function configureConnection(database: DatabaseSync) {
@@ -523,7 +519,7 @@ class DatabaseClass implements SettingsStore {
 
 		const bookStatuses = expectString(row.bookStatuses ?? "{}", "user.bookStatuses")
 
-		return new shared.BookStatuses(JSON.parse(bookStatuses) as Record<string, Partial<shared.BookWithStatus>>)
+		return shared.BookStatuses.fromUnknown(JSON.parse(bookStatuses))
 	}
 
 	updateStatusesForUser(userId: string, statuses: shared.BookStatuses) {

@@ -76,11 +76,14 @@ jobs:
         with:
           node-version: current
 
+      - name: Install maintenance dependencies
+        run: sh scripts/install-maintenance.sh
+
       - name: Resolve current Libation package
         id: current-libation
         run: |
           set -euo pipefail
-          node scripts/resolve-libation-release.ts amd64 \
+          node --require ttsc/register scripts/resolve-libation-release.ts amd64 \
             | jq -r 'to_entries[] | "\(.key)=\(.value)"' \
             | tee -a "$GITHUB_OUTPUT"
 

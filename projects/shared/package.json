@@ -5,9 +5,12 @@
 	"private": true,
 	"version": "1.0.0",
 	"scripts": {
-		"build": "tsc --project tsconfig.production.json && npm run copy-package",
-		"copy-package": "node ./fixPackageMain.ts",
+		"build": "ttsc --project tsconfig.production.json && npm run copy-package",
+		"copy-package": "node --require ttsc/register ./fixPackageMain.ts",
 		"lint": "eslint .",
 		"lint:fix": "eslint . --fix"
+	},
+	"dependencies": {
+		"typia": "^15.2.2"
 	}
 }

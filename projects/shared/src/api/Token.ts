@@ -1,19 +1,25 @@
+import typia from "typia"
 import User from "../User.ts"
 import ApiMessage from "./ApiMessage.ts"
 
 export default class Token extends ApiMessage {
 	override readonly type = "Token"
 
+	static fromUnknown(json: unknown) {
+		return new Token(typia.assert<typia.Primitive<Token>>(json))
+	}
+
 	user: User
 	authorization: string
 	checksum: string
 
-	constructor(json?: Partial<Token>) {
+	constructor(json?: Partial<Token> | Partial<typia.Primitive<Token>>) {
+		const data = json ?? {}
 		super()
 
-		this.user = new User(json?.user)
-		this.authorization = json?.authorization ?? ""
-		this.checksum = json?.checksum ?? ""
+		this.user = new User(data.user)
+		this.authorization = data.authorization ?? ""
+		this.checksum = data.checksum ?? ""
 	}
 
 	isValid() {
@@ -22,10 +28,12 @@ export default class Token extends ApiMessage {
 
 	static fromJSON(json?: string) {
 		if (json) {
-			const token = new Token(JSON.parse(json) as Partial<Token>)
-
-			if (token.isValid()) {
-				return token
+			try {
+				const token = Token.fromUnknown(JSON.parse(json))
+				if (token.isValid()) return token
+			}
+			catch (error) {
+				if (!(error instanceof SyntaxError) && !(error instanceof typia.TypeGuardError)) throw error
 			}
 		}
 

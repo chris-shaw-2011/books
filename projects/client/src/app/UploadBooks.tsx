@@ -1,6 +1,6 @@
 import Progress from "./Progress"
 import { use, useEffect, useState, useCallback } from "react"
-import { UploadResponse, type ConverterStatus, ConverterStatuses, Book, ApiMessage, AllowedUploadFileExtensions, canBeUploaded } from "@books/shared"
+import { UploadResponse, ConverterStatuses, type ConverterStatus, Book, AllowedUploadFileExtensions, canBeUploaded } from "@books/shared"
 import Api from "./api/LoggedInApi"
 import AppContext from "./context/AppContext"
 import OverlayComponent from "./components/OverlayComponent"
@@ -32,14 +32,7 @@ interface FileUploadRowState {
 	workingFileNames: string[],
 }
 
-const ToConverterStatus = (status: UploadStatus): ConverterStatus => {
-	if ((ConverterStatuses as readonly string[]).includes(status)) {
-		return status as ConverterStatus
-	}
-	else {
-		return "Waiting"
-	}
-}
+const ToConverterStatus = (status: UploadStatus): ConverterStatus => ConverterStatuses.find(value => value === status) ?? "Waiting"
 
 const IsConversionRunning = (status: UploadStatus) => (status === "Extracting" || status === "Cracking" || status === "Converting" || status === "Combining")
 
@@ -100,12 +93,13 @@ const FileUploadRow = (props: FileUploadRowProps) => {
 		data.append("file", file)
 
 		request.open("POST", "/upload", true)
+		request.responseType = "json"
 		request.upload.onprogress = e => {
 			setUploadState(prev => ({ ...prev, percent: (e.loaded / e.total) * 100, status: "Uploading" }))
 		}
 		request.onreadystatechange = () => {
 			if (request.readyState === XMLHttpRequest.DONE) {
-				const ret = Api.handleApiResponse(JSON.parse(request.responseText) as ApiMessage, UploadResponse, logOut)
+				const ret = Api.handleApiResponse(request.response, UploadResponse, logOut)
 
 				onStatusChanged(id, ret.converterStatus)
 				setUploadState(prev => ({ ...prev, conversionId: ret.conversionId, percent: 0, status: ret.converterStatus }))

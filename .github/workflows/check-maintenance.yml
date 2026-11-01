@@ -26,5 +26,8 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: current
+      - name: Install maintenance dependencies
+        run: sh scripts/install-maintenance.sh
+
       - name: Test maintenance scripts
-        run: node --test scripts/*.test.ts
+        run: npm run test:scripts

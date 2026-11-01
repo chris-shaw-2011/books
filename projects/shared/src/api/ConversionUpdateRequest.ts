@@ -1,20 +1,21 @@
+import typia from "typia"
 import { type ConverterStatus } from "../ConverterStatus.ts"
 import ApiMessage from "./ApiMessage.ts"
 
 export default class ConversionUpdateRequest extends ApiMessage {
 	override readonly type = "ConversionUpdateRequest"
 
-	knownPercent: number
-	knownConverterStatus: ConverterStatus
-	conversionId: string
-	knownWorkingFiles: string[]
+	static fromUnknown(json: unknown) {
+		return new ConversionUpdateRequest(typia.assert<ConstructorParameters<typeof ConversionUpdateRequest>[0]>(json))
+	}
+
+	knownPercent = 0
+	knownConverterStatus: ConverterStatus = "Waiting"
+	conversionId = ""
+	knownWorkingFiles: string[] = []
 
 	constructor(json?: Partial<ConversionUpdateRequest>) {
 		super()
-
-		this.knownPercent = json?.knownPercent ?? 0
-		this.conversionId = json?.conversionId ?? ""
-		this.knownConverterStatus = json?.knownConverterStatus ?? "Waiting"
-		this.knownWorkingFiles = json?.knownWorkingFiles ?? []
+		this.assignDefined(typia.plain.clone<Partial<ConversionUpdateRequest>>(json ?? {}))
 	}
 }

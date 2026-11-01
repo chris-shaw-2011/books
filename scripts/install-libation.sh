@@ -4,7 +4,7 @@ set -eu
 # Extract the package without running desktop installation scripts.
 url="${1:-}"
 if [ -z "$url" ]; then
-  url=$(node /tmp/resolve-libation-release.ts "$(dpkg --print-architecture)" --url)
+  url=$(node /home/node/app/bin/scripts/resolve-libation-release.js "$(dpkg --print-architecture)" --url)
 fi
 archive=$(mktemp /tmp/libation.XXXXXX.deb)
 trap 'rm -f "$archive"' EXIT
